@@ -1,0 +1,5 @@
+{
+  "name": "arcibid",
+  "private": true,
+  "workspaces": ["client", "sdk"]
+}

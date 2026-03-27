@@ -1,0 +1,19 @@
+{
+  "name": "@arcibid/sdk",
+  "version": "0.0.1",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -w -p tsconfig.json"
+  },
+  "dependencies": {
+    "@arcium-hq/client": "^0.9.3",
+    "@coral-xyz/anchor": "^0.32.1",
+    "@realms-today/spl-governance": "^0.3.33",
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.98.4",
+    "bn.js": "^5.2.3",
+    "dotenv": "^17.3.1"
+  }
+}

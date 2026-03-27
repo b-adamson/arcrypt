@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+:root {
+  --background: #08070d;
+  --foreground: #f5f7fb;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(circle at top left, rgba(236, 72, 153, 0.14), transparent 28%),
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.08), transparent 24%),
+    radial-gradient(circle at center, rgba(124, 58, 237, 0.12), transparent 42%),
+    linear-gradient(180deg, #09070f 0%, #05050a 100%);
+}
+
+::selection {
+  background: rgba(217, 70, 239, 0.35);
+  color: white;
+}
+
+.rounded-none {
+  border-radius: 0 !important;
+}
+
+.edge-glow-strong {
+  box-shadow: 0 12px 60px rgba(78, 199, 255, 0.08), 0 6px 30px rgba(255, 43, 211, 0.06);
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translate3d(var(--x-start), 0, 0) rotate(0deg);
+    opacity: 0;
+    filter: brightness(1.4) saturate(1.5);
+  }
+  8% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--x-end), 120vh, 0) rotate(var(--spin));
+    opacity: 0;
+    filter: brightness(1.8) saturate(1.8);
+  }
+}
+
+.confetti-piece {
+  position: absolute;
+  width: var(--w);
+  height: var(--h);
+  background: var(--c);
+  border-radius: var(--r);
+  animation: confetti-fall var(--d) linear forwards;
+  will-change: transform, opacity, filter;
+  box-shadow:
+    0 0 10px rgba(255, 255, 255, 0.14),
+    0 0 24px rgba(255, 255, 255, 0.08);
+}
