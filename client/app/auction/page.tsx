@@ -5,7 +5,7 @@ import { Buffer } from "buffer";
 import { BN } from "@coral-xyz/anchor";
 import { useWallet } from "@solana/wallet-adapter-react";
 // import { LAMPORTS_PER_SOL, PublicKey,Keypair, TransactionInstruction as Web3TransactionInstruction, } from "@solana/web3.js";
-import { createAnchorProgramInBrowser, assertProviderReady } from "../lib/anchorClient";
+import { createAnchorProgramInBrowser, assertProviderReady } from "../../lib/anchorClient";
 import WalletSection from "../../components/WalletSection";
 import AuctionCreateForm from "../../components/AuctionCreateForm";
 import AuctionResultCard from "../../components/AuctionResultCard";

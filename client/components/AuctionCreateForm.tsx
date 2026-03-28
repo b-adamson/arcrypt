@@ -11,6 +11,13 @@ import { Metadata } from "@metaplex-foundation/mpl-token-metadata";
 import type { Connection, PublicKey } from "@solana/web3.js";
 import { PublicKey as PublicKeyCtor } from "@solana/web3.js";
 
+import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
+import {
+  mplTokenMetadata,
+  fetchDigitalAsset,
+} from "@metaplex-foundation/mpl-token-metadata";
+import { publicKey as umiPublicKey } from "@metaplex-foundation/umi";
+
 type AuctionType = "FirstPrice" | "Vickrey" | "Uniform" | "ProRata";
 type AssetKind = "Fungible" | "Nft" | "MetadataOnly";
 
@@ -27,7 +34,9 @@ type TokenOption = {
 const METADATA_PROGRAM_ID = new PublicKeyCtor(
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
 );
-
+const umi = createUmi("https://api.devnet.solana.com").use(
+  mplTokenMetadata()
+);
 const tokenMetadataCache = new Map<string, TokenOption>();
 const tokenMetadataInFlight = new Map<string, Promise<TokenOption>>();
 
@@ -88,30 +97,25 @@ async function enrichTokenOption(
     let next = { ...option };
 
     try {
-      const metadataPda = getMetadataPda(option.mint);
-      const info = await connection.getAccountInfo(metadataPda);
+      const asset = await fetchDigitalAsset(umi, umiPublicKey(option.mint));
 
-      if (info?.data) {
-        const [metadata] = Metadata.deserialize(info.data);
+      const uri = asset.metadata.uri?.replace(/\0/g, "").trim();
+      const json = await fetchJson(uri);
 
-        const uri = metadata.data.uri?.replace(/\0/g, "").trim();
-        const json = await fetchJson(uri);
-
-        next = {
-          ...next,
-          name:
-            json?.name?.trim() ||
-            metadata.data.name?.replace(/\0/g, "").trim() ||
-            option.name,
-          symbol:
-            json?.symbol?.trim() ||
-            metadata.data.symbol?.replace(/\0/g, "").trim() ||
-            option.symbol,
-          image: json?.image?.trim() || option.image,
-        };
-      }
+      next = {
+        ...next,
+        name:
+          json?.name?.trim() ||
+          asset.metadata.name?.trim() ||
+          option.name,
+        symbol:
+          json?.symbol?.trim() ||
+          asset.metadata.symbol?.trim() ||
+          option.symbol,
+        image: json?.image?.trim() || option.image,
+      };
     } catch {
-      // No metadata account or undecodable metadata; fall back to mint-only display.
+      // No metadata found or not a Metaplex asset; fall back to mint-only display.
     }
 
     tokenMetadataCache.set(option.mint, next);

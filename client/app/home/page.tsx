@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 
 export default function HomePage() {
+  console.log(1)
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const panelsRef = useRef<HTMLElement | null>(null);
 

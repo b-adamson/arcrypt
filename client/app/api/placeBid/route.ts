@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { PublicKey } from "@solana/web3.js";
-import { createReadOnlyProgram } from "../../lib/anchorClient";
+import { createReadOnlyProgram } from "../../../lib/anchorClient";
 import { createPlaceBid } from "@arcibid/sdk";
 
 export async function POST(req: Request) {

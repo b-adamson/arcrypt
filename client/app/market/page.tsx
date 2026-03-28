@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { PublicKey } from "@solana/web3.js";
-import { createReadOnlyProgram } from "../lib/anchorClient";
+import { createReadOnlyProgram } from "../../lib/anchorClient";
 
 type AuctionSummary = {
   auctionPk: string;

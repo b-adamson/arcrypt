@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Buffer } from "buffer";
 import { PublicKey } from "@solana/web3.js";
-import { createReadOnlyProgram } from "../../lib/anchorClient";
+import { createReadOnlyProgram } from "../../../lib/anchorClient";
 import {
   createDetermineWinner,
   createSettlement,

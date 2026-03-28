@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import BN from "bn.js";
 import { awaitComputationFinalization } from "@arcium-hq/client";
-import { createReadOnlyProgram } from "../../lib/anchorClient";
+import { createReadOnlyProgram } from "../../../lib/anchorClient";
 
 export async function POST(req: Request) {
   try {

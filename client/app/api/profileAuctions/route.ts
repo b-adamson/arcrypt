@@ -1,7 +1,7 @@
 // app/api/profileAuctions/route.ts
 import { NextResponse } from "next/server";
 import { PublicKey } from "@solana/web3.js";
-import { createReadOnlyProgram } from "../../lib/anchorClient";
+import { createReadOnlyProgram } from "../../../lib/anchorClient";
 
 async function loadAuctions(authorityStr: string) {
   const authority = new PublicKey(authorityStr);

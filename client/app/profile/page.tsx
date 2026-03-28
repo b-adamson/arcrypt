@@ -6,7 +6,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import WalletSection from "../../components/WalletSection";
 import AuctionList from "../../components/AuctionList";
-import { createAnchorProgramInBrowser } from "../lib/anchorClient"; // adjust path if needed
+import { createAnchorProgramInBrowser } from "../../lib/anchorClient"; // adjust path if needed
 
 type AuctionEntry = {
   auctionPk: string;
