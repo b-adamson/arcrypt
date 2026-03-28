@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import {
@@ -34,7 +34,13 @@ type TokenOption = {
 const METADATA_PROGRAM_ID = new PublicKeyCtor(
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
 );
-const umi = createUmi("https://api.devnet.solana.com").use(
+
+const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL ?? "https://api.devnet.solana.com";
+console.log(RPC_URL)
+
+
+
+const umi = createUmi(RPC_URL).use(
   mplTokenMetadata()
 );
 const tokenMetadataCache = new Map<string, TokenOption>();
@@ -70,6 +76,8 @@ function getMetadataPda(mint: string): PublicKey {
   )[0];
 }
 
+
+
 async function fetchJson(url?: string): Promise<any | null> {
   const clean = (url ?? "").replace(/\0/g, "").trim();
   if (!clean || !/^https?:\/\//i.test(clean)) return null;
@@ -83,10 +91,7 @@ async function fetchJson(url?: string): Promise<any | null> {
   }
 }
 
-async function enrichTokenOption(
-  option: TokenOption,
-  connection: Connection
-): Promise<TokenOption> {
+async function enrichTokenOption(option: TokenOption): Promise<TokenOption> {
   const cached = tokenMetadataCache.get(option.mint);
   if (cached) return cached;
 
@@ -98,24 +103,17 @@ async function enrichTokenOption(
 
     try {
       const asset = await fetchDigitalAsset(umi, umiPublicKey(option.mint));
-
       const uri = asset.metadata.uri?.replace(/\0/g, "").trim();
       const json = await fetchJson(uri);
 
       next = {
         ...next,
-        name:
-          json?.name?.trim() ||
-          asset.metadata.name?.trim() ||
-          option.name,
-        symbol:
-          json?.symbol?.trim() ||
-          asset.metadata.symbol?.trim() ||
-          option.symbol,
+        name: json?.name?.trim() || asset.metadata.name?.trim() || option.name,
+        symbol: json?.symbol?.trim() || asset.metadata.symbol?.trim() || option.symbol,
         image: json?.image?.trim() || option.image,
       };
     } catch {
-      // No metadata found or not a Metaplex asset; fall back to mint-only display.
+      // fallback only
     }
 
     tokenMetadataCache.set(option.mint, next);
@@ -156,6 +154,8 @@ type Props = {
   onAuctionTypeChange: (value: AuctionType) => void;
   onSubmit: () => void;
 };
+
+
 
 function Field({
   label,
@@ -219,40 +219,49 @@ export default function AuctionCreateForm({
   const [tokenSearch, setTokenSearch] = useState("");
   const [showTokenDropdown, setShowTokenDropdown] = useState(false);
 
-  useEffect(() => {
-    if (!metadataImageFile) {
-      setPreviewUrl(null);
+const loadedKeyRef = useRef<string>("");
+const debounceRef = useRef<number | null>(null);
+const abortRef = useRef<AbortController | null>(null);
+const ownerBase58 = publicKey?.toBase58() ?? "";
+const rpcEndpoint = connection.rpcEndpoint;
+
+useEffect(() => {
+  if (debounceRef.current !== null) {
+    window.clearTimeout(debounceRef.current);
+  }
+
+  debounceRef.current = window.setTimeout(() => {
+    const owner = publicKey;
+    if (!connected || !owner) {
+      abortRef.current?.abort();
+      loadedKeyRef.current = "";
+      setWalletTokens([]);
       return;
     }
 
-    const url = URL.createObjectURL(metadataImageFile);
-    setPreviewUrl(url);
+    const cacheKey = `${owner.toBase58()}@${rpcEndpoint}`;
+    if (loadedKeyRef.current === cacheKey) {
+      return;
+    }
+    loadedKeyRef.current = cacheKey;
 
-    return () => URL.revokeObjectURL(url);
-  }, [metadataImageFile]);
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadWalletTokens() {
-      if (!connected || !publicKey) {
-        setWalletTokens([]);
-        return;
-      }
-
+    const loadWalletTokens = async () => {
       try {
         const tokenProgramIds = [TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID];
 
         const parsedSets = await Promise.all(
           tokenProgramIds.map((programId) =>
-            connection.getParsedTokenAccountsByOwner(publicKey, { programId })
+            connection.getParsedTokenAccountsByOwner(owner, { programId })
           )
         );
 
-        const byMint = new Map<
-          string,
-          TokenOption & { rawAmount: bigint }
-        >();
+        if (controller.signal.aborted) return;
+
+        const byMint = new Map<string, TokenOption & { rawAmount: bigint }>();
 
         for (const parsed of parsedSets) {
           for (const entry of parsed.value) {
@@ -282,26 +291,44 @@ export default function AuctionCreateForm({
         const options = [...byMint.values()].map(({ rawAmount, ...rest }) => rest);
 
         const enriched = await Promise.all(
-          options.map((opt) => enrichTokenOption(opt, connection))
+          options.slice(0, 8).map((opt) => enrichTokenOption(opt))
         );
 
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setWalletTokens(enriched);
         }
       } catch {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setWalletTokens([]);
         }
       }
+    };
+
+    void loadWalletTokens();
+  }, 250);
+
+  return () => {
+    if (debounceRef.current !== null) {
+      window.clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    abortRef.current?.abort();
+  };
+}, [connected, ownerBase58, rpcEndpoint, connection]);
+
+  useEffect(() => {
+    if (!metadataImageFile) {
+      setPreviewUrl(null);
+      return;
     }
 
-    loadWalletTokens();
+    const url = URL.createObjectURL(metadataImageFile);
+    setPreviewUrl(url);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [connected, publicKey, connection]);
+    return () => URL.revokeObjectURL(url);
+  }, [metadataImageFile]);
 
+ 
   const selectedToken = useMemo(() => {
     const value = tokenMint.trim();
     if (!value) return null;
