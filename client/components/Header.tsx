@@ -34,7 +34,7 @@ useEffect(() => {
     }
   };
 
-const handleMouseMove = (e: React.MouseEvent) => {
+const handleMouseMove = (e: MouseEvent) => {
   if (e.clientY < 80) {
     setVisible(true);
   } else if (window.scrollY <= 120) {
