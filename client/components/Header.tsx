@@ -5,6 +5,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import WalletSection from "../components/WalletSection"
 
 const WalletMultiButton = dynamic(
   () =>
@@ -19,21 +20,38 @@ export default function Header() {
   const isHomePage = pathname === "/home"; // change to "/" if your homepage route is root
   const [visible, setVisible] = useState(!isHomePage);
 
-  useEffect(() => {
-    if (!isHomePage) {
+useEffect(() => {
+  if (!isHomePage) {
+    setVisible(true);
+    return;
+  }
+
+  const handleScroll = () => {
+    if (window.scrollY > 120) {
       setVisible(true);
-      return;
+    } else {
+      setVisible(false);
     }
+  };
 
-    const handleScroll = () => {
-      setVisible(window.scrollY > 120);
-    };
+const handleMouseMove = (e: React.MouseEvent) => {
+  if (e.clientY < 80) {
+    setVisible(true);
+  } else if (window.scrollY <= 120) {
+    setVisible(false);
+  }
+};
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
+  window.addEventListener("scroll", handleScroll, { passive: true });
+  window.addEventListener("mousemove", handleMouseMove);
 
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [isHomePage]);
+  handleScroll();
+
+  return () => {
+    window.removeEventListener("scroll", handleScroll);
+    window.removeEventListener("mousemove", handleMouseMove);
+  };
+}, [isHomePage]);
 
   return (
     <header
@@ -72,9 +90,9 @@ export default function Header() {
           </Link>
         </nav>
 
-        <div className="scale-90">
-          <WalletMultiButton />
-        </div>
+<div className="scale-90">
+  <WalletSection />
+</div>
       </div>
     </header>
   );

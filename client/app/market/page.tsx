@@ -350,7 +350,7 @@ export default function MarketPage() {
                 All auctions
               </h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-white/55">
-                Browse live and historical auctions from anyone. Search by name, token mint, metadata URI, or auction PDA.
+                Browse live and historical auctions from anyone.
               </p>
             </div>
 
@@ -456,9 +456,7 @@ export default function MarketPage() {
           </div>
         ) : null}
 
-        <div className="mt-6 text-sm text-white/45">
-          Tip: press Enter in the search bar to jump to the first matching auction.
-        </div>
+
       </div>
     </main>
   );

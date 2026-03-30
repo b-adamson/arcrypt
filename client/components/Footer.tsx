@@ -11,21 +11,39 @@ export default function Footer() {
         <div className={sectionStyle}>
           <span className="text-white font-medium">Resources</span>
           <Link href="/docs" className={linkStyle}>Docs</Link>
-          <Link href="#" className={linkStyle}>FAQ</Link>
+          <Link href="/docs#faq" className={linkStyle}>FAQ</Link>
         </div>
 
         <div className={sectionStyle}>
           <span className="text-white font-medium">Social</span>
-          <Link href="#" className={linkStyle}>GitHub</Link>
-          <Link href="#" className={linkStyle}>X</Link>
-          <Link href="#" className={linkStyle}>Discord</Link>
-          <Link href="#" className={linkStyle}>Telegram</Link>
+          <a
+            href="https://github.com/b-adamson/ARCIBID"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={linkStyle}
+          >
+            GitHub
+          </a>
         </div>
 
         <div className={sectionStyle}>
           <span className="text-white font-medium">Ecosystem</span>
-          <Link href="#" className={linkStyle}>Arcium Docs</Link>
-          <Link href="#" className={linkStyle}>Solana Docs</Link>
+          <a
+            href="https://docs.arcium.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={linkStyle}
+          >
+            Arcium Docs
+          </a>
+          <a
+            href="https://docs.solana.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={linkStyle}
+          >
+            Solana Docs
+          </a>
         </div>
 
         <div className="flex flex-col justify-between">

@@ -594,7 +594,7 @@ useEffect(() => {
           type="number"
           min={0}
           max={unit.max}
-          value={unit.value}
+          value={unit.value === 0 ? "" : unit.value}
           onChange={(e) => {
             const val = Number(e.target.value || 0);
 

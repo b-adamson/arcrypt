@@ -13,6 +13,7 @@ const NAV: NavItem[] = [
       { id: 'mission', label: 'The Mission' },
     ],
   },
+  { id: 'ensuring-privacy', label: 'Ensuring privacy' },
   { id: 'arcium', label: 'What is Arcium' },
   {
     id: 'rules',
@@ -23,6 +24,7 @@ const NAV: NavItem[] = [
       { id: 'bidding-escrow', label: 'Bidding & escrow' },
       { id: 'settlement', label: 'Settlement' },
     ],
+  
   },
   { id: 'dao-proposal', label: 'Create a DAO proposal' },
   { id: 'arcibid-dao', label: 'Create an ARCIBID DAO' },
@@ -153,8 +155,11 @@ export default function DocsSidebar() {
   return (
     <>
       {/* Desktop: sticky left rail */}
-      <aside className="hidden lg:block w-64 shrink-0 px-4" aria-label="Docs navigation">
-        <nav className="sticky top-24">
+<aside
+  className="hidden lg:block fixed left-0 top-0 z-40 h-screen w-64 px-4 pt-24"
+  aria-label="Docs navigation"
+>
+  <nav className="h-full overflow-y-auto">
           <div className="mb-4 text-sm font-semibold text-gray-300">On this page</div>
 
           <ul

@@ -4,27 +4,16 @@ import React, { useEffect, useState } from "react";
 import { Buffer } from "buffer";
 import { BN } from "@coral-xyz/anchor";
 import { useWallet } from "@solana/wallet-adapter-react";
-// import { LAMPORTS_PER_SOL, PublicKey,Keypair, TransactionInstruction as Web3TransactionInstruction, } from "@solana/web3.js";
+
 import { createAnchorProgramInBrowser, assertProviderReady } from "../../lib/anchorClient";
-import WalletSection from "../../components/WalletSection";
+
 import AuctionCreateForm from "../../components/AuctionCreateForm";
 import AuctionResultCard from "../../components/AuctionResultCard";
-// import { getMint, getAssociatedTokenAddressSync } from "@solana/spl-token";
-// import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { useSearchParams } from "next/navigation";
+
 type AuctionType = "FirstPrice" | "Vickrey" | "Uniform" | "ProRata";
 import GovernanceProposalPanel from "@/components/GovernanceProposalPanel";
-import {
-  getTokenOwnerRecordAddress,
-} from "@realms-today/spl-governance";
 
-import {
-  withCreateProposal,
-  withInsertTransaction,
-  withSignOffProposal,
-  VoteType,
-    AccountMetaData,
-  InstructionData,
-} from "@realms-today/spl-governance";
 
 import {
   LAMPORTS_PER_SOL,
@@ -32,60 +21,16 @@ import {
   Transaction,
   TransactionInstruction,
 } from "@solana/web3.js";
-import {
-  TOKEN_PROGRAM_ID,
-  getMint,
-  getAssociatedTokenAddressSync,
-} from "@solana/spl-token";
+
 const REALMS_PROGRAM_ID = "GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw";
-function solToLamportsBN(sol: string): BN {
-  const s = sol.trim();
-  if (!s) throw new Error("Enter an amount in SOL.");
-  if (!/^\d+(\.\d{0,9})?$/.test(s)) {
-    throw new Error("Use a valid SOL amount with up to 9 decimals.");
-  }
 
-  const [whole, frac = ""] = s.split(".");
-  const fracPadded = (frac + "000000000").slice(0, 9);
-  const lamports = BigInt(whole || "0") * BigInt(LAMPORTS_PER_SOL) + BigInt(fracPadded);
-
-  if (lamports <= 0n) throw new Error("Amount must be greater than 0 SOL.");
-  return new BN(lamports.toString());
-}
 type RawIxView = {
   label: string;
   dataBase64: string;
 };
 type AssetKind = "Fungible" | "Nft" | "MetadataOnly";
-type BuildAuctionResult = {
-  srv: any;
-  auctionIx: TransactionInstruction;
-  auctionPda: PublicKey;
-  auctionSeedHex: string;
-};
 
 
-
-function ixToRawView(label: string, ix: TransactionInstruction): RawIxView {
-  return {
-    label,
-    dataBase64: Buffer.from(ix.data).toString("base64"),
-  };
-}
-function decimalToBaseUnitsBN(amount: string, decimals: number): BN {
-  const s = amount.trim();
-  if (!s) throw new Error("Enter an amount.");
-  if (!/^\d+(\.\d{0,18})?$/.test(s)) {
-    throw new Error("Use a valid decimal amount.");
-  }
-
-  const [whole, frac = ""] = s.split(".");
-  const fracPadded = (frac + "0".repeat(decimals)).slice(0, decimals);
-  const baseUnits = BigInt(whole || "0") * BigInt(10 ** decimals) + BigInt(fracPadded || "0");
-
-  if (baseUnits <= 0n) throw new Error("Amount must be greater than 0.");
-  return new BN(baseUnits.toString());
-}
 function enumKey(v: any): string {
   if (v && typeof v === "object") return Object.keys(v)[0];
   return String(v ?? "");
@@ -145,7 +90,7 @@ export default function AuctionPage() {
 } = useWallet();
 type Mode = "auction" | "proposal";
 
-const [mode, setMode] = useState<Mode>("auction");
+// const [mode, setMode] = useState<Mode>("auction");
 
 // governance / realm inputs
 const [proposalName, setProposalName] = useState(
@@ -156,7 +101,7 @@ const [proposalDescription, setProposalDescription] = useState(
 );
 const [realmAddress, setRealmAddress] = useState("");
 const [governanceAddress, setGovernanceAddress] = useState("");
-const [governanceWalletAddress, setGovernanceWalletAddress] = useState("");
+
 
 type TreasuryAccountRow = {
   pubkey: string;
@@ -211,6 +156,9 @@ const [selectedTreasuryGroup, setSelectedTreasuryGroup] = useState("");
 const [realmCommunityMint, setRealmCommunityMint] = useState("");
 const [metadataImageFile, setMetadataImageFile] = useState<File | null>(null);
 
+  const searchParams = useSearchParams();
+  const [activePanel, setActivePanel] = useState<"sealed" | "governance">("sealed");
+
 
 
 const [loadingTreasuries, setLoadingTreasuries] = useState(false);
@@ -242,6 +190,16 @@ function handleAssetKindChange(nextKind: AssetKind) {
 function deserializeTxFromBase64(txBase64: string): Transaction {
   return Transaction.from(Buffer.from(txBase64, "base64"));
 }
+  // const searchParams = useSearchParams();
+
+  const [mode, setMode] = useState<Mode>(() =>
+    searchParams.get("panel") === "governance" ? "proposal" : "auction"
+  );
+
+  useEffect(() => {
+    const panel = searchParams.get("panel");
+    setMode(panel === "governance" ? "proposal" : "auction");
+  }, [searchParams]);
 
 async function signAndSendSerializedTxs(txBase64s: string[]) {
   if (!programClient) throw new Error("Program client not ready.");

@@ -1,28 +1,36 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { PublicKey } from "@solana/web3.js";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 
-const WalletMultiButton = dynamic(
-  () => import("@solana/wallet-adapter-react-ui").then((mod) => mod.WalletMultiButton),
-  { ssr: false }
-);
+function shorten(address: string) {
+  return `${address.slice(0, 4)}…${address.slice(-4)}`;
+}
 
-type Props = {
-  publicKey?: PublicKey | null;
-  title?: string;
-};
+export default function WalletButton() {
+  const { publicKey, connected, disconnect } = useWallet();
+  const { setVisible } = useWalletModal();
 
-export default function WalletSection({ publicKey, title }: Props) {
+  const address = publicKey?.toBase58();
+
+  const handleClick = () => {
+    if (connected) {
+      void disconnect();
+    } else {
+      setVisible(true);
+    }
+  };
+
   return (
-    <section style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
-      <WalletMultiButton />
-      {title ? <strong>{title}</strong> : null}
-      {publicKey ? (
-        <span style={{ color: "#6b7280" }}>
-          Connected: {publicKey.toBase58()}
-        </span>
-      ) : null}
-    </section>
+    <button
+      onClick={handleClick}
+      className="h-10 px-5 text-sm font-semibold text-white border border-white/15 rounded-none backdrop-blur-md transition-all
+      bg-[linear-gradient(135deg,rgba(217,70,239,0.18),rgba(124,58,237,0.18),rgba(34,211,238,0.16))]
+      hover:bg-[linear-gradient(135deg,rgba(217,70,239,0.28),rgba(124,58,237,0.28),rgba(34,211,238,0.24))]
+      hover:border-white/25
+      shadow-[0_10px_30px_rgba(0,0,0,0.25)]"
+    >
+      {connected && address ? shorten(address) : "Connect Wallet"}
+    </button>
   );
 }

@@ -174,14 +174,14 @@ Check it out here: http://localhost:3000/bid?auctionPk=<will be filled after cre
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <button
-              type="button"
-              onClick={onLoadTreasuries}
-              disabled={loadingTreasuries || !realmAddress}
-              className="inline-flex h-12 items-center justify-center rounded-2xl bg-gradient-to-r from-fuchsia-500 to-cyan-400 px-4 text-sm font-semibold text-black transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {loadingTreasuries ? "Loading treasury accounts..." : "Load treasury accounts"}
-            </button>
+<button
+  type="button"
+  onClick={onLoadTreasuries}
+  disabled={loadingTreasuries || !realmAddress}
+  className={buttonClass}
+>
+  {loadingTreasuries ? "Loading treasury accounts..." : "Load treasury accounts"}
+</button>
 
             <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/60">
               <span className="block text-[11px] uppercase tracking-[0.18em] text-white/35">

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 
 export default function HomePage() {
   console.log(process.env.NEXT_PUBLIC_RPC_URL)
@@ -36,8 +37,15 @@ const [displayText, setDisplayText] = useState("");
   }
 
   return (
-<main className="relative isolate min-h-[100svh] bg-black overflow-hidden">
-  <div id="home-sentinel" className="absolute top-0 left-0 h-px w-px" />
+<main className="relative isolate min-h-[100svh] overflow-hidden bg-[#05050a]">
+  <div
+    aria-hidden
+    className="pointer-events-none absolute inset-0 -z-10"
+  >
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,43,211,0.12),transparent_28%),radial-gradient(circle_at_top_right,rgba(78,199,255,0.10),transparent_26%),radial-gradient(circle_at_center,rgba(124,58,237,0.08),transparent_40%)]" />
+    <div className="absolute inset-0 opacity-[0.08] bg-[linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] bg-[size:72px_72px]" />
+    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/10 to-black/50" />
+  </div>
       
 <section className="relative isolate h-[100svh] w-full overflow-hidden bg-black flex items-center justify-center">
   <video
@@ -102,101 +110,99 @@ const [displayText, setDisplayText] = useState("");
           <div className="w-full overflow-x-auto">
             <div className="min-w-full grid grid-cols-1 md:grid-cols-3 gap-6">
       
-<article className="rounded-none border border-white/10 bg-[#0b0b12] p-8 shadow-none transition hover:border-white/20 hover:bg-[#10101a]">
-  <div>
-    <div className="text-sm font-medium text-pink-50/90 uppercase tracking-wide">
-      Create Sealed Auction
-    </div>
-    <h3 className="mt-4 text-2xl font-extrabold tracking-tight text-pink-50">
-      Make a sealed auction and share the link
-    </h3>
+<Link href="/auction" className="block h-full">
+<article className="h-full min-h-[320px] flex flex-col justify-between border border-white/10 bg-[#0b0b12] p-8 transition hover:border-white/20 hover:bg-[#10101a]">
+    <div>
+      <div className="text-sm font-medium text-pink-50/90 uppercase tracking-wide">
+        Create Sealed Auction
+      </div>
+      <h3 className="mt-4 text-2xl font-extrabold tracking-tight text-pink-50">
+        Make a sealed auction and share the link
+      </h3>
 
-    <p className="mt-4 text-sm text-pink-100/75">
-      Launch your item on the public arcibid marketplace, or get a private but shareable link.
-    </p>
+      <p className="mt-4 text-sm text-pink-100/75">
+        Launch your item on the public arcibid marketplace, or get a private but shareable link.
+      </p>
 
-    <div className="mt-4 p-3 rounded-md bg-black/30 text-xs text-pink-50/80">
-      <div className="font-medium">Example shareable link (mock):</div>
-      <div className="mt-1 break-all text-sm">https://arcibid.app/auctions/SEAL1234</div>
+      <div className="mt-4 p-3 rounded-md bg-black/30 text-xs text-pink-50/80">
+        <div className="font-medium">Example shareable link (mock):</div>
+        <div className="mt-1 break-all text-sm">https://arcibid.app/auctions/SEAL1234</div>
+      </div>
     </div>
+
+      <div className="mt-6 text-xs text-gray-300/70">
+    {/* empty but forces alignment */}
   </div>
 
-  <div className="mt-6 text-xs text-pink-200/80">
-    <div className="italic">No creation will occur from this panel — UI preview only.</div>
-  </div>
-</article>
+
+  </article>
+</Link>
    
 
-       <article className="rounded-none border border-white/10 bg-[#0b0b12] p-8 shadow-none transition hover:border-white/20 hover:bg-[#10101a]">
+<Link href="/auction?panel=governance" className="block h-full">
+  <article className="h-full flex flex-col justify-between border border-white/10 bg-[#0b0b12] p-8 shadow-none transition hover:border-white/20 hover:bg-[#10101a]">
+    <div>
+      <div className="text-sm font-medium text-white/90 uppercase tracking-wide">
+        DAO / Realms integration
+      </div>
+      <h3 className="mt-4 text-2xl font-extrabold tracking-tight text-white">
+        Prepare a governance proposal payload
+      </h3>
 
-  <div>
-    <div className="text-sm font-medium text-white/90 uppercase tracking-wide">
-      DAO / Realms integration
-    </div>
-    <h3 className="mt-4 text-2xl font-extrabold tracking-tight text-white">
-      Prepare a governance proposal payload
-    </h3>
+      <p className="mt-4 text-sm text-gray-200/80">
+        Generate a sealed-auction instruction bundle that can be inserted into Realms or another DAO
+        governance flow. Auction SPL tokens in the treasury.
+      </p>
 
-    <p className="mt-4 text-sm text-gray-200/80">
-      Generate a sealed-auction instruction bundle that can be inserted into Realms or another DAO
-      governance flow. This panel is a preview only — no on-chain action is taken here.
-    </p>
-
-    <pre
-      className="mt-4 p-4 rounded-md bg-black/40 text-xs text-pink-100 overflow-auto"
-      aria-hidden="true"
-    >
-{`Generate serialized instruction bytes
-
-AAECAwQFBgcICQ==
-
-Or connect directly with Realms SPL
+      <pre
+        className="mt-4 p-4 rounded-md bg-black/40 text-xs text-pink-100 overflow-auto"
+        aria-hidden="true"
+      >
+{`AAECAwQFBgcICQ==
 `}
-    </pre>
-  </div>
-
-  <div className="mt-6 text-xs text-gray-300/70">
-    <div className="italic">
-      Preview only — the real payload can be wired into Realms or your DAO workflow.
-    </div>
-  </div>
-</article>
-<article className="rounded-none border border-white/10 bg-[#0b0b12] p-8 shadow-none transition hover:border-white/20 hover:bg-[#10101a]">
-
-  <div>
-    <div className="text-sm font-medium text-white/90 uppercase tracking-wide">
-      Build with our SDK
-    </div>
-    <h3 className="mt-4 text-2xl font-extrabold tracking-tight text-white">
-      Use encrypted auctions in your app
-    </h3>
-
-    <p className="mt-4 text-sm text-gray-200/80">
-      Integrate ARCIBID SDKs to add sealed-bid auctions to lending protocols, DAO launchpads,
-      marketplaces, and more.
-    </p>
-
-    <div className="mt-4 p-4 rounded-md bg-black/40 border border-white/5 text-xs text-pink-100 overflow-auto">
-      <div className="font-medium text-white/90 mb-2">Install example</div>
-      <pre className="whitespace-pre-wrap break-words">
-{`npm install @arcibid/sdk
-
-# or
-
-cargo install arcibid-sdk`}
       </pre>
     </div>
-  </div>
 
-  <div className="mt-6 text-xs text-gray-300/70">
-    <div className="italic">
-      Example use cases: lending protocols, DAO launchpads, treasury tooling, and auction-based
-      DeFi apps.
+    <div className="mt-6 text-xs text-gray-300/70">
+
     </div>
-  </div>
-</article>
+  </article>
+</Link>
+<Link href="/docs#developers" className="block h-full">
+  <article className="h-full flex flex-col justify-between border border-white/10 bg-[#0b0b12] p-8 shadow-none transition hover:border-white/20 hover:bg-[#10101a]">
+    <div>
+      <div className="text-sm font-medium text-white/90 uppercase tracking-wide">
+        Build with our SDK
+      </div>
+      <h3 className="mt-4 text-2xl font-extrabold tracking-tight text-white">
+        Use encrypted auctions in your app
+      </h3>
 
-<article className="rounded-none border border-white/10 bg-[#0b0b12] p-8 shadow-none transition hover:border-white/20 hover:bg-[#10101a]">
+      <p className="mt-4 text-sm text-gray-200/80">
+        Integrate ARCIBID SDKs to add sealed-bid auctions to lending protocols, DAO launchpads,
+        marketplaces, and more.
+      </p>
+
+      <div className="mt-4 p-4 rounded-md bg-black/40 border border-white/5 text-xs text-pink-100 overflow-auto">
+
+        <pre className="whitespace-pre-wrap break-words">
+{`npm install @arcibid/sdk
+
+cargo install arcibid-sdk`}
+        </pre>
+      </div>
+    </div>
+
+    <div className="mt-6 text-xs text-gray-300/70">
+      <div className="italic">
+        Example use cases: lending protocols, DAO launchpads, treasury tooling, and auction-based
+        DeFi apps.
+      </div>
+    </div>
+  </article>
+</Link>
+
+<article className="h-full flex flex-col justify-between border border-white/10 bg-[#0b0b12] p-8 shadow-none transition hover:border-white/20 hover:bg-[#10101a]">
 
   <div>
     <div className="text-sm font-medium text-pink-100/90 uppercase tracking-wide">
@@ -220,12 +226,7 @@ cargo install arcibid-sdk`}
             </div>
           </div>
 
-          {/* Optional: smaller explanatory row */}
-          <div className="mt-10 text-sm text-pink-200/60 max-w-3xl">
-            <strong>Notes:</strong> these panels are intentionally non-functional placeholders so you can
-            iterate on copy, layout, and visual language. When you’re ready we can wire them up to
-            wallet flows, DAO instructions, and backend endpoints.
-          </div>
+
         </div>
       </section>
     </main>

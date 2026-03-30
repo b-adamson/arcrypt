@@ -6,16 +6,14 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import WalletSection from "../../components/WalletSection";
 import AuctionList from "../../components/AuctionList";
-import { createAnchorProgramInBrowser } from "../../lib/anchorClient"; // adjust path if needed
+import { createAnchorProgramInBrowser } from "../../lib/anchorClient";
 
 type AuctionEntry = {
   auctionPk: string;
-  source?: string;
 };
 
 type AuctionSummary = {
   auctionPk: string;
-  source?: string;
   name: string;
   description: string;
   image: string;
@@ -36,7 +34,7 @@ async function fetchAuctionPdasForWallet(walletBase58: string): Promise<AuctionE
     const raw = localStorage.getItem(localKey);
     if (raw) {
       const parsed = JSON.parse(raw) as string[];
-      localEntries = parsed.map((auctionPk) => ({ auctionPk, source: "local" }));
+      localEntries = parsed.map((auctionPk) => ({ auctionPk }));
     }
   } catch {
     localEntries = [];
@@ -49,10 +47,9 @@ async function fetchAuctionPdasForWallet(walletBase58: string): Promise<AuctionE
       const apiEntries: AuctionEntry[] = Array.isArray(data?.auctions)
         ? data.auctions.map((item: any) => ({
             auctionPk: String(item.auctionPk ?? item),
-            source: "api",
           }))
         : Array.isArray(data)
-          ? data.map((item: any) => ({ auctionPk: String(item.auctionPk ?? item), source: "api" }))
+          ? data.map((item: any) => ({ auctionPk: String(item.auctionPk ?? item) }))
           : [];
 
       const merged = new Map<string, AuctionEntry>();
@@ -121,7 +118,6 @@ const METADATA_TIMEOUT_MS = 2500;
 
 function fetchJsonWithTimeout(url: string, timeoutMs: number): Promise<any | null> {
   const controller = new AbortController();
-
   const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
 
   return fetch(url, {
@@ -169,7 +165,6 @@ async function buildAuctionSummary(programClient: any, entry: AuctionEntry): Pro
 
     return {
       auctionPk: entry.auctionPk,
-      source: entry.source,
       name,
       description,
       image: toHttpGateway(image),
@@ -183,7 +178,6 @@ async function buildAuctionSummary(programClient: any, entry: AuctionEntry): Pro
   } catch (err: any) {
     return {
       auctionPk: entry.auctionPk,
-      source: entry.source,
       name: `Auction ${shorten(entry.auctionPk)}`,
       description: "",
       image: "",
@@ -202,6 +196,7 @@ export default function ProfilePage() {
   const { publicKey, connected, wallet } = useWallet();
   const [auctions, setAuctions] = useState<AuctionSummary[]>([]);
   const [status, setStatus] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -210,9 +205,11 @@ export default function ProfilePage() {
       if (!connected || !publicKey) {
         setAuctions([]);
         setStatus(null);
+        setIsLoading(false);
         return;
       }
 
+      setIsLoading(true);
       setStatus("Loading your auction links...");
 
       try {
@@ -228,13 +225,10 @@ export default function ProfilePage() {
 
         const { program } = await createAnchorProgramInBrowser(wallet as any, process.env.NEXT_PUBLIC_PROGRAM_ID);
 
-        const settled = await Promise.allSettled(
-  entries.map((entry) => buildAuctionSummary(program, entry))
-);
-
-const summaries = settled
-  .filter((r): r is PromiseFulfilledResult<AuctionSummary> => r.status === "fulfilled")
-  .map((r) => r.value);
+        const settled = await Promise.allSettled(entries.map((entry) => buildAuctionSummary(program, entry)));
+        const summaries = settled
+          .filter((r): r is PromiseFulfilledResult<AuctionSummary> => r.status === "fulfilled")
+          .map((r) => r.value);
 
         if (cancelled) return;
         setAuctions(summaries);
@@ -244,6 +238,8 @@ const summaries = settled
           setAuctions([]);
           setStatus(err?.message ?? "Failed to load auctions.");
         }
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
     })();
 
@@ -252,22 +248,49 @@ const summaries = settled
     };
   }, [connected, publicKey, wallet]);
 
-  return (
-    <main style={{ padding: 20 }}>
-      <h1>Profile</h1>
-      <WalletSection publicKey={publicKey} title="Your auctions" />
+return (
+  <main style={{ padding: 20 }}>
+{connected && publicKey ? (
+  <div className="flex justify-center mt-4 mb-4">
+    <div
+      className="
+      text-white font-bold text-lg tracking-wide
+      px-4 py-2 border border-white/15 rounded-none
+      backdrop-blur-md
+      bg-[linear-gradient(135deg,rgba(217,70,239,0.12),rgba(124,58,237,0.12),rgba(34,211,238,0.10))]
+      shadow-[0_10px_30px_rgba(0,0,0,0.25)]
+    "
+    >
+      {publicKey.toBase58()}
+    </div>
+  </div>
+) : null}
 
-      <AuctionList auctions={auctions} />
+{connected && publicKey ? (
+  <div style={{ margin: "12px 0" }}>
+    <Link href="/auction">
+      <button
+        className="
+        h-10 px-5 text-sm font-semibold text-white border border-white/15 rounded-none
+        backdrop-blur-md transition-all
 
-      {status ? <div style={{ marginTop: 12, color: "#333" }}>{status}</div> : null}
+        bg-[linear-gradient(135deg,rgba(217,70,239,0.25),rgba(124,58,237,0.25),rgba(34,211,238,0.22))]
+        hover:bg-[linear-gradient(135deg,rgba(217,70,239,0.35),rgba(124,58,237,0.35),rgba(34,211,238,0.30))]
 
-      {publicKey ? (
-        <div style={{ marginTop: 12 }}>
-          <Link href="/auction" style={{ textDecoration: "underline" }}>
-            Create a new auction
-          </Link>
-        </div>
-      ) : null}
-    </main>
-  );
+        hover:border-white/30
+        shadow-[0_10px_30px_rgba(0,0,0,0.35)]
+        hover:shadow-[0_0_20px_rgba(217,70,239,0.25),0_0_30px_rgba(34,211,238,0.2)]
+      "
+      >
+        Create Auction
+      </button>
+    </Link>
+  </div>
+) : null}
+
+    <AuctionList auctions={auctions} />
+
+    {status ? <div style={{ marginTop: 12, color: "#333" }}>{status}</div> : null}
+  </main>
+);
 }

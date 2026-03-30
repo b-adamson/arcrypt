@@ -6,9 +6,10 @@ import CodeBlock from "@/components/CodeBlock";
 
 export default function DocsPage() {
   return (
-    <main className="bg-neutral-950 text-white min-h-screen">
-      <div className="max-w-7xl mx-auto px-6 py-12 lg:py-20 grid grid-cols-1 lg:grid-cols-[16rem_1fr] gap-10">
-        <DocsSidebar />
+<main className="bg-neutral-950 text-white min-h-screen">
+  <div className="mx-auto max-w-7xl px-6 py-12 lg:py-20 lg:pl-72">
+    <DocsSidebar />
+
 
         <div>
           {/* Page header */}
@@ -29,9 +30,9 @@ export default function DocsPage() {
 
 List tokens, NFTs, or DAO treasury assets in fully sealed auctions where no participant can see competing bids. By eliminating front-running and MEV, ARCIBID ensures fair competition. The highest bidder is incentivised to pay atleast what your asset is truly worth.
 
-ARCBID leverages state of the art cryptography and MPC technology to keep your money entirely hidden from the chain. <br /> <br />Selling assets is harder than it looks. OTC deals rely on negotiation and often leave value on the table, while public auctions expose bids in real time—inviting bots, MEV, and front-running that distort true price discovery. They can also signal intent to the market, impacting sentiment and price before a sale is even complete.
+ARCBID leverages state of the art cryptography and MPC technology to keep your money entirely hidden from the chain. <br /> <br />Selling assets is harder than it looks. OTC deals rely on negotiation and often do not result in the best price, while public auctions expose bids in real time inviting bots, MEV, and front-running that distort true price discovery. They can also signal intent to the market, impacting sentiment and price before a sale is complete.
 
-ARCIBID solves this with sealed, private auctions—removing information leakage and ensuring bidders compete based on true value, not strategy or manipulation. While it can integrate directly with DAOs to auction treasury assets through proposals, you don’t need to be a DAO to use it. Anyone can auction tokens, NFTs, or other on-chain assets they own, and optionally list them on the ARCIBID marketplace to reach a wider pool of serious bidders without sacrificing privacy.
+ARCIBID solves this with sealed, private auctions - removing information leakage and ensuring bidders compete based on true value, not strategy or manipulation. While it can integrate directly with DAOs to auction treasury assets through proposals, you don’t need to be a DAO to use it. Anyone can auction tokens, NFTs, or other on-chain assets they own, and optionally list them on the ARCIBID marketplace to reach a wider pool of serious bidders without sacrificing privacy.
             </p>
 
             <h3 id="mission" className="text-xl font-semibold mb-3 mt-6">The Mission</h3>
@@ -58,6 +59,49 @@ ARCIBID solves this with sealed, private auctions—removing information leakage
   ARCIBID leverages the Arcium Confidential Token Standard to securely escrow bidder funds. This introduces program-controlled private balances for the first time, enabling fully private, trustless auctions without compromising on-chain settlement or transparency of outcomes.
 </p>
           </section>
+
+
+<section id="ensuring-privacy" className="mb-16">
+  <h2 className="text-2xl font-bold mb-4">Ensuring privacy</h2>
+
+  <div className="text-gray-300 max-w-3xl space-y-4">
+    <p>
+      ARCIBID automatically generates an UMBRA encrypted token account (ETA)
+      associated with your wallet. This ETA is the link between the private
+      world and the public chain. Funds can be moved in and out of your ARCIBID
+      account in the Profile page.
+    </p>
+
+    <p>
+      This enables you to move SPL tokens in and out of a private balance
+      arbitrarily, thus obscuring your activity. All bids are made with USDC.
+      Placing a bid will transfer funds from your ETA to an escrow account
+      (transferring any missing funds from your normal wallet, then to the ETA,
+      then to the escrow) which is controlled by the ARCIBID program.
+    </p>
+
+    <p>
+      The client also performs a Rescue Cipher to encrypt your bid amount. The
+      client performs a zero-knowledge proof confirming that both the encrypted
+      bid and the escrow contain the same amount, which is verified by the
+      program.
+    </p>
+
+    <p>
+      The encrypted ciphertext bid is sent to the Arcium Mixed Execution
+      Environment (MXE) which calculates if your bid is greater than the
+      current greatest one(s) and replaces it as needed, without every
+      decrypting your bid.
+    </p>
+
+    <p>
+      We will eventually migrate to the confidential token standard to
+      eliminate complexity with the ZK proof (since the MXE can directly read
+      the escrow balance).
+    </p>
+  </div>
+</section>
+
 
           <section id="rules" className="mb-16">
   <h2 className="text-2xl font-bold mb-4">How it works</h2>
@@ -107,7 +151,7 @@ ARCIBID solves this with sealed, private auctions—removing information leakage
             <p className="text-gray-300">We are rapidly developing a new DAO Launchpad that tokenizes part of the initial token sale that are bought via sealed-bids. This is excellent for new startups looking for maximal price discovery. We will also build Realms integration to enable you to start a Realms DAO with a section of the initial treasury availble sealed-auction.</p>
           </section>
 
-<section id="developers" className="mb-8">
+<section id="developers" className="mb-8 scroll-mt-32">
   <h2 className="text-2xl font-bold mb-4">Developers</h2>
 
   <p className="text-gray-300 max-w-3xl">
@@ -120,8 +164,17 @@ ARCIBID solves this with sealed, private auctions—removing information leakage
   />
 
   <p className="text-gray-400 text-sm mt-2">
-    Note: the package is not deployed yet — use the SDK directly from the repository for now.
-  </p>
+  Note: the package is not deployed yet — use the SDK directly from the{" "}
+  <a
+    href="https://github.com/b-adamson/ARCIBID"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="underline text-white"
+  >
+    repository
+  </a>{" "}
+  for now.
+</p>
 
   <div className="mt-10 space-y-10">
     <div className="rounded-2xl border border-white/10 bg-white/5 p-6">

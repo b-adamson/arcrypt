@@ -9,9 +9,34 @@ body {
   width: 100%;
   min-height: 100%;
   overflow-x: hidden;
-  background: #05050a;
   color: var(--foreground);
   font-family: var(--font-sans);
+  background:
+    radial-gradient(circle at 15% 15%, rgba(255, 43, 211, 0.14), transparent 28%),
+    radial-gradient(circle at 85% 20%, rgba(78, 199, 255, 0.10), transparent 24%),
+    radial-gradient(circle at 50% 70%, rgba(193, 75, 255, 0.08), transparent 35%),
+    linear-gradient(180deg, #0b0812 0%, #05050a 55%, #030308 100%);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+  opacity: 0.18;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at center, transparent 50%, rgba(0,0,0,0.35) 100%);
 }
 
 :root {
@@ -82,4 +107,63 @@ body {
   box-shadow:
     0 0 10px rgba(255, 255, 255, 0.14),
     0 0 24px rgba(255, 255, 255, 0.08);
+}
+
+/* Force the wallet modal UI to be square */
+.wallet-adapter-modal-wrapper,
+.wallet-adapter-dropdown-list,
+.wallet-adapter-dropdown-list-item,
+.wallet-adapter-modal-button-close {
+  border-radius: 0 !important;
+}
+
+/* Make sure no wallet button in the app keeps pill corners */
+button.wallet-adapter-button,
+button.wallet-adapter-button-trigger,
+.wallet-adapter-button,
+.wallet-adapter-button-trigger {
+  border-radius: 0 !important;
+}
+
+*,
+*::before,
+*::after {
+  border-radius: 0 !important;
+}
+
+code .token.keyword {
+  color: #ff2bd3;
+  text-shadow: 0 0 8px rgba(255, 43, 211, 0.45);
+}
+
+code .token.string {
+  color: #4ec7ff;
+  text-shadow: 0 0 8px rgba(78, 199, 255, 0.45);
+}
+
+code .token.function {
+  color: #ffffff;
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.25);
+}
+
+code .token.number {
+  color: #c084fc;
+  text-shadow: 0 0 8px rgba(192, 132, 252, 0.4);
+}
+
+section {
+  position: relative;
+}
+
+section::before {
+  /* content: ""; */
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at top, rgba(255,255,255,0.04), transparent 55%);
+}
+
+html, body {
+  scroll-behavior: smooth;
+  scroll-snap-type: none;
 }
