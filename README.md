@@ -274,6 +274,4 @@ Planned and in-progress areas include:
 
 ## License
 
-Add your project license here.
-
 Business Source License 1.1 (BSL)

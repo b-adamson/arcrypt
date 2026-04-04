@@ -2,11 +2,9 @@
 
 import React, { useEffect, useState } from "react";
 import { Buffer } from "buffer";
-import { BN } from "@coral-xyz/anchor";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useSearchParams } from "next/navigation";
 
-import { createAnchorProgramInBrowser } from "../../lib/anchorClient";
 import AuctionCreateForm from "../../components/AuctionCreateForm";
 import AuctionResultCard from "../../components/AuctionResultCard";
 import GovernanceProposalPanel from "@/components/GovernanceProposalPanel";
@@ -78,13 +76,9 @@ function persistAuctionForWallet(walletBase58: string, auctionPk: string) {
 
 export default function AuctionClient() {
 
-      const { wallet, publicKey, connected, signAllTransactions } = useWallet();
+      const { publicKey, connected, signAllTransactions } = useWallet();
   const searchParams = useSearchParams();
 
-//   // keep the rest of your existing state + logic here
-//   const [mode, setMode] = useState<"auction" | "proposal">(() =>
-//     searchParams.get("panel") === "governance" ? "proposal" : "auction"
-//   );
 
   useEffect(() => {
     const panel = searchParams.get("panel");

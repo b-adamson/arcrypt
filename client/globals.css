@@ -167,3 +167,15 @@ html, body {
   scroll-behavior: smooth;
   scroll-snap-type: none;
 }
+
+.gradient-heading {
+  background: linear-gradient(
+    90deg,
+    #b794f4 0%,     /* softer purple */
+    #dcd6ff 35%,    /* light transition */
+    #60cfff 65%,    /* stronger blue presence */
+    #4ec7ff 100%    /* clear blue finish */
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}

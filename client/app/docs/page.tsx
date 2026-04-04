@@ -14,7 +14,7 @@ export default function DocsPage() {
         <div>
           {/* Page header */}
           <header className="mb-8">
-            <h1 className="text-4xl font-extrabold">ARCIBID Docs</h1>
+            <h1 className="text-4xl font-extrabold gradient-heading">ARCIBID Docs</h1>
             <p className="mt-3 text-gray-400 max-w-2xl">
               Everything there is to know
             </p>
@@ -22,16 +22,15 @@ export default function DocsPage() {
 
           {/* Sections — make sure the ids match the sidebar NAV */}
           <section id="intro" className="mb-16">
-            <h2 className="text-2xl font-bold mb-4">Intro to ARCIBID</h2>
+            <h2 className="text-2xl font-bold mb-4 gradient-heading">Intro to ARCIBID</h2>
 
             <h3 id="what-is-arcibid" className="text-xl font-semibold mb-3">What is ARCIBID</h3>
             <p className="text-gray-300">
               ARCIBID is a private auction platform on Solana designed to maximize value without exposing bids.
 
-List tokens, NFTs, or DAO treasury assets in fully sealed auctions where no participant can see competing bids. By eliminating front-running and MEV, ARCIBID ensures fair competition. The highest bidder is incentivised to pay atleast what your asset is truly worth.
+List tokens, NFTs, or DAO treasury assets in fully sealed auctions where no participant can see competing bids. By eliminating front-running and MEV, ARCIBID ensures fair competition. The highest bidder is incentivised to pay what your asset is truly worth.
 
-ARCBID leverages state of the art cryptography and MPC technology to keep your money entirely hidden from the chain. <br /> <br />Selling assets is harder than it looks. OTC deals rely on negotiation and often do not result in the best price, while public auctions expose bids in real time inviting bots, MEV, and front-running that distort true price discovery. They can also signal intent to the market, impacting sentiment and price before a sale is complete.
-
+ARCIBID leverages state of the art cryptography and MPC technology to keep your money entirely hidden from the chain. <br /> <br />Selling assets is harder than it looks. OTC deals rely on negotiation and often do not result in the best price. Public auctions expose bids in real time, inviting bots, MEV, and front-running that distort true price discovery.
 ARCIBID solves this with sealed, private auctions - removing information leakage and ensuring bidders compete based on true value, not strategy or manipulation. While it can integrate directly with DAOs to auction treasury assets through proposals, you don’t need to be a DAO to use it. Anyone can auction tokens, NFTs, or other on-chain assets they own, and optionally list them on the ARCIBID marketplace to reach a wider pool of serious bidders without sacrificing privacy.
             </p>
 
@@ -40,13 +39,13 @@ ARCIBID solves this with sealed, private auctions - removing information leakage
           </section>
 
           <section id="arcium" className="mb-16">
-            <h2 className="text-2xl font-bold mb-4">What is Arcium</h2>
+            <h2 className="text-2xl font-bold mb-4 gradient-heading">What is Arcium</h2>
 <p className="text-gray-300">
   <a
     href="https://docs.arcium.com/"
     target="_blank"
     rel="noopener noreferrer"
-    className="underline hover:text-white"
+    className="text-pink-300 hover:underline"
   >
     Arcium
   </a>{" "}
@@ -62,49 +61,70 @@ ARCIBID solves this with sealed, private auctions - removing information leakage
 
 
 <section id="ensuring-privacy" className="mb-16">
-  <h2 className="text-2xl font-bold mb-4">Ensuring privacy</h2>
+  <h2 className="text-2xl font-bold mb-4 gradient-heading">Ensuring privacy</h2>
 
-  <div className="text-gray-300 max-w-3xl space-y-4">
+  <div className="text-gray-300 max-w-5xl space-y-4">
     <p>
-      ARCIBID automatically generates an UMBRA encrypted token account (ETA)
-      associated with your wallet. This ETA is the link between the private
-      world and the public chain. Funds can be moved in and out of your ARCIBID
-      account in the Profile page.
+      ARCIBID automatically generates an{" "}
+      <a
+        href="https://sdk.umbraprivacy.com/introduction"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-pink-300 hover:underline"
+      >
+        UMBRA
+      </a>{" "}
+      encrypted token account (
+      <a
+        href="https://sdk.umbraprivacy.com/concepts/encrypted-balances"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-pink-300 hover:underline"
+      >
+        ETA
+      </a>
+      ) associated with your wallet address. This ETA is the link between the private world and the public chain. Funds can be moved in and out of your ARCIBID account in the Profile page.
     </p>
 
     <p>
-      This enables you to move SPL tokens in and out of a private balance
-      arbitrarily, thus obscuring your activity. All bids are made with USDC.
-      Placing a bid will transfer funds from your ETA to an escrow account
-      (transferring any missing funds from your normal wallet, then to the ETA,
-      then to the escrow) which is controlled by the ARCIBID program.
+      This enables you to move SPL tokens in and out of a private balance arbitrarily, thus obscuring your activity. All bids are made with USDC. Placing a bid will transfer funds from your ETA to an escrow account (transferring any missing funds from your public wallet, then to the ETA, then to the escrow) which is controlled by the ARCIBID program. The escrow funds exist within the{" "}
+      <a
+        href="https://sdk.umbraprivacy.com/sdk/mixer/overview"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-pink-300 hover:underline"
+      >
+        shielded pool
+      </a>
+      .
     </p>
 
     <p>
-      The client also performs a Rescue Cipher to encrypt your bid amount. The
-      client performs a zero-knowledge proof confirming that both the encrypted
-      bid and the escrow contain the same amount, which is verified by the
-      program.
+      The UMBRA program performs a rescue cipher of the bid amount against the ARCIBID mixed execution environment, controlled by the{" "}
+      <a
+        href="https://docs.arcium.com/developers"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-pink-300 hover:underline"
+      >
+        Arcium MPC network
+      </a>
+      . ARCIBID validates the ciphertext and sends it to the MXE where we compare it against the current highest bid(s). The exact computation depends on the type of auction (see below).
     </p>
 
     <p>
-      The encrypted ciphertext bid is sent to the Arcium Mixed Execution
-      Environment (MXE) which calculates if your bid is greater than the
-      current greatest one(s) and replaces it as needed, without every
-      decrypting your bid.
+      Your bid or bidder identity is never revealed during this process, as the bid comparison computation is performed across hundreds of nodes in the Arcium network, such that no individual node can ever determine any information about the computation or its result.
     </p>
 
     <p>
-      We will eventually migrate to the confidential token standard to
-      eliminate complexity with the ZK proof (since the MXE can directly read
-      the escrow balance).
+      We will eventually migrate to the confidential token standard to simplify the flow and directly read escrow accounts within the MXE, rather than sending the encrypted amount as ciphertext to the MXE.
     </p>
   </div>
 </section>
 
 
           <section id="rules" className="mb-16">
-  <h2 className="text-2xl font-bold mb-4">How it works</h2>
+  <h2 className="text-2xl font-bold mb-4 gradient-heading">How it works</h2>
 
   <h3 id="seller-flow" className="font-semibold text-lg text-gray-200 mb-2">Seller flow</h3>
   <ul className="list-disc ml-5 text-gray-300 mb-4">
@@ -142,17 +162,17 @@ ARCIBID solves this with sealed, private auctions - removing information leakage
 </section>
 
           <section id="dao-proposal" className="mb-16">
-            <h2 className="text-2xl font-bold mb-4">Create a DAO proposal</h2>
-            <p className="text-gray-300">Connect directly with Realms, MetaDAO or any DAO that accepts arbitrary instructions to call the ARCIBID program and propose to auction treasury tokens. Just specify the amount and duration / auction rules as normal.</p>
+            <h2 className="text-2xl font-bold mb-4 gradient-heading">Create a DAO proposal</h2>
+            <p className="text-gray-300">Connect directly with Realms, MetaDAO or any DAO that accepts arbitrary instructions to call the ARCIBID program and propose to auction treasury tokens. Just specify the amount and duration and auction rules as normal.</p>
           </section>
 
           <section id="arcibid-dao" className="mb-16">
-            <h2 className="text-2xl font-bold mb-4">Create an ARCIBID DAO</h2>
-            <p className="text-gray-300">We are rapidly developing a new DAO Launchpad that tokenizes part of the initial token sale that are bought via sealed-bids. This is excellent for new startups looking for maximal price discovery. We will also build Realms integration to enable you to start a Realms DAO with a section of the initial treasury availble sealed-auction.</p>
+            <h2 className="text-2xl font-bold mb-4 gradient-heading">Create an ARCIBID DAO</h2>
+            <p className="text-gray-300">We are rapidly developing a new DAO Launchpad that tokenizes part of the initial token sale that are bought via sealed bids. This is excellent for new startups looking for maximal price discovery. We will also build Realms integration to enable you to start a Realms DAO with a section of the initial treasury available via sealed-auction.</p>
           </section>
 
 <section id="developers" className="mb-8 scroll-mt-32">
-  <h2 className="text-2xl font-bold mb-4">Developers</h2>
+  <h2 className="text-2xl font-bold mb-4 gradient-heading">Developers</h2>
 
   <p className="text-gray-300 max-w-3xl">
     Install the SDK with:
@@ -349,7 +369,7 @@ main().catch(console.error);`}
 </section>
 
           <section id="faq">
-            <h2 className="text-2xl font-bold mb-4">FAQ</h2>
+            <h2 className="text-2xl font-bold mb-4 gradient-heading">FAQ</h2>
             <div className="space-y-4 text-gray-300">
               <div>
                 <div className="font-medium">Are bids really private?</div>

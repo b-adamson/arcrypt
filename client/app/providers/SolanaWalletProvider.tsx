@@ -1,30 +1,17 @@
-// app/providers/SolanaWalletProvider.tsx
 "use client";
 
-import React, { useMemo } from "react";
+import React from "react";
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
 import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
-import { PhantomWalletAdapter } from "@solana/wallet-adapter-phantom";
-import { clusterApiUrl } from "@solana/web3.js";
-import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
+import { useStandardWalletAdapters } from "@solana/wallet-standard-wallet-adapter-react";
 
 type Props = { children: React.ReactNode };
 
 export default function SolanaWalletProvider({ children }: Props) {
-  // choose network
-  const network = WalletAdapterNetwork.Devnet;
+  const endpoint = process.env.NEXT_PUBLIC_RPC_URL!;
 
-  // endpoint for ConnectionProvider
-  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
-
-  // list of adapters: add more adapters here if you want (Solflare, Torus, etc.)
-  const wallets = useMemo(
-    () => [
-      new PhantomWalletAdapter({ network }),
-      // e.g. new SolflareWalletAdapter({ network }), etc.
-    ],
-    [network]
-  );
+  // Bridge Wallet Standard wallets into wallet-adapter-react so the modal still works.
+  const wallets = useStandardWalletAdapters([]);
 
   return (
     <ConnectionProvider endpoint={endpoint}>

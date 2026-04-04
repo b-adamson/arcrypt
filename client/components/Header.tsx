@@ -7,13 +7,13 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import WalletSection from "../components/WalletSection"
 
-const WalletMultiButton = dynamic(
-  () =>
-    import("@solana/wallet-adapter-react-ui").then(
-      (mod) => mod.WalletMultiButton
-    ),
-  { ssr: false }
-);
+// const WalletMultiButton = dynamic(
+//   () =>
+//     import("@solana/wallet-adapter-react-ui").then(
+//       (mod) => mod.WalletMultiButton
+//     ),
+//   { ssr: false }
+// );
 
 export default function Header() {
   const pathname = usePathname();
