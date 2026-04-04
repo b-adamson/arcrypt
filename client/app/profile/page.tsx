@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
-import WalletSection from "../../components/WalletSection";
 import AuctionList from "../../components/AuctionList";
 import { createAnchorProgramInBrowser } from "../../lib/anchorClient";
 

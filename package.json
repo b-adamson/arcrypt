@@ -4,8 +4,6 @@
   "workspaces": [
     "client",
     "sdk"
-  ],
-  "dependencies": {
-    "@umbra-privacy/sdk": "^2.0.3"
-  }
+  ]
+
 }
