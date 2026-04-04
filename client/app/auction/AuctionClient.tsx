@@ -8,6 +8,7 @@ import { useSearchParams } from "next/navigation";
 import AuctionCreateForm from "../../components/AuctionCreateForm";
 import AuctionResultCard from "../../components/AuctionResultCard";
 import GovernanceProposalPanel from "@/components/GovernanceProposalPanel";
+import { createAnchorProgramInBrowser, createReadOnlyProgram, assertProviderReady } from "../../lib/anchorClient";
 
 import {
   PublicKey,
@@ -123,6 +124,11 @@ export default function AuctionClient() {
       decimals: number;
       uiAmountString: string;
     };
+
+    const wallet = useWallet();
+// const { publicKey, connected, signAllTransactions } = wallet;
+
+// const [programClient, setProgramClient] = useState<any | null>(null);
     
     const [selectedTreasuryAccount, setSelectedTreasuryAccount] = useState("");
     const [showRawInstructions, setShowRawInstructions] = useState(false);
@@ -275,31 +281,27 @@ export default function AuctionClient() {
         setLoadingTreasuries(false);
       }
     }
-    //   useEffect(() => {
-    //     let cancelled = false;
-    //     (async () => {
-    //       if (!connected || !publicKey) {
-    //         setProgramClient(null);
-    //         return;
-    //       }
-    
-    //       try {
-    //         const { program } = await createAnchorProgramInBrowser(wallet as any, process.env.NEXT_PUBLIC_PROGRAM_ID);
-    //         if (!cancelled) {
-    //           setProgramClient(program);
-    //           setStatus("Program client ready (wallet).");
-    //         }
-    //       } catch (e: any) {
-    //         if (!cancelled) {
-    //           setStatus("Could not create program client: " + (e?.message ?? String(e)));
-    //           setProgramClient(null);
-    //         }
-    //       }
-    //     })();
-    //     return () => {
-    //       cancelled = true;
-    //     };
-    //   }, [wallet, connected, publicKey]);
+useEffect(() => {
+  let cancelled = false;
+
+  (async () => {
+    if (!connected || !publicKey) {
+      setProgramClient(null);
+      return;
+    }
+
+    const { program } = await createAnchorProgramInBrowser(
+      wallet as any,
+      process.env.NEXT_PUBLIC_PROGRAM_ID!
+    );
+
+    if (!cancelled) setProgramClient(program);
+  })();
+
+  return () => {
+    cancelled = true;
+  };
+}, [connected, publicKey, wallet]);
     
       useEffect(() => {
         let cancelled = false;
