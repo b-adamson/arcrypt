@@ -18,12 +18,13 @@ import {
   getAssociatedTokenAddressSync,
   getMint
 } from "@solana/spl-token";
-import {
-  createSignerFromPrivateKeyBytes,
-  getUmbraClientFromSigner,
-  getUserRegistrationFunction,
-  createInMemorySigner
-} from "@umbra-privacy/sdk";
+// import {
+//   createSignerFromPrivateKeyBytes,
+//   getUmbraClientFromSigner,
+//   getUserRegistrationFunction,
+//   createInMemorySigner
+// } from "@umbra-privacy/sdk";
+
 
 function deriveEscrowPda(auctionPk: PublicKey, bidderPk: PublicKey, programId: PublicKey) {
   return PublicKey.findProgramAddressSync(
