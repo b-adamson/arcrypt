@@ -154,12 +154,14 @@ function AuctionCard({ item, active }: { item: AuctionSummary; active?: boolean 
   return (
     <Link
       href={`/bid?auctionPk=${encodeURIComponent(item.auctionPk)}`}
-      className={`group block h-full overflow-hidden rounded-[24px] border bg-white/[0.04] shadow-[0_18px_50px_rgba(0,0,0,0.24)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-fuchsia-400/40 hover:bg-white/[0.06] ${
-        active ? "border-fuchsia-400/60 ring-2 ring-fuchsia-400/20" : "border-white/10"
+      className={`group block h-full overflow-hidden border transition hover:-translate-y-0.5 ${
+        active
+          ? "card-active ring-1 ring-[var(--accent)]/25"
+          : "card surface-hover"
       }`}
     >
       <article className="flex h-full flex-col">
-        <div className="relative aspect-[4/3] w-full overflow-hidden border-b border-white/10 bg-black/20">
+        <div className="relative aspect-[4/3] w-full overflow-hidden border-b border-[var(--line)] bg-[var(--background)]">
           {item.image ? (
             <img
               src={item.image}
@@ -167,16 +169,16 @@ function AuctionCard({ item, active }: { item: AuctionSummary; active?: boolean 
               className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
             />
           ) : (
-            <div className="flex h-full items-center justify-center px-4 text-sm text-white/45">
+            <div className="flex h-full items-center justify-center px-4 text-sm text-[var(--muted)]">
               No image
             </div>
           )}
 
           <div className="absolute left-3 top-3 flex gap-2">
-            <span className="rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-white/80">
+            <span className="badge text-[10px] uppercase tracking-[0.16em]">
               {item.auctionType || "auction"}
             </span>
-            <span className="rounded-full border border-white/10 bg-black/55 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-white/80">
+            <span className="badge text-[10px] uppercase tracking-[0.16em]">
               {item.source || "market"}
             </span>
           </div>
@@ -184,42 +186,56 @@ function AuctionCard({ item, active }: { item: AuctionSummary; active?: boolean 
 
         <div className="flex flex-1 flex-col p-4">
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">Auction</div>
-            <h3 className="mt-1 line-clamp-1 text-lg font-semibold text-white">{item.name}</h3>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+              Auction
+            </div>
+            <h3 className="mt-1 line-clamp-1 text-lg font-semibold text-[var(--foreground)]">
+              {item.name}
+            </h3>
           </div>
 
           <p
-            className="mt-2 line-clamp-2 text-xs leading-5 text-white/60"
+            className="mt-2 line-clamp-2 text-xs leading-5 text-[var(--muted)]"
             title={item.description}
           >
             {item.description || "No description available."}
           </p>
 
-          <div className="mt-4 grid gap-2 text-xs text-white/70">
-{!isMetadataOnly ? (
-  <div className="rounded-xl border border-white/10 bg-black/15 px-3 py-2">
-    <span className="block text-[10px] uppercase tracking-[0.18em] text-white/35">Token mint</span>
-    <span className="mt-0.5 block truncate">
-      {item.tokenMint ? shorten(item.tokenMint, 7, 5) : "Unavailable"}
-    </span>
-  </div>
-) : null}
+          <div className="mt-4 grid gap-2 text-xs text-[var(--foreground)]">
+            {!isMetadataOnly ? (
+              <div className="surface px-3 py-2">
+                <span className="block text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
+                  Token mint
+                </span>
+                <span className="mt-0.5 block truncate">
+                  {item.tokenMint ? shorten(item.tokenMint, 7, 5) : "Unavailable"}
+                </span>
+              </div>
+            ) : null}
 
             <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-xl border border-white/10 bg-black/15 px-3 py-2">
-                <span className="block text-[10px] uppercase tracking-[0.18em] text-white/35">Amount</span>
-                <span className="mt-0.5 block truncate">{isMetadataOnly ? "Metadata only" : item.saleAmount || "0"}</span>
+              <div className="surface px-3 py-2">
+                <span className="block text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
+                  Amount
+                </span>
+                <span className="mt-0.5 block truncate">
+                  {isMetadataOnly ? "Metadata only" : item.saleAmount || "0"}
+                </span>
               </div>
-              <div className="rounded-xl border border-white/10 bg-black/15 px-3 py-2">
-                <span className="block text-[10px] uppercase tracking-[0.18em] text-white/35">Asset</span>
-                <span className="mt-0.5 block truncate">{item.assetKind || "unknown"}</span>
+              <div className="surface px-3 py-2">
+                <span className="block text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
+                  Asset
+                </span>
+                <span className="mt-0.5 block truncate">
+                  {item.assetKind || "unknown"}
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-3 text-[11px] text-white/45">
+          <div className="mt-4 flex items-center justify-between gap-3 border-t border-[var(--line)] pt-3 text-[11px] text-[var(--muted)]">
             <span className="truncate font-mono">{shorten(item.auctionPk, 7, 5)}</span>
-            <span className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/65">
+            <span className="badge text-[10px] uppercase tracking-[0.16em]">
               View
             </span>
           </div>
@@ -338,25 +354,27 @@ export default function MarketPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#080812] px-4 py-6 text-white md:px-6 lg:px-8">
+    <main className="page-shell min-h-screen px-4 py-6 md:px-6 lg:px-8">
       <div className="mx-auto max-w-[1600px]">
-        <div className="relative z-40 overflow-visible mb-6 flex flex-col gap-4 rounded-[28px] border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl md:p-6">
+        <div className="mb-6 flex flex-col gap-4 surface p-5 md:p-6">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <div className="inline-flex rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">
+              <div className="badge text-[11px] font-semibold uppercase tracking-[0.18em]">
                 Market
               </div>
-              <h1 className="mt-3 text-3xl font-semibold tracking-tight md:text-4xl">
+              <h1 className="mt-3 text-3xl font-semibold tracking-tight md:text-4xl text-[var(--foreground)]">
                 All auctions
               </h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-white/55">
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">
                 Browse live and historical auctions from anyone.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-white/60">
-              <div className="text-[11px] uppercase tracking-[0.18em] text-white/35">Showing</div>
-              <div className="mt-1 font-medium text-white">
+            <div className="surface px-4 py-3 text-sm text-[var(--muted)]">
+              <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
+                Showing
+              </div>
+              <div className="mt-1 font-medium text-[var(--foreground)]">
                 {visibleAuctions.length} / {filteredAuctions.length}
               </div>
             </div>
@@ -380,12 +398,12 @@ export default function MarketPage() {
                 }
               }}
               placeholder="Search name, token mint, auction PDA, metadata URI..."
-              className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none placeholder:text-white/30 transition focus:border-fuchsia-400/50 focus:bg-white/[0.06] focus:ring-2 focus:ring-fuchsia-500/20"
+              className="h-12 w-full border border-[var(--line)] bg-[var(--background)] px-4 text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--muted)]/70 transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20"
             />
 
             {suggestionsOpen && suggestions.length > 0 ? (
-              <div className="absolute z-50 mt-2 w-full overflow-hidden rounded-2xl border border-white/10 bg-[#0b0b12] shadow-2xl">
-                <div className="border-b border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-white/35">
+              <div className="absolute z-50 mt-2 w-full overflow-hidden border border-[var(--line)] bg-[var(--background)] shadow-2xl">
+                <div className="border-b border-[var(--line)] px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
                   Suggestions
                 </div>
                 <div className="max-h-72 overflow-auto">
@@ -395,13 +413,17 @@ export default function MarketPage() {
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleSuggestionPick(s)}
-                      className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition hover:bg-white/5"
+                      className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition hover:bg-[var(--surface-2)]"
                     >
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-medium text-white">{s.label}</div>
-                        <div className="mt-0.5 truncate text-xs text-white/45 font-mono">{s.auctionPk}</div>
+                        <div className="truncate text-sm font-medium text-[var(--foreground)]">
+                          {s.label}
+                        </div>
+                        <div className="mt-0.5 truncate font-mono text-xs text-[var(--muted)]">
+                          {s.auctionPk}
+                        </div>
                       </div>
-                      <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/65">
+                      <span className="badge text-[10px] uppercase tracking-[0.16em]">
                         Jump
                       </span>
                     </button>
@@ -417,20 +439,20 @@ export default function MarketPage() {
             {Array.from({ length: 8 }).map((_, idx) => (
               <div
                 key={idx}
-                className="h-[420px] animate-pulse rounded-[24px] border border-white/10 bg-white/[0.03]"
+                className="h-[420px] animate-pulse border border-[var(--line)] bg-[var(--surface)]"
               />
             ))}
           </div>
         ) : null}
 
         {!loading && status ? (
-          <div className="mb-5 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/65">
+          <div className="mb-5 surface px-4 py-3 text-sm text-[var(--muted)]">
             {status}
           </div>
         ) : null}
 
         {!loading && visibleAuctions.length === 0 && !status ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/65">
+          <div className="surface px-4 py-3 text-sm text-[var(--muted)]">
             No auctions matched your search.
           </div>
         ) : null}
@@ -449,14 +471,12 @@ export default function MarketPage() {
               type="button"
               onClick={handleLoadMore}
               disabled={isRefreshing}
-              className="inline-flex h-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] px-5 text-sm font-medium text-white/80 transition hover:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-50"
+              className="btn disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isRefreshing ? "Loading..." : "Load more"}
             </button>
           </div>
         ) : null}
-
-
       </div>
     </main>
   );

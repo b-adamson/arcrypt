@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { PublicKey } from "@solana/web3.js";
 import { createReadOnlyProgram } from "../../../lib/anchorClient";
-import { createAuction } from "@arcibid/sdk";
+import { createAuction } from "@arcrypt/sdk";
 
 export async function POST(req: Request) {
   try {

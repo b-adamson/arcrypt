@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import * as GovernanceSdk from "@realms-today/spl-governance";
-import { getTokenOwnerRecordAddress } from "@realms-today/spl-governance";
+
 type TokenAccountRow = {
   pubkey: string;
   mint: string;

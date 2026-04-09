@@ -1,50 +1,16 @@
 @import "tailwindcss";
 
-
-
-html,
-body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  min-height: 100%;
-  overflow-x: hidden;
-  color: var(--foreground);
-  font-family: var(--font-sans);
-  background:
-    radial-gradient(circle at 15% 15%, rgba(255, 43, 211, 0.14), transparent 28%),
-    radial-gradient(circle at 85% 20%, rgba(78, 199, 255, 0.10), transparent 24%),
-    radial-gradient(circle at 50% 70%, rgba(193, 75, 255, 0.08), transparent 35%),
-    linear-gradient(180deg, #0b0812 0%, #05050a 55%, #030308 100%);
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-  background-size: 64px 64px;
-  mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
-  opacity: 0.18;
-}
-
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(circle at center, transparent 50%, rgba(0,0,0,0.35) 100%);
-}
-
 :root {
-  --background: #08070d;
+  --background: #000000;
+  --surface: #050505;
+  --surface-2: #0a0a0a;
+  --surface-3: #111111;
   --foreground: #f5f7fb;
+  --muted: #a7adb8;
+  --line: rgba(245, 247, 251, 0.10);
+  --line-strong: rgba(245, 247, 251, 0.18);
+  --accent: #00e676;
 }
-
-
 
 @theme inline {
   --color-background: var(--background);
@@ -53,76 +19,28 @@ body::after {
   --font-mono: var(--font-geist-mono);
 }
 
-/* html {
-  scroll-behavior: smooth;
-}
-
+html,
 body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+  background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
-  background:
-    radial-gradient(circle at top left, rgba(236, 72, 153, 0.14), transparent 28%),
-    radial-gradient(circle at top right, rgba(56, 189, 248, 0.08), transparent 24%),
-    radial-gradient(circle at center, rgba(124, 58, 237, 0.12), transparent 42%),
-    linear-gradient(180deg, #09070f 0%, #05050a 100%);
-} */
+  scroll-behavior: smooth;
+  scroll-snap-type: none;
+}
+
+body::before,
+body::after {
+  content: none;
+}
 
 ::selection {
-  background: rgba(217, 70, 239, 0.35);
-  color: white;
-}
-
-.rounded-none {
-  border-radius: 0 !important;
-}
-
-.edge-glow-strong {
-  box-shadow: 0 12px 60px rgba(78, 199, 255, 0.08), 0 6px 30px rgba(255, 43, 211, 0.06);
-}
-
-@keyframes confetti-fall {
-  0% {
-    transform: translate3d(var(--x-start), 0, 0) rotate(0deg);
-    opacity: 0;
-    filter: brightness(1.4) saturate(1.5);
-  }
-  8% {
-    opacity: 1;
-  }
-  100% {
-    transform: translate3d(var(--x-end), 120vh, 0) rotate(var(--spin));
-    opacity: 0;
-    filter: brightness(1.8) saturate(1.8);
-  }
-}
-
-.confetti-piece {
-  position: absolute;
-  width: var(--w);
-  height: var(--h);
-  background: var(--c);
-  border-radius: var(--r);
-  animation: confetti-fall var(--d) linear forwards;
-  will-change: transform, opacity, filter;
-  box-shadow:
-    0 0 10px rgba(255, 255, 255, 0.14),
-    0 0 24px rgba(255, 255, 255, 0.08);
-}
-
-/* Force the wallet modal UI to be square */
-.wallet-adapter-modal-wrapper,
-.wallet-adapter-dropdown-list,
-.wallet-adapter-dropdown-list-item,
-.wallet-adapter-modal-button-close {
-  border-radius: 0 !important;
-}
-
-/* Make sure no wallet button in the app keeps pill corners */
-button.wallet-adapter-button,
-button.wallet-adapter-button-trigger,
-.wallet-adapter-button,
-.wallet-adapter-button-trigger {
-  border-radius: 0 !important;
+  background: var(--accent);
+  color: #000000;
 }
 
 *,
@@ -131,24 +49,130 @@ button.wallet-adapter-button-trigger,
   border-radius: 0 !important;
 }
 
-code .token.keyword {
-  color: #ff2bd3;
-  text-shadow: 0 0 8px rgba(255, 43, 211, 0.45);
+.rounded-none {
+  border-radius: 0 !important;
 }
 
-code .token.string {
-  color: #4ec7ff;
-  text-shadow: 0 0 8px rgba(78, 199, 255, 0.45);
+.page-shell {
+  min-height: 100svh;
+  background: var(--background);
+  color: var(--foreground);
 }
 
-code .token.function {
-  color: #ffffff;
-  text-shadow: 0 0 6px rgba(255, 255, 255, 0.25);
+.page-section {
+  position: relative;
+  background: var(--background);
 }
 
-code .token.number {
-  color: #c084fc;
-  text-shadow: 0 0 8px rgba(192, 132, 252, 0.4);
+.surface {
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.surface-strong {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+.surface-hover:hover {
+  background: var(--surface-3);
+  border-color: var(--line-strong);
+}
+
+.text-accent {
+  color: var(--accent);
+}
+
+.bg-accent {
+  background: var(--accent);
+  color: #000;
+}
+
+.border-accent {
+  border-color: var(--accent);
+}
+
+.text-muted {
+  color: var(--muted);
+}
+
+.line {
+  border-color: var(--line);
+}
+
+.line-strong {
+  border-color: var(--line-strong);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--foreground);
+  transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+}
+
+.btn:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #000;
+}
+
+.btn-primary:hover {
+  opacity: 0.95;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.card-active {
+  background: var(--surface-2);
+  border-color: var(--accent);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--line);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.badge-accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #000;
+}
+
+.hero-title {
+  color: var(--accent);
+}
+
+.hero-copy {
+  color: var(--muted);
+}
+
+.wallet-adapter-modal-wrapper,
+.wallet-adapter-dropdown-list,
+.wallet-adapter-dropdown-list-item,
+.wallet-adapter-modal-button-close,
+button.wallet-adapter-button,
+button.wallet-adapter-button-trigger,
+.wallet-adapter-button,
+.wallet-adapter-button-trigger {
+  border-radius: 0 !important;
 }
 
 section {
@@ -156,26 +180,18 @@ section {
 }
 
 section::before {
-  /* content: ""; */
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(circle at top, rgba(255,255,255,0.04), transparent 55%);
+  content: none;
 }
 
-html, body {
-  scroll-behavior: smooth;
-  scroll-snap-type: none;
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #000;
 }
 
-.gradient-heading {
-  background: linear-gradient(
-    90deg,
-    #b794f4 0%,     /* softer purple */
-    #dcd6ff 35%,    /* light transition */
-    #60cfff 65%,    /* stronger blue presence */
-    #4ec7ff 100%    /* clear blue finish */
-  );
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+.btn-primary:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #000;
+  opacity: 0.9;
 }

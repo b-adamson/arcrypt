@@ -7,7 +7,7 @@ import {
   createSettlement,
   type DetermineWinnerKind,
   type SettlementAction,
-} from "@arcibid/sdk";
+} from "@arcrypt/sdk";
 
 export async function POST(req: Request) {
   try {

@@ -1,16 +1,21 @@
-# ARCIBID
+# ARCRYPT
 
-ARCIBID is a sealed-bid auction platform on Solana. It lets sellers auction tokens, NFTs, or metadata-only assets without exposing competing bids on-chain, helping prevent front-running, MEV, and other forms of bid leakage. Bid amounts are processed privately through Arcium MPC, while settlement still happens transparently on Solana. For the first time ever we leverage UMBRA to conceal committed bid escrows on chain, as well as hiding the same bid amount transmitted to Arcium MXE. 
+Join us at [arcrypt.bid](https://arcrypt.bid)
 
-## What ARCIBID does
+ARCRYPT is a sealed-bid auction platform on Solana. It lets sellers auction tokens, NFTs, or metadata-only assets without exposing competing bids on-chain, helping prevent front-running, MEV, and other forms of bid leakage. Bid amounts are processed privately through Arcium MPC, while settlement still happens transparently on Solana. For the first time ever we leverage UMBRA to conceal committed bid escrows on chain, as well as hiding the same bid amount transmitted to Arcium MXE. 
 
-ARCIBID is built for private price discovery.
+Note: we are changing name from arcibid --> arcrypt. It may take some time for changes to fully apply as we migrate branding. 
+
+## What ARCRYPT does
+
+ARCRYPT is built for private price discovery.
 
 Traditional public auctions reveal bids as they arrive, which can distort outcomes and invite manipulation. ARCIBID instead keeps bids encrypted, computes winners privately, and settles only the final result on-chain.
 
 It supports:
 
 * Sealed-bid auctions on Solana
+* Total encryption of escrowed bid balances using UMBRA
 * First-price auctions
 * Vickrey (second-price) auctions
 * Uniform-price auctions for multi-winner sales (up to 3 winners)
@@ -20,7 +25,7 @@ It supports:
 
 ## How it works
 
-ARCIBID combines three pieces:
+ARCRYPT combines three pieces:
 
 * **Solana program**: stores auction state and handles settlement
 * **Arcium confidential compute**: evaluates encrypted bids without exposing them
@@ -37,8 +42,8 @@ The flow is:
 ## Repository structure
 
 * `client/` — the website and user interface
-* `sdk/` — the TypeScript library (`@arcibid/sdk`) for auction commands
-* `chain/arcibid/` — the on-chain program and Arcium computation setup
+* `sdk/` — the TypeScript library (`@arcrypt/sdk`) for auction commands
+* `arcrypt/` — the on-chain program and Arcium computation setup
 
 ## Prerequisites
 
@@ -64,7 +69,7 @@ Follow the Arcium Solana installation guide first:
 
 ```bash
 git clone https://github.com/b-adamson/ARCIBID
-cd ARCIBID
+cd arcibid
 ```
 
 ### 2) Start a local Arcium Solana environment
@@ -72,7 +77,7 @@ cd ARCIBID
 Open a new terminal and run:
 
 ```bash
-cd chain/arcibid
+cd arcrypt
 arcium localnet
 ```
 
@@ -80,9 +85,9 @@ This builds the program and starts the local environment used by the program and
 
 ### 3) Initialize the computation definitions (localnet only)
 
-This step is required when running ARCIBID on a **local Arcium + Solana environment**. It registers all confidential computation definitions (auction init, bidding, winner selection) with the Arcium runtime.
+This step is required when running ARCRYPT on a **local Arcium + Solana environment**. It registers all confidential computation definitions (auction init, bidding, winner selection) with the Arcium runtime.
 
-First, create a `.env` file inside `chain/arcibid/`:
+First, create a `.env` file inside `arcrypt`:
 
 ```bash
 OWNER_KEYPAIR_PATH=~/.config/solana/id.json
@@ -97,7 +102,7 @@ SOLANA_RPC_URL="http://localhost:8899"
 Then run:
 
 ```bash
-cd chain/arcibid
+cd arcrypt
 ts-node initcompdef.ts
 ```
 
@@ -141,7 +146,7 @@ It exposes the commands used by the app and by integrators, including:
 Install it with:
 
 ```bash
-npm install @arcibid/sdk
+npm install @arcrypt/sdk
 ```
 
 Note: the package may not be published yet, so for development you may need to import it directly from the repository. In the client, this is done automatically (see client/package.json)
@@ -175,29 +180,11 @@ The on-chain program is built around a few core steps:
 
 The Rust program uses Arcium compute definitions and callbacks to keep bid values encrypted while still resolving the auction correctly.
 
-## Program architecture
-
-The on-chain code defines:
-
-* auction state
-* escrow state
-* encrypted bid updates
-* winner resolution for each auction type
-* payout and refund handling
-* reclaim logic for unsold assets
-
-The program is designed so that:
-
-* bids are not exposed in plaintext
-* escrowed funds are accounted for safely
-* winners can be resolved deterministically
-* losers can reclaim refunds after settlement
-
 ## Example SDK usage
 
 ```ts
 import { PublicKey } from "@solana/web3.js";
-import { createAuction, createPlaceBid } from "@arcibid/sdk";
+import { createAuction, createPlaceBid } from "@arcrypt/sdk";
 
 async function main() {
   const programClient = /* your Anchor client */;
@@ -233,23 +220,7 @@ async function main() {
 main().catch(console.error);
 ```
 
-## Notes on the Rust program
-
-The program uses:
-
-* `anchor_lang`
-* `anchor_spl`
-* `arcium_anchor`
-* `arcium_client`
-* `arcium_macros`
-
-It defines computation setup instructions for:
-
-* initializing auction state
-* placing bids
-* determining winners for first-price, Vickrey, uniform, and pro-rata auctions
-
-It also includes payout and refund flows for both token-based and metadata-only auctions.
+## Program ID
 
 On devnet we are deployed at
 * `HPV5kXxCZ7gBGWgMJwyqc9wZhTryjZcwSJUMdeyQ7en4`
@@ -258,7 +229,6 @@ On devnet we are deployed at
 
 * Make sure the Arcium localnet is running before initializing computation definitions.
 * Make sure your Solana CLI points to the local validator when testing locally.
-* If auction setup fails, confirm that the token mint, vault, and authority accounts are correct.
 * If bid settlement fails, confirm that the auction has ended and the correct settlement instruction is being used.
 * Make sure, if testing in localnet, you have ARCIUM_CLUSTER_OFFSET=0 specified as a client environment variable. The SDK will default to 0 (localnet). The devnet program is deployed at 456
 
@@ -267,10 +237,10 @@ On devnet we are deployed at
 Planned and in-progress areas include:
 
 * Rust SDK support
-* deeper DAO integrations
-* improved confidential token handling
-* additional auction UX improvements
-* broader support for sealed treasury sales
+* DAO Launchpad
+* Mainnet Launch
+* Complete UMBRA integration
+* UX Changes
 
 ## License
 

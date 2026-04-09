@@ -247,49 +247,33 @@ export default function ProfilePage() {
     };
   }, [connected, publicKey, wallet]);
 
-return (
-  <main style={{ padding: 20 }}>
-{connected && publicKey ? (
-  <div className="flex justify-center mt-4 mb-4">
-    <div
-      className="
-      text-white font-bold text-lg tracking-wide
-      px-4 py-2 border border-white/15 rounded-none
-      backdrop-blur-md
-      bg-[linear-gradient(135deg,rgba(217,70,239,0.12),rgba(124,58,237,0.12),rgba(34,211,238,0.10))]
-      shadow-[0_10px_30px_rgba(0,0,0,0.25)]
-    "
-    >
-      {publicKey.toBase58()}
-    </div>
-  </div>
-) : null}
+  return (
+    <main className="page-shell min-h-screen px-4 py-6">
+      <div className="mx-auto max-w-5xl">
+        {connected && publicKey ? (
+          <div className="mb-4 flex justify-center">
+            <div className="surface px-4 py-2 text-lg font-bold tracking-wide text-[var(--foreground)]">
+              {publicKey.toBase58()}
+            </div>
+          </div>
+        ) : null}
 
-{connected && publicKey ? (
-  <div style={{ margin: "12px 0" }}>
-    <Link href="/auction">
-      <button
-        className="
-        h-10 px-5 text-sm font-semibold text-white border border-white/15 rounded-none
-        backdrop-blur-md transition-all
+        {connected && publicKey ? (
+          <div className="mb-4">
+            <Link href="/auction" className="btn btn-primary">
+              Create Auction
+            </Link>
+          </div>
+        ) : null}
 
-        bg-[linear-gradient(135deg,rgba(217,70,239,0.25),rgba(124,58,237,0.25),rgba(34,211,238,0.22))]
-        hover:bg-[linear-gradient(135deg,rgba(217,70,239,0.35),rgba(124,58,237,0.35),rgba(34,211,238,0.30))]
+        <AuctionList auctions={auctions} />
 
-        hover:border-white/30
-        shadow-[0_10px_30px_rgba(0,0,0,0.35)]
-        hover:shadow-[0_0_20px_rgba(217,70,239,0.25),0_0_30px_rgba(34,211,238,0.2)]
-      "
-      >
-        Create Auction
-      </button>
-    </Link>
-  </div>
-) : null}
-
-    <AuctionList auctions={auctions} />
-
-    {status ? <div style={{ marginTop: 12, color: "#333" }}>{status}</div> : null}
-  </main>
-);
+        {status ? (
+          <div className="mt-4 text-sm text-[var(--muted)]">
+            {status}
+          </div>
+        ) : null}
+      </div>
+    </main>
+  );
 }

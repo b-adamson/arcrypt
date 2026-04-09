@@ -8,9 +8,12 @@ import { useStandardWalletAdapters } from "@solana/wallet-standard-wallet-adapte
 type Props = { children: React.ReactNode };
 
 export default function SolanaWalletProvider({ children }: Props) {
-  const endpoint = process.env.NEXT_PUBLIC_RPC_URL!;
+  const endpoint =
+    process.env.NEXT_PUBLIC_RPC_URL ?? "https://api.mainnet-beta.solana.com";
 
-  // Bridge Wallet Standard wallets into wallet-adapter-react so the modal still works.
+  // Keep this universal app shell.
+  // UmbraPanel will read the active wallet from Wallet Adapter state and
+  // match it to the Wallet Standard account by public key.
   const wallets = useStandardWalletAdapters([]);
 
   return (

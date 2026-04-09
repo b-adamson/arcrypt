@@ -25,7 +25,7 @@ const COMP_DEF_OFFSET_DETERMINE_WINNER_PRO_RATA: u32 =
 
 
 
-declare_id!("HPV5kXxCZ7gBGWgMJwyqc9wZhTryjZcwSJUMdeyQ7en4");
+declare_id!("8icpcRrJNtQ4RBaTtttGoy2qzDDY8bQcxQaYm2dRvFRC");
 // Auction account byte offset: 8 (discriminator) + 1 + 32 + 1 + 1 + 8 + 8 + 2 + 16 = 77
 const AUCTION_HEADER_SIZE: u32 = 8 + 1 + 32 + 1 + 1 + 8 + 8 + 2 + 16;
 const ENCRYPTED_STATE_OFFSET: u32 = AUCTION_HEADER_SIZE;
@@ -921,22 +921,23 @@ pub struct CreateAuction<'info> {
     )]
     pub auction: Box<Account<'info, Auction>>,
 
-pub prize_mint: InterfaceAccount<'info, Mint>,
+    pub prize_mint: Box<InterfaceAccount<'info, Mint>>,
 
-#[account(
-    seeds = [b"vault-authority", auction.key().as_ref()],
-    bump
-)]
-/// CHECK: PDA used only as signer for token transfers. Seeds guarantee correctness.
-pub vault_authority: UncheckedAccount<'info>,
+    #[account(
+        seeds = [b"vault-authority", auction.key().as_ref()],
+        bump
+    )]
+    /// CHECK: PDA used only as signer for token transfers. Seeds guarantee correctness.
+    pub vault_authority: UncheckedAccount<'info>,
 
-#[account(mut)]
-pub authority_token_account: InterfaceAccount<'info, TokenAccount>,
+    #[account(mut)]
+    pub authority_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-#[account(mut)]
-pub prize_vault: InterfaceAccount<'info, TokenAccount>,
+    #[account(mut)]
+    pub prize_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-pub token_program: Interface<'info, TokenInterface>,
+    pub token_program: Interface<'info, TokenInterface>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
 
     #[account(
         init_if_needed,
@@ -946,7 +947,7 @@ pub token_program: Interface<'info, TokenInterface>,
         bump,
         address = derive_sign_pda!(),
     )]
-    pub sign_pda_account: Account<'info, ArciumSignerAccount>,
+    pub sign_pda_account: Box<Account<'info, ArciumSignerAccount>>,
 
     #[account(address = derive_mxe_pda!())]
     pub mxe_account: Box<Account<'info, MXEAccount>>,
@@ -967,12 +968,15 @@ pub token_program: Interface<'info, TokenInterface>,
     pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
 
     #[account(mut, address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    /// CHECK: cluster account is validated by the address constraint and the Arcium runtime.
     pub cluster_account: Box<Account<'info, Cluster>>,
 
     #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
+    /// CHECK: fee pool account is validated by the address constraint and the Arcium runtime.
     pub pool_account: Box<Account<'info, FeePool>>,
 
     #[account(mut, address = ARCIUM_CLOCK_ACCOUNT_ADDRESS)]
+    /// CHECK: clock account is validated by the address constraint and the Arcium runtime.
     pub clock_account: Box<Account<'info, ClockAccount>>,
 
     pub system_program: Program<'info, System>,
@@ -1015,39 +1019,48 @@ pub struct PlaceBid<'info> {
         seeds = [b"escrow", auction.key().as_ref(), bidder.key().as_ref()],
         bump,
     )]
-    pub escrow_account: Account<'info, EscrowAccount>,
+    pub escrow_account: Box<Account<'info, EscrowAccount>>,
 
     #[account(
         init_if_needed,
-        space = 9,
         payer = bidder,
+        space = 9,
         seeds = [&SIGN_PDA_SEED],
         bump,
         address = derive_sign_pda!(),
     )]
-    pub sign_pda_account: Account<'info, ArciumSignerAccount>,
+    pub sign_pda_account: Box<Account<'info, ArciumSignerAccount>>,
 
     #[account(address = derive_mxe_pda!())]
-    pub mxe_account: Account<'info, MXEAccount>,
-#[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-/// CHECK: mempool_account is validated by the address constraint and Arcium runtime.
-pub mempool_account: UncheckedAccount<'info>,
+    pub mxe_account: Box<Account<'info, MXEAccount>>,
 
-#[account(mut, address = derive_execpool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-/// CHECK: executing_pool is validated by the address constraint and Arcium runtime.
-pub executing_pool: UncheckedAccount<'info>,
+    #[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    /// CHECK: mempool_account is validated by the address constraint and Arcium runtime.
+    pub mempool_account: UncheckedAccount<'info>,
 
-#[account(mut, address = derive_comp_pda!(computation_offset, mxe_account, ErrorCode::ClusterNotSet))]
-/// CHECK: computation_account is validated by the address constraint and Arcium runtime.
-pub computation_account: UncheckedAccount<'info>,
+    #[account(mut, address = derive_execpool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    /// CHECK: executing_pool is validated by the address constraint and Arcium runtime.
+    pub executing_pool: UncheckedAccount<'info>,
+
+    #[account(mut, address = derive_comp_pda!(computation_offset, mxe_account, ErrorCode::ClusterNotSet))]
+    /// CHECK: computation_account is validated by the address constraint and Arcium runtime.
+    pub computation_account: UncheckedAccount<'info>,
+
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_PLACE_BID))]
-    pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
+    pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
+
     #[account(mut, address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-    pub cluster_account: Account<'info, Cluster>,
+    /// CHECK: cluster_account is validated by the address constraint and Arcium runtime.
+    pub cluster_account: Box<Account<'info, Cluster>>,
+
     #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
-    pub pool_account: Account<'info, FeePool>,
+    /// CHECK: fee pool account is validated by the address constraint and Arcium runtime.
+    pub pool_account: Box<Account<'info, FeePool>>,
+
     #[account(mut, address = ARCIUM_CLOCK_ACCOUNT_ADDRESS)]
-    pub clock_account: Account<'info, ClockAccount>,
+    /// CHECK: clock account is validated by the address constraint and Arcium runtime.
+    pub clock_account: Box<Account<'info, ClockAccount>>,
+
     pub system_program: Program<'info, System>,
     pub arcium_program: Program<'info, Arcium>,
 }
@@ -1100,29 +1113,38 @@ pub struct DetermineWinnerFirstPrice<'info> {
         bump,
         address = derive_sign_pda!(),
     )]
-    pub sign_pda_account: Account<'info, ArciumSignerAccount>,
+    pub sign_pda_account: Box<Account<'info, ArciumSignerAccount>>,
 
     #[account(address = derive_mxe_pda!())]
-    pub mxe_account: Account<'info, MXEAccount>,
-#[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-/// CHECK: mempool_account is validated by the address constraint and Arcium runtime.
-pub mempool_account: UncheckedAccount<'info>,
+    pub mxe_account: Box<Account<'info, MXEAccount>>,
 
-#[account(mut, address = derive_execpool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-/// CHECK: executing_pool is validated by the address constraint and Arcium runtime.
-pub executing_pool: UncheckedAccount<'info>,
+    #[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    /// CHECK: mempool_account is validated by the address constraint and Arcium runtime.
+    pub mempool_account: UncheckedAccount<'info>,
 
-#[account(mut, address = derive_comp_pda!(computation_offset, mxe_account, ErrorCode::ClusterNotSet))]
-/// CHECK: computation_account is validated by the address constraint and Arcium runtime.
-pub computation_account: UncheckedAccount<'info>,
+    #[account(mut, address = derive_execpool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    /// CHECK: executing_pool is validated by the address constraint and Arcium runtime.
+    pub executing_pool: UncheckedAccount<'info>,
+
+    #[account(mut, address = derive_comp_pda!(computation_offset, mxe_account, ErrorCode::ClusterNotSet))]
+    /// CHECK: computation_account is validated by the address constraint and Arcium runtime.
+    pub computation_account: UncheckedAccount<'info>,
+
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_DETERMINE_WINNER_FIRST_PRICE))]
-    pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
+    pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
+
     #[account(mut, address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-    pub cluster_account: Account<'info, Cluster>,
+    /// CHECK: cluster_account is validated by the address constraint and Arcium runtime.
+    pub cluster_account: Box<Account<'info, Cluster>>,
+
     #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
-    pub pool_account: Account<'info, FeePool>,
+    /// CHECK: fee pool account is validated by the address constraint and Arcium runtime.
+    pub pool_account: Box<Account<'info, FeePool>>,
+
     #[account(mut, address = ARCIUM_CLOCK_ACCOUNT_ADDRESS)]
-    pub clock_account: Account<'info, ClockAccount>,
+    /// CHECK: clock account is validated by the address constraint and Arcium runtime.
+    pub clock_account: Box<Account<'info, ClockAccount>>,
+
     pub system_program: Program<'info, System>,
     pub arcium_program: Program<'info, Arcium>,
 }
@@ -1164,28 +1186,38 @@ pub struct DetermineWinnerVickrey<'info> {
         bump,
         address = derive_sign_pda!(),
     )]
-    pub sign_pda_account: Account<'info, ArciumSignerAccount>,
+    pub sign_pda_account: Box<Account<'info, ArciumSignerAccount>>,
+
     #[account(address = derive_mxe_pda!())]
-    pub mxe_account: Account<'info, MXEAccount>,
-#[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-/// CHECK: mempool_account is validated by the address constraint and Arcium runtime.
-pub mempool_account: UncheckedAccount<'info>,
+    pub mxe_account: Box<Account<'info, MXEAccount>>,
 
-#[account(mut, address = derive_execpool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-/// CHECK: executing_pool is validated by the address constraint and Arcium runtime.
-pub executing_pool: UncheckedAccount<'info>,
+    #[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    /// CHECK: mempool_account is validated by the address constraint and Arcium runtime.
+    pub mempool_account: UncheckedAccount<'info>,
 
-#[account(mut, address = derive_comp_pda!(computation_offset, mxe_account, ErrorCode::ClusterNotSet))]
-/// CHECK: computation_account is validated by the address constraint and Arcium runtime.
-pub computation_account: UncheckedAccount<'info>,
+    #[account(mut, address = derive_execpool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    /// CHECK: executing_pool is validated by the address constraint and Arcium runtime.
+    pub executing_pool: UncheckedAccount<'info>,
+
+    #[account(mut, address = derive_comp_pda!(computation_offset, mxe_account, ErrorCode::ClusterNotSet))]
+    /// CHECK: computation_account is validated by the address constraint and Arcium runtime.
+    pub computation_account: UncheckedAccount<'info>,
+
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_DETERMINE_WINNER_VICKREY))]
-    pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
+    pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
+
     #[account(mut, address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-    pub cluster_account: Account<'info, Cluster>,
+    /// CHECK: cluster_account is validated by the address constraint and Arcium runtime.
+    pub cluster_account: Box<Account<'info, Cluster>>,
+
     #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
-    pub pool_account: Account<'info, FeePool>,
+    /// CHECK: fee pool account is validated by the address constraint and Arcium runtime.
+    pub pool_account: Box<Account<'info, FeePool>>,
+
     #[account(mut, address = ARCIUM_CLOCK_ACCOUNT_ADDRESS)]
-    pub clock_account: Account<'info, ClockAccount>,
+    /// CHECK: clock account is validated by the address constraint and Arcium runtime.
+    pub clock_account: Box<Account<'info, ClockAccount>>,
+
     pub system_program: Program<'info, System>,
     pub arcium_program: Program<'info, Arcium>,
 }
@@ -1253,7 +1285,7 @@ pub struct CreateMetadataAuction<'info> {
         bump,
         address = derive_sign_pda!(),
     )]
-    pub sign_pda_account: Account<'info, ArciumSignerAccount>,
+    pub sign_pda_account: Box<Account<'info, ArciumSignerAccount>>,
 
     #[account(address = derive_mxe_pda!())]
     pub mxe_account: Box<Account<'info, MXEAccount>>,
@@ -1274,12 +1306,15 @@ pub struct CreateMetadataAuction<'info> {
     pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
 
     #[account(mut, address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    /// CHECK: validated by address constraint and Arcium runtime.
     pub cluster_account: Box<Account<'info, Cluster>>,
 
     #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
+    /// CHECK: validated by address constraint and Arcium runtime.
     pub pool_account: Box<Account<'info, FeePool>>,
 
     #[account(mut, address = ARCIUM_CLOCK_ACCOUNT_ADDRESS)]
+    /// CHECK: validated by address constraint and Arcium runtime.
     pub clock_account: Box<Account<'info, ClockAccount>>,
 
     pub system_program: Program<'info, System>,
@@ -1302,7 +1337,7 @@ pub struct CreateTokenAuction<'info> {
     )]
     pub auction: Box<Account<'info, Auction>>,
 
-    pub prize_mint: InterfaceAccount<'info, Mint>,
+    pub prize_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         seeds = [b"vault-authority", auction.key().as_ref()],
@@ -1312,7 +1347,7 @@ pub struct CreateTokenAuction<'info> {
     pub vault_authority: UncheckedAccount<'info>,
 
     #[account(mut)]
-    pub authority_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub authority_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         init_if_needed,
@@ -1321,7 +1356,7 @@ pub struct CreateTokenAuction<'info> {
         associated_token::authority = vault_authority,
         associated_token::token_program = token_program,
     )]
-    pub prize_vault: InterfaceAccount<'info, TokenAccount>,
+    pub prize_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -1334,33 +1369,36 @@ pub struct CreateTokenAuction<'info> {
         bump,
         address = derive_sign_pda!(),
     )]
-    pub sign_pda_account: Account<'info, ArciumSignerAccount>,
+    pub sign_pda_account: Box<Account<'info, ArciumSignerAccount>>,
 
     #[account(address = derive_mxe_pda!())]
     pub mxe_account: Box<Account<'info, MXEAccount>>,
 
     #[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-    /// CHECK: Address is fixed by the macro-derived PDA; Arcium runtime validates this account at execution time.
+    /// CHECK: mempool_account is validated by the address constraint and Arcium runtime.
     pub mempool_account: UncheckedAccount<'info>,
 
     #[account(mut, address = derive_execpool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-    /// CHECK: Address is fixed by the macro-derived PDA; Arcium runtime validates this account at execution time.
+    /// CHECK: executing_pool is validated by the address constraint and Arcium runtime.
     pub executing_pool: UncheckedAccount<'info>,
 
     #[account(mut, address = derive_comp_pda!(computation_offset, mxe_account, ErrorCode::ClusterNotSet))]
-    /// CHECK: Address is fixed by the macro-derived PDA; used only as the Arcium computation account.
+    /// CHECK: computation_account is validated by the address constraint and Arcium runtime.
     pub computation_account: UncheckedAccount<'info>,
 
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_INIT_AUCTION_STATE))]
     pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
 
     #[account(mut, address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    /// CHECK: cluster_account is validated by the address constraint and Arcium runtime.
     pub cluster_account: Box<Account<'info, Cluster>>,
 
     #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
+    /// CHECK: fee pool account is validated by the address constraint and Arcium runtime.
     pub pool_account: Box<Account<'info, FeePool>>,
 
     #[account(mut, address = ARCIUM_CLOCK_ACCOUNT_ADDRESS)]
+    /// CHECK: clock account is validated by the address constraint and Arcium runtime.
     pub clock_account: Box<Account<'info, ClockAccount>>,
 
     pub system_program: Program<'info, System>,
@@ -2236,10 +2274,10 @@ pub struct DetermineWinnerUniform<'info> {
         bump,
         address = derive_sign_pda!(),
     )]
-    pub sign_pda_account: Account<'info, ArciumSignerAccount>,
+    pub sign_pda_account: Box<Account<'info, ArciumSignerAccount>>,
 
     #[account(address = derive_mxe_pda!())]
-    pub mxe_account: Account<'info, MXEAccount>,
+    pub mxe_account: Box<Account<'info, MXEAccount>>,
 
     #[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
     /// CHECK: mempool_account is validated by the address constraint and Arcium runtime.
@@ -2254,16 +2292,19 @@ pub struct DetermineWinnerUniform<'info> {
     pub computation_account: UncheckedAccount<'info>,
 
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_DETERMINE_WINNER_UNIFORM))]
-    pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
+    pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
 
     #[account(mut, address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-    pub cluster_account: Account<'info, Cluster>,
+    /// CHECK: cluster_account is validated by the address constraint and Arcium runtime.
+    pub cluster_account: Box<Account<'info, Cluster>>,
 
     #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
-    pub pool_account: Account<'info, FeePool>,
+    /// CHECK: fee pool account is validated by the address constraint and Arcium runtime.
+    pub pool_account: Box<Account<'info, FeePool>>,
 
     #[account(mut, address = ARCIUM_CLOCK_ACCOUNT_ADDRESS)]
-    pub clock_account: Account<'info, ClockAccount>,
+    /// CHECK: clock account is validated by the address constraint and Arcium runtime.
+    pub clock_account: Box<Account<'info, ClockAccount>>,
 
     pub system_program: Program<'info, System>,
     pub arcium_program: Program<'info, Arcium>,
@@ -2306,10 +2347,10 @@ pub struct DetermineWinnerProRata<'info> {
         bump,
         address = derive_sign_pda!(),
     )]
-    pub sign_pda_account: Account<'info, ArciumSignerAccount>,
+    pub sign_pda_account: Box<Account<'info, ArciumSignerAccount>>,
 
     #[account(address = derive_mxe_pda!())]
-    pub mxe_account: Account<'info, MXEAccount>,
+    pub mxe_account: Box<Account<'info, MXEAccount>>,
 
     #[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
     /// CHECK: mempool_account is validated by the address constraint and Arcium runtime.
@@ -2324,16 +2365,19 @@ pub struct DetermineWinnerProRata<'info> {
     pub computation_account: UncheckedAccount<'info>,
 
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_DETERMINE_WINNER_PRO_RATA))]
-    pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
+    pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
 
     #[account(mut, address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-    pub cluster_account: Account<'info, Cluster>,
+    /// CHECK: cluster_account is validated by the address constraint and Arcium runtime.
+    pub cluster_account: Box<Account<'info, Cluster>>,
 
     #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
-    pub pool_account: Account<'info, FeePool>,
+    /// CHECK: fee pool account is validated by the address constraint and Arcium runtime.
+    pub pool_account: Box<Account<'info, FeePool>>,
 
     #[account(mut, address = ARCIUM_CLOCK_ACCOUNT_ADDRESS)]
-    pub clock_account: Account<'info, ClockAccount>,
+    /// CHECK: clock account is validated by the address constraint and Arcium runtime.
+    pub clock_account: Box<Account<'info, ClockAccount>>,
 
     pub system_program: Program<'info, System>,
     pub arcium_program: Program<'info, Arcium>,

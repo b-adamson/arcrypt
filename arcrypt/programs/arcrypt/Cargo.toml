@@ -1,12 +1,12 @@
 [package]
-name = "arcibid"
+name = "arcrypt"
 version = "0.1.0"
 description = "Created with Arcium & Anchor"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "arcibid"
+name = "arcrypt"
 
 [features]
 default = []
@@ -22,9 +22,9 @@ custom-panic = []
 [dependencies]
 anchor-lang = { version = "0.32.1", features = ["init-if-needed"] }
 anchor-spl = { version = "0.32.1" }
-arcium-client = { default-features = false, version = "0.9.2" }
-arcium-macros = "0.9.2"
-arcium-anchor = "0.9.2"
+arcium-client = { default-features = false, version = "0.9.7" }
+arcium-macros = "0.9.7"
+arcium-anchor = "0.9.7"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }

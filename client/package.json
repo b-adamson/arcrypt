@@ -9,7 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@arcibid/sdk": "file:../sdk",
+    "@arcrypt/sdk": "file:../sdk",
     "@arcium-hq/client": "^0.9.2",
     "@coral-xyz/anchor": "^0.32.1",
     "@ipld/dag-json": "^10.2.5",
@@ -31,7 +31,7 @@
     "@solana/wallet-adapter-wallets": "^0.19.37",
     "@solana/web3.js": "^1.98.4",
     "@solana/webcrypto-ed25519-polyfill": "^6.5.0",
-    "@umbra-privacy/sdk": "^2.0.3",
+    "@umbra-privacy/sdk": "^2.1.1",
     "@umbra-privacy/web-zk-prover": "^2.0.1",
     "@wallet-standard/react": "^1.0.1",
     "@wallet-standard/react-core": "^1.0.1",

@@ -14,17 +14,27 @@ export default function Footer() {
           <Link href="/docs#faq" className={linkStyle}>FAQ</Link>
         </div>
 
-        <div className={sectionStyle}>
-          <span className="text-white font-medium">Social</span>
-          <a
-            href="https://github.com/b-adamson/ARCIBID"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={linkStyle}
-          >
-            GitHub
-          </a>
-        </div>
+<div className={sectionStyle}>
+  <span className="text-white font-medium">Social</span>
+
+  <a
+    href="https://github.com/b-adamson/ARCIBID"
+    target="_blank"
+    rel="noopener noreferrer"
+    className={linkStyle}
+  >
+    GitHub
+  </a>
+
+  <a
+    href="https://t.me/+NGbdEEbM-AYyNDZk"
+    target="_blank"
+    rel="noopener noreferrer"
+    className={linkStyle}
+  >
+    Telegram
+  </a>
+</div>
 
         <div className={sectionStyle}>
           <span className="text-white font-medium">Ecosystem</span>
@@ -51,14 +61,14 @@ export default function Footer() {
           <Link href="/" className="block w-32 h-10 relative overflow-hidden">
             <Image
               src="/logo/GRADIENT_TRANSPARENT.png"
-              alt="ARCIBID logo"
+              alt="ARCRYPT logo"
               fill
               className="object-cover scale-110"
             />
           </Link>
 
           <span className="text-xs text-gray-500">
-            © {new Date().getFullYear()} ARCIBID
+            © {new Date().getFullYear()} ARCRYPT
           </span>
         </div>
       </div>

@@ -134,8 +134,7 @@ function toHttpGateway(uri: string): string {
   if (!uri) return "";
 
   const gateway =
-    (process.env.NEXT_PUBLIC_PINATA_GATEWAY_URL || "https://gateway.pinata.cloud/ipfs")
-      .replace(/\/$/, "");
+    (process.env.NEXT_PUBLIC_PINATA_GATEWAY_URL || "https://gateway.pinata.cloud/ipfs").replace(/\/$/, "");
 
   if (uri.startsWith("ipfs://")) {
     const path = uri.slice("ipfs://".length).replace(/^ipfs\/+/, "");
@@ -156,17 +155,15 @@ export default function AuctionResultCard({
   const [metadataError, setMetadataError] = useState<string | null>(null);
   const [metadataLoading, setMetadataLoading] = useState(false);
 
-
   const auctionType = getAuctionType(auctionData);
-  const status = enumKey(auctionData.status);
+  const status = enumKey(auctionData?.status);
   const multi = isMultiWinnerAuction(auctionType);
 
-  const assetKind = enumKey(auctionData.assetKind ?? auctionData.asset_kind);
-  const creator = auctionData.authority ? toBase58Maybe(auctionData.authority) : "";
+  const assetKind = enumKey(auctionData?.assetKind ?? auctionData?.asset_kind);
+  const creator = auctionData?.authority ? toBase58Maybe(auctionData.authority) : "";
 
   const singleWinner = winnerBase58 ?? getSingleWinner(auctionData);
-
-const multiWinners = getMultiWinners(auctionData);
+  const multiWinners = getMultiWinners(auctionData);
 
   const winnerBids = Array.isArray(auctionData?.winnerBids ?? auctionData?.winner_bids)
     ? (auctionData?.winnerBids ?? auctionData?.winner_bids).map(toStringMaybe)
@@ -184,9 +181,7 @@ const multiWinners = getMultiWinners(auctionData);
   const metadataHttpUri = toHttpGateway(metadataUri);
 
   const formattedPayment = formatSolAmount(paymentAmount ?? 0);
-  const formattedSaleAmount = isMetadataOnly(auctionData)
-    ? "Metadata only"
-    : formatTokenAmount(saleAmount ?? 0, tokenDecimals);
+  const formattedSaleAmount = isMetadataOnly(auctionData) ? "Metadata only" : formatTokenAmount(saleAmount ?? 0, tokenDecimals);
 
   useEffect(() => {
     let cancelled = false;
@@ -232,53 +227,49 @@ const multiWinners = getMultiWinners(auctionData);
       cancelled = true;
     };
   }, [metadataHttpUri]);
+
   if (!auctionData) return null;
 
   const metadataImage = metadata?.image ? toHttpGateway(metadata.image) : "";
 
   return (
-    <section className="mt-6 overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.04] p-6 shadow-[0_20px_70px_rgba(0,0,0,0.35)] backdrop-blur-xl">
-      <div className="mb-5 flex items-center justify-between gap-3">
+    <section className="mt-6 overflow-hidden border border-[var(--line)] bg-[var(--surface)] p-6 shadow-none">
+      <div className="mb-5 flex items-center justify-between gap-3 border-b border-[var(--line)] pb-4">
         <div>
-          <h3 className="text-lg font-semibold text-white">Auction status</h3>
-          <p className="mt-1 text-sm text-white/45">
+          <h3 className="text-lg font-semibold text-[var(--foreground)]">Auction status</h3>
+          <p className="mt-1 text-sm text-[var(--muted)]">
             Core auction status, settlement details, and pinned metadata
           </p>
         </div>
 
-        <span className="rounded-full border border-white/10 bg-black/25 px-3 py-1 text-xs text-white/60">
-          {auctionEnded ? "Ended" : "Live"}
-        </span>
+        <span className="badge badge-accent">{auctionEnded ? "Ended" : "Live"}</span>
       </div>
 
       {metadataLoading || metadata || metadataError ? (
-        <div className="mb-5 overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+        <div className="mb-5 overflow-hidden border border-[var(--line)] bg-[var(--background)]">
           <div className="grid gap-0 md:grid-cols-[220px_1fr]">
-            <div className="border-b border-white/10 md:border-b-0 md:border-r">
+            <div className="border-b border-[var(--line)] md:border-b-0 md:border-r">
               {metadataImage ? (
-                <img
-                  src={metadataImage}
-                  alt={metadata?.name || "Auction image"}
-                  className="h-full min-h-[220px] w-full object-cover"
-                />
+                <img src={metadataImage} alt={metadata?.name || "Auction image"} className="h-full min-h-[220px] w-full object-cover" />
               ) : (
-                <div className="flex min-h-[220px] items-center justify-center px-4 text-sm text-white/40">
+                <div className="flex min-h-[220px] items-center justify-center px-4 text-sm text-[var(--muted)]">
                   {metadataLoading ? "Loading metadata..." : "No image in metadata"}
                 </div>
               )}
             </div>
 
             <div className="p-5">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/35">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
                 Metadata
               </div>
 
-              <h4 className="mt-2 text-2xl font-semibold text-white">
+              <h4 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
                 {metadata?.name || (metadataLoading ? "Loading..." : "Untitled auction")}
               </h4>
 
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/65">
-                {metadata?.description || (metadataLoading ? "Fetching description from IPFS..." : "No description available.")}
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">
+                {metadata?.description ||
+                  (metadataLoading ? "Fetching description from IPFS..." : "No description available.")}
               </p>
 
               <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -294,9 +285,7 @@ const multiWinners = getMultiWinners(auctionData);
                 />
               </div>
 
-              {metadataError ? (
-                <p className="mt-3 text-sm text-red-300">{metadataError}</p>
-              ) : null}
+              {metadataError ? <p className="mt-3 text-sm text-[var(--accent)]">{metadataError}</p> : null}
             </div>
           </div>
         </div>
@@ -318,30 +307,20 @@ const multiWinners = getMultiWinners(auctionData);
 
         {!multi ? (
           <>
-<CopyableField
-  label="Winner"
-  value={
-    isWinner
-      ? "You are the winner"
-      : singleWinner
-        ? shorten(singleWinner)
-        : "Not resolved yet"
-  }
-  copyValue={singleWinner ?? ""}
-/>
             <CopyableField
-              label="Payment"
-              value={formattedPayment}
-              copyValue={toStringMaybe(paymentAmount ?? 0)}
+              label="Winner"
+              value={isWinner ? "You are the winner" : singleWinner ? shorten(singleWinner) : "Not resolved yet"}
+              copyValue={singleWinner ?? ""}
             />
+            <CopyableField label="Payment" value={formattedPayment} copyValue={toStringMaybe(paymentAmount ?? 0)} />
           </>
         ) : (
           <>
-  <CopyableField
-    label="Winners"
-    value={multiWinners.length ? multiWinners.map(shorten).join(", ") : "Not resolved yet"}
-    copyValue={multiWinners.join(", ")}
-  />
+            <CopyableField
+              label="Winners"
+              value={multiWinners.length ? multiWinners.map(shorten).join(", ") : "Not resolved yet"}
+              copyValue={multiWinners.join(", ")}
+            />
             <CopyableField
               label="Winner bids"
               value={winnerBids.length ? winnerBids.join(", ") : "Not available yet"}
@@ -380,21 +359,21 @@ function CopyableField({
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+    <div className="border border-[var(--line)] bg-[var(--background)] px-4 py-3">
       <div className="flex items-start justify-between gap-3">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/35">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
           {label}
         </div>
         <button
           type="button"
           onClick={handleCopy}
           disabled={!copyText}
-          className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-white/70 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+          className="btn px-2.5 py-1 text-[11px] font-medium disabled:cursor-not-allowed disabled:opacity-40"
         >
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
-      <div className="mt-1 break-words text-sm text-white/85">{value}</div>
+      <div className="mt-1 break-words text-sm text-[var(--foreground)]">{value}</div>
     </div>
   );
 }

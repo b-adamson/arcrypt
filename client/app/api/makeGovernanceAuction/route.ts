@@ -5,7 +5,7 @@ import {
   createSPLGovernanceProposal,
   type AssetKind,
   type AuctionType,
-} from "@arcibid/sdk";
+} from "@arcrypt/sdk";
 
 export const runtime = "nodejs";
 

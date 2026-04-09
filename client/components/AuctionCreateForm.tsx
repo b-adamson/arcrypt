@@ -3,19 +3,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import {
-  TOKEN_PROGRAM_ID,
-  TOKEN_2022_PROGRAM_ID,
-} from "@solana/spl-token";
-import { Metadata } from "@metaplex-foundation/mpl-token-metadata";
-import type { Connection, PublicKey } from "@solana/web3.js";
+import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
+import type { PublicKey } from "@solana/web3.js";
 import { PublicKey as PublicKeyCtor } from "@solana/web3.js";
 
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
-import {
-  mplTokenMetadata,
-  fetchDigitalAsset,
-} from "@metaplex-foundation/mpl-token-metadata";
+import { mplTokenMetadata, fetchDigitalAsset } from "@metaplex-foundation/mpl-token-metadata";
 import { publicKey as umiPublicKey } from "@metaplex-foundation/umi";
 
 type AuctionType = "FirstPrice" | "Vickrey" | "Uniform" | "ProRata";
@@ -31,18 +24,11 @@ type TokenOption = {
   image?: string;
 };
 
-const METADATA_PROGRAM_ID = new PublicKeyCtor(
-  "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
-);
-
+const METADATA_PROGRAM_ID = new PublicKeyCtor("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL ?? "https://api.devnet.solana.com";
-console.log(RPC_URL)
 
+const umi = createUmi(RPC_URL).use(mplTokenMetadata());
 
-
-const umi = createUmi(RPC_URL).use(
-  mplTokenMetadata()
-);
 const tokenMetadataCache = new Map<string, TokenOption>();
 const tokenMetadataInFlight = new Map<string, Promise<TokenOption>>();
 
@@ -75,8 +61,6 @@ function getMetadataPda(mint: string): PublicKey {
     METADATA_PROGRAM_ID
   )[0];
 }
-
-
 
 async function fetchJson(url?: string): Promise<any | null> {
   const clean = (url ?? "").replace(/\0/g, "").trim();
@@ -155,8 +139,6 @@ type Props = {
   onSubmit: () => void;
 };
 
-
-
 function Field({
   label,
   children,
@@ -168,20 +150,20 @@ function Field({
 }) {
   return (
     <div className="space-y-2">
-      <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-white/55">
+      <label className="block text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
         {label}
       </label>
       {children}
-      {hint ? <p className="text-xs text-white/40">{hint}</p> : null}
+      {hint ? <p className="text-xs text-[var(--muted)]/80">{hint}</p> : null}
     </div>
   );
 }
 
 const inputClass =
-  "h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm text-white outline-none " +
-  "placeholder:text-white/30 transition focus:border-fuchsia-400/50 focus:bg-white/[0.06] focus:ring-2 focus:ring-fuchsia-500/20";
+  "h-12 w-full border border-[var(--line)] bg-[var(--surface)] px-4 text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--muted)] transition " +
+  "focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]/40";
 
-const selectClass = inputClass + " appearance-none pr-10";
+const selectClass = `${inputClass} appearance-none pr-10`;
 
 export default function AuctionCreateForm({
   minBidSol,
@@ -219,102 +201,98 @@ export default function AuctionCreateForm({
   const [tokenSearch, setTokenSearch] = useState("");
   const [showTokenDropdown, setShowTokenDropdown] = useState(false);
 
-const loadedKeyRef = useRef<string>("");
-const debounceRef = useRef<number | null>(null);
-const abortRef = useRef<AbortController | null>(null);
-const ownerBase58 = publicKey?.toBase58() ?? "";
-const rpcEndpoint = connection.rpcEndpoint;
+  const loadedKeyRef = useRef<string>("");
+  const debounceRef = useRef<number | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const ownerBase58 = publicKey?.toBase58() ?? "";
+  const rpcEndpoint = connection.rpcEndpoint;
 
-useEffect(() => {
-  if (debounceRef.current !== null) {
-    window.clearTimeout(debounceRef.current);
-  }
-
-  debounceRef.current = window.setTimeout(() => {
-    const owner = publicKey;
-    if (!connected || !owner) {
-      abortRef.current?.abort();
-      loadedKeyRef.current = "";
-      setWalletTokens([]);
-      return;
-    }
-
-    const cacheKey = `${owner.toBase58()}@${rpcEndpoint}`;
-    if (loadedKeyRef.current === cacheKey) {
-      return;
-    }
-    loadedKeyRef.current = cacheKey;
-
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    const loadWalletTokens = async () => {
-      try {
-        const tokenProgramIds = [TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID];
-
-        const parsedSets = await Promise.all(
-          tokenProgramIds.map((programId) =>
-            connection.getParsedTokenAccountsByOwner(owner, { programId })
-          )
-        );
-
-        if (controller.signal.aborted) return;
-
-        const byMint = new Map<string, TokenOption & { rawAmount: bigint }>();
-
-        for (const parsed of parsedSets) {
-          for (const entry of parsed.value) {
-            const info = (entry.account.data as any)?.parsed?.info;
-            const mint = String(info?.mint ?? "");
-            const rawAmount = BigInt(String(info?.tokenAmount?.amount ?? "0"));
-            const decimals = Number(info?.tokenAmount?.decimals ?? 0);
-
-            if (!mint || rawAmount <= 0n) continue;
-
-            const existing = byMint.get(mint);
-            if (existing) {
-              existing.rawAmount += rawAmount;
-              existing.balance = formatTokenAmount(existing.rawAmount, existing.decimals);
-            } else {
-              byMint.set(mint, {
-                mint,
-                ata: entry.pubkey.toBase58(),
-                balance: formatTokenAmount(rawAmount, decimals),
-                decimals,
-                rawAmount,
-              });
-            }
-          }
-        }
-
-        const options = [...byMint.values()].map(({ rawAmount, ...rest }) => rest);
-
-        const enriched = await Promise.all(
-          options.slice(0, 8).map((opt) => enrichTokenOption(opt))
-        );
-
-        if (!controller.signal.aborted) {
-          setWalletTokens(enriched);
-        }
-      } catch {
-        if (!controller.signal.aborted) {
-          setWalletTokens([]);
-        }
-      }
-    };
-
-    void loadWalletTokens();
-  }, 250);
-
-  return () => {
+  useEffect(() => {
     if (debounceRef.current !== null) {
       window.clearTimeout(debounceRef.current);
-      debounceRef.current = null;
     }
-    abortRef.current?.abort();
-  };
-}, [connected, ownerBase58, rpcEndpoint, connection]);
+
+    debounceRef.current = window.setTimeout(() => {
+      const owner = publicKey;
+      if (!connected || !owner) {
+        abortRef.current?.abort();
+        loadedKeyRef.current = "";
+        setWalletTokens([]);
+        return;
+      }
+
+      const cacheKey = `${owner.toBase58()}@${rpcEndpoint}`;
+      if (loadedKeyRef.current === cacheKey) {
+        return;
+      }
+      loadedKeyRef.current = cacheKey;
+
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      const loadWalletTokens = async () => {
+        try {
+          const tokenProgramIds = [TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID];
+
+          const parsedSets = await Promise.all(
+            tokenProgramIds.map((programId) => connection.getParsedTokenAccountsByOwner(owner, { programId }))
+          );
+
+          if (controller.signal.aborted) return;
+
+          const byMint = new Map<string, TokenOption & { rawAmount: bigint }>();
+
+          for (const parsed of parsedSets) {
+            for (const entry of parsed.value) {
+              const info = (entry.account.data as any)?.parsed?.info;
+              const mint = String(info?.mint ?? "");
+              const rawAmount = BigInt(String(info?.tokenAmount?.amount ?? "0"));
+              const decimals = Number(info?.tokenAmount?.decimals ?? 0);
+
+              if (!mint || rawAmount <= 0n) continue;
+
+              const existing = byMint.get(mint);
+              if (existing) {
+                existing.rawAmount += rawAmount;
+                existing.balance = formatTokenAmount(existing.rawAmount, existing.decimals);
+              } else {
+                byMint.set(mint, {
+                  mint,
+                  ata: entry.pubkey.toBase58(),
+                  balance: formatTokenAmount(rawAmount, decimals),
+                  decimals,
+                  rawAmount,
+                });
+              }
+            }
+          }
+
+          const options = [...byMint.values()].map(({ rawAmount, ...rest }) => rest);
+
+          const enriched = await Promise.all(options.slice(0, 8).map((opt) => enrichTokenOption(opt)));
+
+          if (!controller.signal.aborted) {
+            setWalletTokens(enriched);
+          }
+        } catch {
+          if (!controller.signal.aborted) {
+            setWalletTokens([]);
+          }
+        }
+      };
+
+      void loadWalletTokens();
+    }, 250);
+
+    return () => {
+      if (debounceRef.current !== null) {
+        window.clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+      abortRef.current?.abort();
+    };
+  }, [connected, ownerBase58, rpcEndpoint, connection, publicKey]);
 
   useEffect(() => {
     if (!metadataImageFile) {
@@ -328,7 +306,6 @@ useEffect(() => {
     return () => URL.revokeObjectURL(url);
   }, [metadataImageFile]);
 
- 
   const selectedToken = useMemo(() => {
     const value = tokenMint.trim();
     if (!value) return null;
@@ -353,37 +330,33 @@ useEffect(() => {
 
   function pickToken(option: TokenOption) {
     onTokenMintChange(option.mint);
-    setTokenSearch(
-      option.name ? `${option.name} ${option.symbol ?? ""}`.trim() : option.mint
-    );
+    setTokenSearch(option.name ? `${option.name} ${option.symbol ?? ""}`.trim() : option.mint);
     setShowTokenDropdown(false);
   }
 
   return (
-    <section className="relative overflow-hidden rounded-[28px] border border-white/10 bg-gradient-to-br from-fuchsia-500/10 via-white/[0.03] to-cyan-400/5 p-6 shadow-[0_30px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl md:p-8">
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-fuchsia-400/70 to-transparent" />
-      <div className="absolute -right-24 -top-20 h-56 w-56 rounded-full bg-fuchsia-500/10 blur-3xl" />
-      <div className="absolute -left-24 bottom-0 h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
+    <section className="relative overflow-hidden border border-[var(--line)] bg-[var(--surface)] p-6 shadow-none md:p-8">
+      <div className="absolute inset-x-0 top-0 h-px bg-[var(--accent)]" />
 
       <div className="relative">
         <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <div className="mb-2 inline-flex rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">
+            <div className="mb-2 inline-flex border border-[var(--line)] bg-[var(--background)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
               Create auction
             </div>
-            <h3 className="text-2xl font-semibold tracking-tight text-white md:text-3xl">
+            <h3 className="text-2xl font-semibold tracking-tight text-[var(--foreground)] md:text-3xl">
               Launch a sealed auction
             </h3>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/55">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
               Configure the terms, asset mode, metadata, duration, and settlement type from a single panel.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-white/60">
-            <span className="block text-[11px] uppercase tracking-[0.18em] text-white/35">
+          <div className="border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--muted)]">
+            <span className="block text-[11px] uppercase tracking-[0.22em] text-[var(--muted)]/70">
               Auction PDA
             </span>
-            <span className="mt-1 block font-mono text-xs text-white/85">
+            <span className="mt-1 block font-mono text-xs text-[var(--foreground)]">
               {auctionPkStr ?? "<none>"}
             </span>
           </div>
@@ -391,15 +364,15 @@ useEffect(() => {
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
           <Field label="Asset type" hint="Choose SPL token, NFT, or metadata-only mode.">
-<select
-  value={assetKind}
-  onChange={(e) => onAssetKindChange(e.target.value as AssetKind)}
-  className={`${selectClass} bg-black text-white`}
->
-  <option value="Fungible" className="bg-black text-white">SPL Token</option>
-  <option value="Nft" className="bg-black text-white">NFT</option>
-  <option value="MetadataOnly" className="bg-black text-white">Metadata Only</option>
-</select>
+            <select
+              value={assetKind}
+              onChange={(e) => onAssetKindChange(e.target.value as AssetKind)}
+              className={selectClass}
+            >
+              <option value="Fungible">SPL Token</option>
+              <option value="Nft">NFT</option>
+              <option value="MetadataOnly">Metadata Only</option>
+            </select>
           </Field>
 
           <Field label="Name" hint="Optional. Saved into JSON metadata if provided.">
@@ -425,19 +398,15 @@ useEffect(() => {
               type="file"
               accept="image/*"
               onChange={(e) => onMetadataImageChange(e.target.files?.[0] ?? null)}
-              className="block h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white outline-none file:mr-4 file:rounded-full file:border-0 file:bg-white/10 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white file:transition hover:file:bg-white/15 focus:border-fuchsia-400/50 focus:bg-white/[0.06] focus:ring-2 focus:ring-fuchsia-500/20"
+              className="block h-12 w-full border border-[var(--line)] bg-[var(--surface)] px-4 py-2 text-sm text-[var(--foreground)] outline-none file:mr-4 file:border-0 file:bg-[var(--background)] file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-[var(--foreground)] hover:file:bg-[var(--surface-2)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]/40"
             />
 
             {metadataImageFile ? (
-              <div className="mt-3 overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+              <div className="mt-3 overflow-hidden border border-[var(--line)] bg-[var(--background)]">
                 {previewUrl ? (
-                  <img
-                    src={previewUrl}
-                    alt={metadataImageFile.name}
-                    className="h-44 w-full object-cover"
-                  />
+                  <img src={previewUrl} alt={metadataImageFile.name} className="h-44 w-full object-cover" />
                 ) : null}
-                <div className="border-t border-white/10 px-4 py-3 text-sm text-white/70">
+                <div className="border-t border-[var(--line)] px-4 py-3 text-sm text-[var(--muted)]">
                   {metadataImageFile.name}
                 </div>
               </div>
@@ -470,12 +439,7 @@ useEffect(() => {
             </Field>
           ) : assetKind === "Nft" ? (
             <Field label="Prize amount" hint="NFT mode is fixed to exactly 1.">
-              <input
-                type="text"
-                value="1"
-                disabled
-                className={`${inputClass} cursor-not-allowed opacity-60`}
-              />
+              <input type="text" value="1" disabled className={`${inputClass} cursor-not-allowed opacity-60`} />
             </Field>
           ) : null}
 
@@ -503,8 +467,8 @@ useEffect(() => {
                 />
 
                 {showTokenDropdown && !lockTokenMint ? (
-                  <div className="absolute z-20 mt-2 max-h-80 w-full overflow-auto rounded-2xl border border-white/10 bg-[#0b0b12] shadow-2xl">
-                    <div className="border-b border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-white/35">
+                  <div className="absolute z-20 mt-2 max-h-80 w-full overflow-auto border border-[var(--line)] bg-[var(--background)] shadow-none">
+                    <div className="border-b border-[var(--line)] px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-[var(--muted)]/70">
                       Wallet suggestions
                     </div>
 
@@ -517,46 +481,44 @@ useEffect(() => {
                             type="button"
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={() => pickToken(token)}
-                            className={`flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-white/5 ${
-                              isSelected ? "bg-white/[0.06]" : ""
+                            className={`flex w-full items-center gap-3 border-b border-[var(--line)] px-4 py-3 text-left transition hover:bg-[var(--surface-2)] ${
+                              isSelected ? "bg-[var(--surface-2)]" : "bg-[var(--background)]"
                             }`}
                           >
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.04]">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden border border-[var(--line)] bg-[var(--surface)]">
                               {token.image ? (
                                 <img src={token.image} alt={token.name ?? token.mint} className="h-full w-full object-cover" />
                               ) : (
-                                <span className="text-[10px] text-white/45">TOK</span>
+                                <span className="text-[10px] text-[var(--muted)]">TOK</span>
                               )}
                             </div>
 
                             <div className="min-w-0 flex-1">
-                              <div className="truncate text-sm font-medium text-white">
+                              <div className="truncate text-sm font-medium text-[var(--foreground)]">
                                 {token.name ?? token.symbol ?? "Unknown token"}
                               </div>
-                              <div className="mt-0.5 truncate text-xs text-white/45">
+                              <div className="mt-0.5 truncate text-xs text-[var(--muted)]">
                                 {shorten(token.mint, 8, 6)} · ATA {shorten(token.ata, 8, 6)}
                               </div>
                             </div>
 
-                            <div className="shrink-0 text-right text-xs text-white/55">
+                            <div className="shrink-0 text-right text-xs text-[var(--muted)]">
                               <div>{token.balance}</div>
                             </div>
                           </button>
                         );
                       })
                     ) : (
-                      <div className="px-4 py-4 text-sm text-white/45">
-                        No wallet tokens matched.
-                      </div>
+                      <div className="px-4 py-4 text-sm text-[var(--muted)]">No wallet tokens matched.</div>
                     )}
                   </div>
                 ) : null}
               </div>
 
               {selectedToken ? (
-                <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-3">
+                <div className="mt-3 border border-[var(--line)] bg-[var(--background)] p-3">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.04]">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden border border-[var(--line)] bg-[var(--surface)]">
                       {selectedToken.image ? (
                         <img
                           src={selectedToken.image}
@@ -564,14 +526,14 @@ useEffect(() => {
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        <span className="text-[10px] text-white/45">TOK</span>
+                        <span className="text-[10px] text-[var(--muted)]">TOK</span>
                       )}
                     </div>
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-medium text-white">
+                      <div className="truncate text-sm font-medium text-[var(--foreground)]">
                         {selectedToken.name ?? selectedToken.symbol ?? "Selected token"}
                       </div>
-                      <div className="truncate text-xs text-white/45">
+                      <div className="truncate text-xs text-[var(--muted)]">
                         Mint {shorten(selectedToken.mint, 8, 6)} · ATA {shorten(selectedToken.ata, 8, 6)}
                       </div>
                     </div>
@@ -581,75 +543,71 @@ useEffect(() => {
             </Field>
           ) : null}
 
-<Field label="Duration" hint="Set auction length (days, hours, minutes, seconds).">
-  <div className="flex w-full gap-3">
-    {[
-      { label: "d", value: Math.floor(durationSecs / 86400), max: undefined },
-      { label: "h", value: Math.floor((durationSecs % 86400) / 3600), max: 23 },
-      { label: "m", value: Math.floor((durationSecs % 3600) / 60), max: 59 },
-      { label: "s", value: durationSecs % 60, max: 59 },
-    ].map((unit, i) => (
-      <div key={unit.label} className="flex flex-1 items-center gap-1">
-        <input
-          type="number"
-          min={0}
-          max={unit.max}
-          value={unit.value === 0 ? "" : unit.value}
-          onChange={(e) => {
-            const val = Number(e.target.value || 0);
+          <Field label="Duration" hint="Set auction length (days, hours, minutes, seconds).">
+            <div className="flex w-full gap-3">
+              {[
+                { label: "d", value: Math.floor(durationSecs / 86400), max: undefined },
+                { label: "h", value: Math.floor((durationSecs % 86400) / 3600), max: 23 },
+                { label: "m", value: Math.floor((durationSecs % 3600) / 60), max: 59 },
+                { label: "s", value: durationSecs % 60, max: 59 },
+              ].map((unit, i) => (
+                <div key={unit.label} className="flex flex-1 items-center gap-1">
+                  <input
+                    type="number"
+                    min={0}
+                    max={unit.max}
+                    value={unit.value === 0 ? "" : unit.value}
+                    onChange={(e) => {
+                      const val = Number(e.target.value || 0);
 
-            const days = Math.floor(durationSecs / 86400);
-            const hours = Math.floor((durationSecs % 86400) / 3600);
-            const mins = Math.floor((durationSecs % 3600) / 60);
-            const secs = durationSecs % 60;
+                      const days = Math.floor(durationSecs / 86400);
+                      const hours = Math.floor((durationSecs % 86400) / 3600);
+                      const mins = Math.floor((durationSecs % 3600) / 60);
+                      const secs = durationSecs % 60;
 
-            const next =
-              i === 0
-                ? val * 86400 + (durationSecs % 86400)
-                : i === 1
-                ? days * 86400 + val * 3600 + (durationSecs % 3600)
-                : i === 2
-                ? days * 86400 + hours * 3600 + val * 60 + secs
-                : days * 86400 + hours * 3600 + mins * 60 + val;
+                      const next =
+                        i === 0
+                          ? val * 86400 + (durationSecs % 86400)
+                          : i === 1
+                          ? days * 86400 + val * 3600 + (durationSecs % 3600)
+                          : i === 2
+                          ? days * 86400 + hours * 3600 + val * 60 + secs
+                          : days * 86400 + hours * 3600 + mins * 60 + val;
 
-            onDurationSecsChange(next);
-          }}
-          className={`${inputClass} bg-black text-white w-full`}
-        />
-        <span className="text-white/60 text-sm shrink-0">{unit.label}</span>
-      </div>
-    ))}
-  </div>
-</Field>
+                      onDurationSecsChange(next);
+                    }}
+                    className={`${inputClass} w-full bg-[var(--surface)]`}
+                  />
+                  <span className="shrink-0 text-sm text-[var(--muted)]">{unit.label}</span>
+                </div>
+              ))}
+            </div>
+          </Field>
         </div>
 
         <div className="mt-4 grid gap-4 md:grid-cols-[1.2fr_0.8fr_auto] md:items-end">
-<Field label="Auction type" hint="Uniform and Pro Rata are hidden for NFT / metadata-only.">
-  <select
-    value={auctionType}
-    onChange={(e) => onAuctionTypeChange(e.target.value as AuctionType)}
-    className={`${selectClass} bg-black text-white`}
-  >
-    {allowedTypes.map((type) => (
-      <option key={type} value={type} className="bg-black text-white">
-        {type}
-      </option>
-    ))}
-  </select>
-</Field>
+          <Field label="Auction type" hint="Uniform and Pro Rata are hidden for NFT / metadata-only.">
+            <select
+              value={auctionType}
+              onChange={(e) => onAuctionTypeChange(e.target.value as AuctionType)}
+              className={selectClass}
+            >
+              {allowedTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </Field>
 
-          <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-white/35">Status</p>
-            <p className="mt-1 text-sm text-white/70">
+          <div className="border border-[var(--line)] bg-[var(--background)] px-4 py-3">
+            <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--muted)]/70">Status</p>
+            <p className="mt-1 text-sm text-[var(--foreground)]">
               {isDisabled ? "Connect wallet to continue." : "Ready to create."}
             </p>
           </div>
 
-          <button
-            onClick={onSubmit}
-            disabled={isDisabled}
-            className="inline-flex h-12 items-center justify-center rounded-2xl bg-gradient-to-r from-fuchsia-500 to-cyan-400 px-5 text-sm font-semibold text-black shadow-[0_10px_30px_rgba(217,70,239,0.22)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          <button onClick={onSubmit} disabled={isDisabled} className="btn btn-primary h-12 px-5 text-sm font-semibold">
             Make Auction
           </button>
         </div>
@@ -658,7 +616,7 @@ useEffect(() => {
           <div className="mt-5">
             <Link
               href={`/bid?auctionPk=${encodeURIComponent(auctionPkStr)}`}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-white/75 transition hover:border-fuchsia-400/40 hover:bg-white/[0.06]"
+              className="btn surface-hover inline-flex items-center gap-2 px-4 py-2 text-sm text-[var(--foreground)]"
             >
               Open this auction’s bid page
               <span aria-hidden>→</span>

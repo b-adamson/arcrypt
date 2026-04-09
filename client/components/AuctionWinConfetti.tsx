@@ -6,7 +6,7 @@ type Props = {
   show: boolean;
 };
 
-const COLORS = ["#ec4899", "#38bdf8", "#8b5cf6", "#f5f7fb", "#d946ef"];
+const COLORS = ["#00e676", "#f5f7fb", "#b7f7d0", "#7CFFB0", "#d9ffe8"];
 
 function rand(min: number, max: number) {
   return Math.random() * (max - min) + min;
@@ -16,7 +16,7 @@ export default function AuctionWinConfetti({ show }: Props) {
   const pieces = useMemo(() => {
     if (!show) return [];
 
-    return Array.from({ length: 260 }, (_, i) => {
+    return Array.from({ length: 220 }, (_, i) => {
       const color = COLORS[i % COLORS.length];
       const left = rand(-10, 110);
       const top = rand(-30, -6);
@@ -30,7 +30,7 @@ export default function AuctionWinConfetti({ show }: Props) {
       const drift = rand(-34, 34);
       const spin = `${rand(700, 2200)}deg`;
 
-      const borderRadius = Math.random() > 0.45 ? "999px" : "3px";
+      const borderRadius = Math.random() > 0.45 ? "999px" : "0px";
 
       return {
         id: i,

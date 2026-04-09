@@ -95,7 +95,7 @@ export default function AuctionClient() {
       "Create sealed auction for treasury tokens"
     );
     const [proposalDescription, setProposalDescription] = useState(
-      "Proposal to create a sealed-bid auction for DAO treasury tokens with ARCIBID."
+      "Proposal to create a sealed-bid auction for DAO treasury tokens with ARCRYPT."
     );
     const [realmAddress, setRealmAddress] = useState("");
     const [governanceAddress, setGovernanceAddress] = useState("");

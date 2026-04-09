@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
-import { Arcibid } from "../target/types/arcibid";
+import { Arcrypt } from "../target/types/arcrypt";
 import { randomBytes } from "crypto";
 import {
   awaitComputationFinalization,
@@ -27,11 +27,11 @@ import * as fs from "fs";
 import * as os from "os";
 import { expect } from "chai";
 
-describe("Arcibid", () => {
+describe("Arcrypt", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
   const program = anchor.workspace
-    .Arcibid as Program<Arcibid>;
+    .Arcrypt as Program<Arcrypt>;
   const provider = anchor.getProvider();
   const arciumProgram = getArciumProgram(provider as anchor.AnchorProvider);
 
@@ -127,7 +127,7 @@ describe("Arcibid", () => {
   });
 
   async function initAddTogetherCompDef(
-    program: Program<Arcibid>,
+    program: Program<Arcrypt>,
     owner: anchor.web3.Keypair,
   ): Promise<string> {
     const baseSeedCompDefAcc = getArciumAccountBaseSeed(

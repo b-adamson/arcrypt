@@ -1,371 +1,466 @@
-"use client";
+// "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import { type Wallet, type WalletAccount } from "@wallet-standard/core";
-import { useWallets } from "@wallet-standard/react";
-import {
-  createSignerFromWalletAccount,
-  getUmbraClient,
-  getUserAccountQuerierFunction,
-  getUserRegistrationFunction,
-} from "@umbra-privacy/sdk";
-import { isRegistrationError } from "@umbra-privacy/sdk/errors";
-import { getUserRegistrationProver } from "@umbra-privacy/web-zk-prover";
+// import React, { useEffect, useMemo, useState } from "react";
+// import { Keypair, VersionedTransaction } from "@solana/web3.js";
+// import {
+//   getUmbraClient,
+//   getUserAccountQuerierFunction,
+//   getUserRegistrationFunction,
+// } from "@umbra-privacy/sdk";
+// import { isRegistrationError } from "@umbra-privacy/sdk/errors";
+// import { getUserRegistrationProver } from "@umbra-privacy/web-zk-prover";
 
-const registrationProver = getUserRegistrationProver();
+// const registrationProver = getUserRegistrationProver();
+// const STORAGE_KEY = "umbra:test:secret-key";
 
-function deriveWsUrl(rpcUrl: string, explicitWsUrl?: string) {
-  if (explicitWsUrl) return explicitWsUrl;
-  if (rpcUrl.startsWith("https://")) return rpcUrl.replace("https://", "wss://");
-  if (rpcUrl.startsWith("http://")) return rpcUrl.replace("http://", "ws://");
-  return rpcUrl;
-}
+// type RegistrationState =
+//   | { state: "non_existent" }
+//   | {
+//       state: "exists";
+//       data: {
+//         isInitialised: boolean;
+//         isUserAccountX25519KeyRegistered: boolean;
+//         isUserCommitmentRegistered: boolean;
+//         isActiveForAnonymousUsage: boolean;
+//       };
+//     }
+//   | null;
 
-type RegistrationState =
-  | { state: "non_existent" }
-  | {
-      state: "exists";
-      data: {
-        isInitialised: boolean;
-        isUserAccountX25519KeyRegistered: boolean;
-        isUserCommitmentRegistered: boolean;
-        isActiveForAnonymousUsage: boolean;
-      };
-    }
-  | null;
+// type UmbraClient = Awaited<ReturnType<typeof getUmbraClient>>;
 
-type UmbraClient = Awaited<ReturnType<typeof getUmbraClient>>;
+// type SignedMessage = {
+//   message: Uint8Array;
+//   signature: Uint8Array;
+//   address: string;
+// };
 
-export default function UmbraPanel() {
-  const wallets = useWallets();
+// type LocalUmbraSigner = {
+//   readonly address: string;
+//   signTransaction(tx: any): Promise<any>;
+//   signTransactions(txs: readonly any[]): Promise<any[]>;
+//   signMessage(message: Uint8Array): Promise<SignedMessage>;
+// };
 
-  const [client, setClient] = useState<UmbraClient | null>(null);
-  const [status, setStatus] = useState("Connect wallet to init Umbra");
-  const [registration, setRegistration] = useState<RegistrationState>(null);
-  const [clientReady, setClientReady] = useState(false);
-  const [registering, setRegistering] = useState(false);
+// type LocalSignerMeta = {
+//   address: string;
+//   secretKeyJson: string;
+// };
 
-  const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL!;
-  const rpcWsUrl = process.env.NEXT_PUBLIC_RPC_WS_URL;
+// function deriveWsUrl(rpcUrl: string, explicitWsUrl?: string) {
+//   if (explicitWsUrl) return explicitWsUrl;
+//   if (rpcUrl.startsWith("https://")) return rpcUrl.replace("https://", "wss://");
+//   if (rpcUrl.startsWith("http://")) return rpcUrl.replace("http://", "ws://");
+//   return rpcUrl;
+// }
 
-  const rpcSubscriptionsUrl = useMemo(
-    () => deriveWsUrl(rpcUrl, rpcWsUrl),
-    [rpcUrl, rpcWsUrl]
-  );
+// function bytesToJsonArray(bytes: Uint8Array): string {
+//   return JSON.stringify(Array.from(bytes));
+// }
 
-  const selection = useMemo(() => {
-    const uiWallet = wallets.find((w: any) => w.name === "Phantom");
-    const uiAccount = uiWallet?.accounts?.[0];
-    if (!uiWallet || !uiAccount) return null;
-    return { uiWallet, uiAccount };
-  }, [wallets]);
+// function jsonArrayToBytes(value: string): Uint8Array {
+//   const parsed = JSON.parse(value);
+//   if (!Array.isArray(parsed)) {
+//     throw new Error("Key material must be a JSON array of numbers");
+//   }
 
-  const signer = useMemo(() => {
-    if (!selection) return null;
+//   const bytes = new Uint8Array(parsed.length);
+//   for (let i = 0; i < parsed.length; i += 1) {
+//     const n = parsed[i];
+//     if (typeof n !== "number" || !Number.isInteger(n) || n < 0 || n > 255) {
+//       throw new Error("Key material must contain only integers from 0 to 255");
+//     }
+//     bytes[i] = n;
+//   }
 
-    console.log("[Umbra] WALLET STANDARD WALLET", {
-      name: selection.uiWallet.name,
-      features: selection.uiWallet.features,
-    });
+//   if (bytes.length !== 32 && bytes.length !== 64) {
+//     throw new Error("Expected a 32-byte seed or 64-byte secret-key array");
+//   }
 
-    console.log("[Umbra] WALLET STANDARD ACCOUNT", {
-      address: selection.uiAccount.address,
-      chains: selection.uiAccount.chains,
-    });
+//   return bytes;
+// }
 
-    return createSignerFromWalletAccount(
-      selection.uiWallet as unknown as Wallet,
-      selection.uiAccount as unknown as WalletAccount
-    );
-  }, [selection]);
+// function normalizeSeed(bytes: Uint8Array): Uint8Array {
+//   if (bytes.length === 32) return bytes;
+//   if (bytes.length === 64) return bytes.slice(0, 32);
+//   throw new Error("Expected a 32-byte seed or 64-byte secret-key array");
+// }
 
-  useEffect(() => {
-    let cancelled = false;
+// function randomSeed32(): Uint8Array {
+//   const seed = new Uint8Array(32);
+//   crypto.getRandomValues(seed);
+//   return seed;
+// }
 
-    async function init() {
-      setClient(null);
-      setClientReady(false);
-      setRegistration(null);
+// async function loadTweetNacl() {
+//   const mod = await import("tweetnacl");
+//   return (mod as any).default ?? mod;
+// }
 
-      if (!signer) {
-        setStatus("Wallet not ready");
-        return;
-      }
+// function createLocalUmbraSigner(seedOrSecretKey: Uint8Array): LocalUmbraSigner {
+//   const seed = normalizeSeed(seedOrSecretKey);
+//   const keypair = Keypair.fromSeed(seed);
+//   const address = keypair.publicKey.toBase58();
 
-      try {
-        setStatus("Creating Umbra client...");
+//   async function signOneTransaction(tx: any) {
+//     // Prefer a native sign() method when present, otherwise try to round-trip through
+//     // wire bytes. Umbra passes a versioned transaction object here.
+//     if (tx && typeof tx.sign === "function") {
+//       tx.sign([keypair]);
+//       return tx;
+//     }
 
-        const c = await getUmbraClient({
-          signer,
-          network: "mainnet",
-          rpcUrl,
-          rpcSubscriptionsUrl,
-          indexerApiEndpoint: "https://indexer.api.umbraprivacy.com",
-          deferMasterSeedSignature: true,
-        });
+//     const wireBytes: Uint8Array | null =
+//       tx instanceof Uint8Array
+//         ? tx
+//         : typeof tx?.serialize === "function"
+//         ? tx.serialize()
+//         : null;
 
-        if (cancelled) return;
+//     if (!wireBytes) {
+//       throw new Error("Unsupported transaction object from Umbra SDK");
+//     }
 
-        console.log("[Umbra] CLIENT FULL", {
-          signer: c.signer?.address,
-          network: c.network,
-          hasSeedFn: !!c.masterSeed?.getMasterSeed,
-          providers: {
-            accountInfo: !!c.accountInfoProvider,
-            blockhash: !!c.blockhashProvider,
-            txForwarder: !!c.transactionForwarder,
-          },
-        });
+//     const signed = VersionedTransaction.deserialize(wireBytes);
+//     signed.sign([keypair]);
+//     return signed;
+//   }
 
-        setClient(c);
-        setClientReady(true);
-        setStatus("Umbra client ready");
-      } catch (e: any) {
-        if (cancelled) return;
-        setStatus("Failed: " + (e?.message ?? String(e)));
-      }
-    }
+//   return {
+//     address,
+//     async signTransaction(tx: any) {
+//       return signOneTransaction(tx);
+//     },
+//     async signTransactions(txs: readonly any[]) {
+//       return Promise.all(txs.map((tx) => signOneTransaction(tx)));
+//     },
+//     async signMessage(message: Uint8Array): Promise<SignedMessage> {
+//       const nacl = await loadTweetNacl();
+//       const signature = nacl.sign.detached(message, keypair.secretKey);
+//       return {
+//         message,
+//         signature: new Uint8Array(signature),
+//         address,
+//       };
+//     },
+//   };
+// }
 
-    void init();
+// export default function UmbraPanel() {
+//   const [mounted, setMounted] = useState(false);
+//   const [signer, setSigner] = useState<LocalUmbraSigner | null>(null);
+//   const [signerMeta, setSignerMeta] = useState<LocalSignerMeta | null>(null);
+//   const [secretKeyInput, setSecretKeyInput] = useState("");
 
-    return () => {
-      cancelled = true;
-    };
-  }, [signer, rpcUrl, rpcSubscriptionsUrl]);
+//   const [client, setClient] = useState<UmbraClient | null>(null);
+//   const [registration, setRegistration] = useState<RegistrationState>(null);
+//   const [status, setStatus] = useState("Generate or import a local test key");
+//   const [registering, setRegistering] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
+//   const rpcUrl =
+//     process.env.NEXT_PUBLIC_RPC_URL ??
+//     "https://devnet.helius-rpc.com/?api-key=2264d5db-8075-444b-ac27-a0e614a053d3";
+//   const rpcWsUrl = process.env.NEXT_PUBLIC_RPC_WS_URL;
 
-    async function loadRegistration() {
-      if (!client) {
-        setRegistration(null);
-        return;
-      }
+//   const rpcSubscriptionsUrl = useMemo(
+//     () => deriveWsUrl(rpcUrl, rpcWsUrl),
+//     [rpcUrl, rpcWsUrl]
+//   );
 
-      try {
-        setStatus("Checking Umbra registration...");
-        const query = getUserAccountQuerierFunction({ client });
-        const result = await query(client.signer.address);
+//   useEffect(() => {
+//     setMounted(true);
+//   }, []);
 
-        if (cancelled) return;
+//   async function hydrateSignerFromBytes(bytes: Uint8Array) {
+//     const nextSigner = createLocalUmbraSigner(bytes);
+//     const seedOrSecretKey = normalizeSeed(bytes).length === 32 && bytes.length === 64
+//       ? bytes
+//       : bytes;
 
-        console.log("[Umbra] RAW REGISTRATION RESULT", result);
+//     const nextMeta = {
+//       address: String(nextSigner.address),
+//       secretKeyJson: bytesToJsonArray(seedOrSecretKey),
+//     } satisfies LocalSignerMeta;
 
-        setRegistration(result as RegistrationState);
+//     setSigner(nextSigner);
+//     setSignerMeta(nextMeta);
+//     setSecretKeyInput(nextMeta.secretKeyJson);
+//     localStorage.setItem(STORAGE_KEY, nextMeta.secretKeyJson);
+//     setStatus(`Local test key loaded: ${nextMeta.address}`);
+//   }
 
-        if (result.state === "non_existent") {
-          setStatus("Umbra client ready — account not registered yet");
-          return;
-        }
+//   async function generateNewSigner() {
+//     const seed = randomSeed32();
+//     const nextSigner = createLocalUmbraSigner(seed);
+//     const secretKey = Keypair.fromSeed(seed).secretKey;
+//     const nextMeta = {
+//       address: String(nextSigner.address),
+//       secretKeyJson: bytesToJsonArray(secretKey),
+//     } satisfies LocalSignerMeta;
 
-        console.log("[Umbra] REGISTRATION DETAILS", {
-          isInitialised: result.data.isInitialised,
-          hasX25519: result.data.isUserAccountX25519KeyRegistered,
-          hasCommitment: result.data.isUserCommitmentRegistered,
-          isAnonymousActive: result.data.isActiveForAnonymousUsage,
-        });
+//     setSigner(nextSigner);
+//     setSignerMeta(nextMeta);
+//     setSecretKeyInput(nextMeta.secretKeyJson);
+//     localStorage.setItem(STORAGE_KEY, nextMeta.secretKeyJson);
+//     setStatus(`Generated local test key: ${nextMeta.address}`);
+//   }
 
-        const fullyRegistered =
-          result.data.isUserAccountX25519KeyRegistered &&
-          result.data.isUserCommitmentRegistered;
+//   async function importSigner() {
+//     try {
+//       const bytes = jsonArrayToBytes(secretKeyInput);
+//       await hydrateSignerFromBytes(bytes);
+//     } catch (e: any) {
+//       setStatus(`Import failed: ${e?.message ?? "invalid key"}`);
+//     }
+//   }
 
-        setStatus(
-          fullyRegistered
-            ? "Umbra account ready"
-            : "Umbra account partially registered"
-        );
-      } catch (e: any) {
-        if (cancelled) return;
-        setStatus("Registration check failed: " + (e?.message ?? String(e)));
-      }
-    }
+//   function clearSigner() {
+//     localStorage.removeItem(STORAGE_KEY);
+//     setSigner(null);
+//     setSignerMeta(null);
+//     setSecretKeyInput("");
+//     setClient(null);
+//     setRegistration(null);
+//     setStatus("Local key cleared");
+//   }
 
-    void loadRegistration();
+//   useEffect(() => {
+//     if (!mounted) return;
 
-    return () => {
-      cancelled = true;
-    };
-  }, [client]);
+//     const stored = localStorage.getItem(STORAGE_KEY);
+//     if (stored) {
+//       try {
+//         const bytes = jsonArrayToBytes(stored);
+//         void hydrateSignerFromBytes(bytes);
+//         return;
+//       } catch {
+//         localStorage.removeItem(STORAGE_KEY);
+//       }
+//     }
 
-  const isFullyRegistered =
-    registration?.state === "exists" &&
-    registration.data.isUserAccountX25519KeyRegistered &&
-    registration.data.isUserCommitmentRegistered;
+//     void generateNewSigner();
+//   }, [mounted]);
 
-  async function refreshRegistrationState(activeClient = client) {
-    if (!activeClient) return;
+//   useEffect(() => {
+//     let cancelled = false;
 
-    const query = getUserAccountQuerierFunction({ client: activeClient });
-    const result = await query(activeClient.signer.address);
-    console.log("[Umbra] refreshed registration state", result);
-    setRegistration(result as RegistrationState);
-    return result;
-  }
+//     async function init() {
+//       setClient(null);
+//       setRegistration(null);
 
-  async function handleRegister() {
-    if (!client || registering) {
-      console.log("[Umbra] register blocked", {
-        hasClient: !!client,
-        registering,
-      });
-      return;
-    }
+//       if (!signer) {
+//         setStatus("Generate or import a local test key");
+//         return;
+//       }
 
-    console.log("[Umbra] register clicked", {
-      address: client.signer?.address,
-      registration,
-      clientReady,
-    });
+//       try {
+//         setStatus("Creating Umbra client...");
 
-    setRegistering(true);
-    setStatus("Registering Umbra account...");
+//         const c = await getUmbraClient({
+//           signer,
+//           network: "devnet",
+//           rpcUrl,
+//           rpcSubscriptionsUrl,
+//           indexerApiEndpoint: "https://utxo-indexer.api-devnet.umbraprivacy.com",
+//           deferMasterSeedSignature: true,
+//         });
 
-    try {
-      const register = getUserRegistrationFunction(
-        { client },
-        { zkProver: registrationProver }
-      );
+//         if (cancelled) return;
 
-      console.log("[Umbra] register() starting", {
-        confidential: true,
-        anonymous: true,
-      });
+//         setClient(c);
+//         setStatus("Umbra client ready");
+//       } catch (e: any) {
+//         if (!cancelled) {
+//           setStatus(`Failed to create client: ${e?.message ?? "unknown error"}`);
+//         }
+//       }
+//     }
 
-      const signatures = await register({
-        confidential: true,
-        anonymous: true,
-        callbacks: {
-          userAccountInitialisation: {
-            pre: async (tx) => {
-              console.log("[Umbra] userAccountInitialisation pre FULL TX", tx);
-              console.log("[Umbra] tx debug", {
-                hasSignatures: !!tx.signatures,
-                signatureKeys: tx.signatures ? Object.keys(tx.signatures) : [],
-                signatureLengths: tx.signatures
-                  ? Object.entries(tx.signatures).map(([k, v]) => ({
-                      key: k,
-                      length: v?.length,
-                    }))
-                  : [],
-                messageBytesLength: tx.messageBytes?.length,
-              });
-            },
-            post: async (_tx, sig) => {
-              console.log("[Umbra] userAccountInitialisation post", sig);
-              setStatus(`User account created: ${sig}`);
-            },
-          },
-          registerX25519PublicKey: {
-            pre: async (tx) => {
-              console.log("[Umbra] registerX25519PublicKey pre", tx);
-              setStatus("Registering X25519 key...");
-            },
-            post: async (_tx, sig) => {
-              console.log("[Umbra] registerX25519PublicKey post", sig);
-              setStatus(`X25519 key registered: ${sig}`);
-            },
-          },
-          registerUserForAnonymousUsage: {
-            pre: async (tx) => {
-              console.log("[Umbra] registerUserForAnonymousUsage pre", tx);
-              setStatus("Registering anonymous usage...");
-            },
-            post: async (_tx, sig) => {
-              console.log("[Umbra] registerUserForAnonymousUsage post", sig);
-              setStatus(`Anonymous usage registered: ${sig}`);
-            },
-          },
-        },
-      });
+//     void init();
 
-      console.log("[Umbra] register() finished", {
-        signatures,
-        count: signatures.length,
-      });
+//     return () => {
+//       cancelled = true;
+//     };
+//   }, [signer, rpcUrl, rpcSubscriptionsUrl]);
 
-      const refreshed = await refreshRegistrationState(client);
-      console.log("[Umbra] refreshed registration state", refreshed);
+//   useEffect(() => {
+//     let cancelled = false;
 
-      setStatus(
-        signatures.length === 0
-          ? "Already registered"
-          : `Umbra registration complete (${signatures.length} tx(s))`
-      );
-    } catch (e: any) {
-      console.error("[Umbra] register failed", e);
+//     async function load() {
+//       if (!client) return;
 
-      if (isRegistrationError(e)) {
-        console.log("[Umbra] registration error stage", e.stage);
-        console.log("[Umbra] registration error full", {
-          stage: e.stage,
-          message: e?.message,
-          error: e,
-        });
+//       try {
+//         setStatus("Checking registration...");
 
-        switch (e.stage) {
-          case "master-seed-derivation":
-            setStatus("Please approve the seed-signing message in your wallet.");
-            break;
-          case "transaction-sign":
-            setStatus("Registration cancelled in wallet.");
-            break;
-          case "zk-proof-generation":
-            setStatus("ZK proof generation failed: " + (e?.message ?? String(e)));
-            break;
-          case "account-fetch":
-            setStatus("Registration account fetch failed: " + (e?.message ?? String(e)));
-            break;
-          case "transaction-send":
-            setStatus("Registration sent but confirmation timed out.");
-            await refreshRegistrationState(client);
-            break;
-          default:
-            setStatus("Registration failed: " + (e?.message ?? String(e)));
-            break;
-        }
-      } else {
-        setStatus("Registration failed: " + (e?.message ?? String(e)));
-      }
-    } finally {
-      console.log("[Umbra] register cleanup");
-      setRegistering(false);
-    }
-  }
+//         const query = getUserAccountQuerierFunction({ client });
+//         const result = await query(client.signer.address);
 
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-      <h2 className="mb-4 text-lg font-semibold">Umbra</h2>
+//         if (cancelled) return;
 
-      <div className="mb-2 text-sm">
-        <strong>Wallet:</strong> {selection?.uiAccount?.address ?? "Not connected"}
-      </div>
+//         setRegistration(result as RegistrationState);
 
-      <div className="mb-2 text-sm">
-        <strong>Client:</strong> {clientReady ? "Ready" : "Not ready"}
-      </div>
+//         if (result.state === "non_existent") {
+//           setStatus("Not registered");
+//           return;
+//         }
 
-      <div className="mb-2 text-sm">
-        <strong>Registration:</strong>{" "}
-        {registration?.state === "exists"
-          ? isFullyRegistered
-            ? "Ready"
-            : "Partial"
-          : "Not registered"}
-      </div>
+//         const ready =
+//           result.data.isUserAccountX25519KeyRegistered &&
+//           result.data.isUserCommitmentRegistered;
 
-      <button
-        onClick={handleRegister}
-        disabled={!client || registering || isFullyRegistered}
-        className="rounded border border-white/20 bg-white/10 px-4 py-2 disabled:opacity-50"
-      >
-        {isFullyRegistered
-          ? "Registered"
-          : registering
-          ? "Registering..."
-          : "Register Umbra"}
-      </button>
+//         setStatus(ready ? "Umbra ready" : "Partially registered");
+//       } catch (e: any) {
+//         if (!cancelled) setStatus(`Registration check failed: ${e?.message ?? "unknown error"}`);
+//       }
+//     }
 
-      <div className="mt-4 text-xs text-white/60">{status}</div>
-    </div>
-  );
-}
+//     void load();
+
+//     return () => {
+//       cancelled = true;
+//     };
+//   }, [client]);
+
+//   const isFullyRegistered =
+//     registration?.state === "exists" &&
+//     registration.data.isUserAccountX25519KeyRegistered &&
+//     registration.data.isUserCommitmentRegistered;
+
+//   async function handleRegister() {
+//     if (!client || registering) return;
+
+//     setRegistering(true);
+//     setStatus("Registering...");
+
+//     try {
+//       const register = getUserRegistrationFunction(
+//         { client },
+//         { zkProver: registrationProver }
+//       );
+
+//       const sigs = await register(
+//         { confidential: true, anonymous: true },
+//         {
+//           callbacks: {
+//             userAccountInitialisation: {
+//               pre: async (tx) => {
+//                 console.log("init pre tx:", tx);
+//                 console.log("init signer:", client.signer);
+//               },
+//               post: async (_tx, sig) => console.log("init post sig:", sig),
+//             },
+//             registerX25519PublicKey: {
+//               pre: async (tx) => {
+//                 console.log("x25519 pre tx:", tx);
+//                 console.log("x25519 signer:", client.signer);
+//               },
+//               post: async (_tx, sig) => console.log("x25519 post sig:", sig),
+//             },
+//             registerUserForAnonymousUsage: {
+//               pre: async (tx) => {
+//                 console.log("anon pre tx:", tx);
+//                 console.log("anon signer:", client.signer);
+//               },
+//               post: async (_tx, sig) => console.log("anon post sig:", sig),
+//             },
+//           },
+//         }
+//       );
+
+//       setStatus(
+//         sigs.length === 0 ? "Already registered" : `Registered (${sigs.length} tx)`
+//       );
+//     } catch (e: any) {
+//       console.error("Umbra register failed:", e);
+//       console.error("cause:", e?.cause);
+//       console.error("stage:", e?.stage);
+
+//       if (isRegistrationError(e)) {
+//         setStatus(`Registration failed at ${e.stage}: ${e.message}`);
+//       } else {
+//         setStatus(`Registration failed: ${e?.message ?? "unknown error"}`);
+//       }
+//     } finally {
+//       setRegistering(false);
+//     }
+//   }
+
+//   if (!mounted) {
+//     return (
+//       <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+//         <div className="text-sm text-white/60">Loading...</div>
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+//       <h2 className="mb-4 text-lg font-semibold">Umbra local test client</h2>
+
+//       <div className="mb-2 text-sm">
+//         <strong>Test signer:</strong> {signerMeta?.address ?? "Not loaded"}
+//       </div>
+
+//       <div className="mb-2 text-sm">
+//         <strong>Client:</strong> {client ? "Ready" : "Not ready"}
+//       </div>
+
+//       <div className="mb-2 text-sm">
+//         <strong>Registration:</strong>{" "}
+//         {registration?.state === "exists"
+//           ? isFullyRegistered
+//             ? "Ready"
+//             : "Partial"
+//           : "Not registered"}
+//       </div>
+
+//       <div className="mt-4 grid gap-3">
+//         <div>
+//           <label className="mb-1 block text-xs uppercase tracking-wide text-white/60">
+//             Import local key JSON
+//           </label>
+//           <textarea
+//             value={secretKeyInput}
+//             onChange={(e) => setSecretKeyInput(e.target.value)}
+//             placeholder="Paste a 32-byte seed or 64-byte secret-key JSON array here"
+//             className="min-h-28 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-xs outline-none"
+//           />
+//         </div>
+
+//         <div className="flex flex-wrap gap-2">
+//           <button
+//             onClick={generateNewSigner}
+//             className="rounded border border-white/20 bg-white/10 px-4 py-2 text-sm"
+//           >
+//             Generate local key
+//           </button>
+//           <button
+//             onClick={importSigner}
+//             className="rounded border border-white/20 bg-white/10 px-4 py-2 text-sm"
+//           >
+//             Import key
+//           </button>
+//           <button
+//             onClick={clearSigner}
+//             className="rounded border border-white/20 bg-white/10 px-4 py-2 text-sm"
+//           >
+//             Clear
+//           </button>
+//         </div>
+//       </div>
+
+//       <button
+//         onClick={handleRegister}
+//         disabled={!client || registering || isFullyRegistered}
+//         className="mt-4 rounded border border-white/20 bg-white/10 px-4 py-2 disabled:opacity-50"
+//       >
+//         {isFullyRegistered
+//           ? "Registered"
+//           : registering
+//           ? "Registering..."
+//           : "Register Umbra"}
+//       </button>
+
+//       <div className="mt-4 text-xs text-white/60">{status}</div>
+//     </div>
+//   );
+// }

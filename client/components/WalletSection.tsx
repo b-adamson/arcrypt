@@ -23,12 +23,13 @@ export default function WalletButton() {
 
   return (
     <button
+      type="button"
       onClick={handleClick}
-      className="h-10 px-5 text-sm font-semibold text-white border border-white/15 rounded-none backdrop-blur-md transition-all
-      bg-[linear-gradient(135deg,rgba(217,70,239,0.18),rgba(124,58,237,0.18),rgba(34,211,238,0.16))]
-      hover:bg-[linear-gradient(135deg,rgba(217,70,239,0.28),rgba(124,58,237,0.28),rgba(34,211,238,0.24))]
-      hover:border-white/25
-      shadow-[0_10px_30px_rgba(0,0,0,0.25)]"
+      className={[
+        "btn h-10 px-5 text-sm font-semibold",
+        "surface-hover",
+        connected ? "border-accent text-accent" : "text-foreground",
+      ].join(" ")}
     >
       {connected && address ? shorten(address) : "Connect Wallet"}
     </button>
