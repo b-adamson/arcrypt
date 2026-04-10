@@ -202,7 +202,7 @@ export default function DocsPage() {
             <p className="mt-2 text-sm text-[var(--muted)]">
               Note: the package is not deployed yet — use the SDK directly from the{' '}
               <a
-                href="https://github.com/b-adamson/ARCIBID"
+                href="https://github.com/b-adamson/arcrypt"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-accent underline-offset-2 hover:underline"

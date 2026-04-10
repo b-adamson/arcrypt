@@ -1,6 +1,6 @@
-// import UmbraPanel from "../../components/UmbraPanel";
-"use client";
 
+"use client";
+// import UmbraPanel from "../../components/UmbraPanel";
 import dynamic from "next/dynamic";
 
 // const UmbraPanel = dynamic(() => import("../../components/UmbraPanel"), {

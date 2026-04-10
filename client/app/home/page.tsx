@@ -107,14 +107,14 @@ useEffect(() => {
 </div>
 
         <div className="relative z-10 mx-auto flex max-w-4xl flex-col items-center px-6 text-center">
-          <h1
-            className={`hero-title text-6xl font-extrabold leading-tight tracking-tight transition-all duration-700 md:text-8xl lg:text-9xl ${
-              showTitle ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-            }`}
-            style={{ fontFamily: "Arial, Helvetica, sans-serif" }}
-          >
-            ARCRYPT
-          </h1>
+<h1
+  className={`hero-title text-6xl font-extrabold leading-tight tracking-tight text-white transition-all duration-700 md:text-8xl lg:text-9xl ${
+    showTitle ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+  }`}
+  style={{ fontFamily: "Arial, Helvetica, sans-serif", color: "white" }}
+>
+  ARCRYPT
+</h1>
 
           <p className="hero-copy mt-6 max-w-2xl text-lg md:text-xl">
             Private, sealed-bid auctions powered by Arcium on Solana. Selling DAO treasuries, NFTs

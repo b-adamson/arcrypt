@@ -18,7 +18,7 @@ export default function Footer() {
   <span className="text-white font-medium">Social</span>
 
   <a
-    href="https://github.com/b-adamson/ARCIBID"
+    href="https://github.com/b-adamson/arcrypt"
     target="_blank"
     rel="noopener noreferrer"
     className={linkStyle}
@@ -33,6 +33,14 @@ export default function Footer() {
     className={linkStyle}
   >
     Telegram
+  </a>
+    <a
+    href="https://x.com/arcrypt_bid"
+    target="_blank"
+    rel="noopener noreferrer"
+    className={linkStyle}
+  >
+    X 
   </a>
 </div>
 
@@ -54,6 +62,14 @@ export default function Footer() {
           >
             Solana Docs
           </a>
+            <a
+    href="https://sdk.umbraprivacy.com/sdk"
+    target="_blank"
+    rel="noopener noreferrer"
+    className={linkStyle}
+  >
+    UMBRA Docs
+  </a>
         </div>
 
         <div className="flex flex-col justify-between">

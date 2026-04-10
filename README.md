@@ -4,13 +4,14 @@ Join us at [arcrypt.bid](https://arcrypt.bid)
 
 ARCRYPT is a sealed-bid auction platform on Solana. It lets sellers auction tokens, NFTs, or metadata-only assets without exposing competing bids on-chain, helping prevent front-running, MEV, and other forms of bid leakage. Bid amounts are processed privately through Arcium MPC, while settlement still happens transparently on Solana. For the first time ever we leverage UMBRA to conceal committed bid escrows on chain, as well as hiding the same bid amount transmitted to Arcium MXE. 
 
-Note: we are changing name from arcibid --> arcrypt. It may take some time for changes to fully apply as we migrate branding. 
+Telegram: https://t.me/+NGbdEEbM-AYyNDZk
+Twitter (X): https://x.com/arcrypt_bid
 
 ## What ARCRYPT does
 
 ARCRYPT is built for private price discovery.
 
-Traditional public auctions reveal bids as they arrive, which can distort outcomes and invite manipulation. ARCIBID instead keeps bids encrypted, computes winners privately, and settles only the final result on-chain.
+Traditional public auctions reveal bids as they arrive, which can distort outcomes and invite manipulation. ARCRYPT instead keeps bids encrypted, computes winners privately, and settles only the final result on-chain.
 
 It supports:
 
@@ -68,8 +69,8 @@ Follow the Arcium Solana installation guide first:
 ### 1) Clone the repository
 
 ```bash
-git clone https://github.com/b-adamson/ARCIBID
-cd arcibid
+git clone https://github.com/b-adamson/arcrypt
+cd arcrypt
 ```
 
 ### 2) Start a local Arcium Solana environment
@@ -153,7 +154,7 @@ Note: the package may not be published yet, so for development you may need to i
 
 ## Auction types
 
-ARCIBID supports multiple auction styles:
+ARCRYPT supports multiple auction styles:
 
 * **First-price**: highest bidder wins and pays their bid
 * **Vickrey**: highest bidder wins and pays the second-highest bid
@@ -162,7 +163,7 @@ ARCIBID supports multiple auction styles:
 
 ## Asset types
 
-ARCIBID supports:
+ARCRYPT supports:
 
 * **Fungible**: token sales
 * **NFT**: single-item sales

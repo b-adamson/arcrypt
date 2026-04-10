@@ -165,6 +165,8 @@ const inputClass =
 
 const selectClass = `${inputClass} appearance-none pr-10`;
 
+const MAX_METADATA_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
+
 export default function AuctionCreateForm({
   minBidSol,
   saleAmountToken,
@@ -206,6 +208,8 @@ export default function AuctionCreateForm({
   const abortRef = useRef<AbortController | null>(null);
   const ownerBase58 = publicKey?.toBase58() ?? "";
   const rpcEndpoint = connection.rpcEndpoint;
+
+  const [imageError, setImageError] = useState<string | null>(null);
 
   useEffect(() => {
     if (debounceRef.current !== null) {
@@ -394,12 +398,33 @@ export default function AuctionCreateForm({
           </Field>
 
           <Field label="Image" hint="Optional. Uploaded first, then referenced from the JSON metadata.">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => onMetadataImageChange(e.target.files?.[0] ?? null)}
-              className="block h-12 w-full border border-[var(--line)] bg-[var(--surface)] px-4 py-2 text-sm text-[var(--foreground)] outline-none file:mr-4 file:border-0 file:bg-[var(--background)] file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-[var(--foreground)] hover:file:bg-[var(--surface-2)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]/40"
-            />
+<input
+  type="file"
+  accept="image/*"
+  onChange={(e) => {
+    const file = e.target.files?.[0] ?? null;
+
+    if (!file) {
+      setImageError(null);
+      onMetadataImageChange(null);
+      return;
+    }
+
+    if (file.size > MAX_METADATA_IMAGE_BYTES) {
+      setImageError("Image must be 5 MB or smaller.");
+      e.currentTarget.value = "";
+      onMetadataImageChange(null);
+      return;
+    }
+
+    setImageError(null);
+    onMetadataImageChange(file);
+  }}
+  className="block h-12 w-full border border-[var(--line)] bg-[var(--surface)] px-4 py-2 text-sm text-[var(--foreground)] outline-none file:mr-4 file:border-0 file:bg-[var(--background)] file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-[var(--foreground)] hover:file:bg-[var(--surface-2)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]/40"
+/>
+{imageError ? (
+  <p className="mt-2 text-xs text-red-500">{imageError}</p>
+) : null}
 
             {metadataImageFile ? (
               <div className="mt-3 overflow-hidden border border-[var(--line)] bg-[var(--background)]">
