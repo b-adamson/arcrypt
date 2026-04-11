@@ -9,11 +9,8 @@ type Props = { children: React.ReactNode };
 
 export default function SolanaWalletProvider({ children }: Props) {
   const endpoint =
-    process.env.NEXT_PUBLIC_RPC_URL ?? "https://api.mainnet-beta.solana.com";
+    process.env.NEXT_PUBLIC_RPC_URL ?? "https://api.devnet.solana.com";
 
-  // Keep this universal app shell.
-  // UmbraPanel will read the active wallet from Wallet Adapter state and
-  // match it to the Wallet Standard account by public key.
   const wallets = useStandardWalletAdapters([]);
 
   return (

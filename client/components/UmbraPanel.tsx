@@ -33,8 +33,8 @@ import {
 import { address as toAddress, type Address } from "@solana/kit";
 
 
-// import keyFile from "../umbra-devnet.json";
-import keyFile from "../umbra-test.json"
+import keyFile from "../umbra-devnet.json";
+
 
 install();
 

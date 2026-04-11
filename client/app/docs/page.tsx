@@ -27,11 +27,14 @@ export default function DocsPage() {
               What is ARCRYPT
             </h3>
             <p className="whitespace-pre-line text-[var(--muted)]">
-              ARCRYPT is a private auction platform on Solana designed to maximize value without exposing bids.
+              ARCRYPT is a private auction platform on Solana designed to maximize value without exposing bids. 
 
-              {"\n\n"}List tokens, NFTs, or DAO treasury assets in fully sealed auctions where no participant can see competing bids. By eliminating front-running and MEV, ARCRYPT ensures fair competition. The highest bidder is incentivised to pay what your asset is truly worth.
+              {"\n\n"}Launch or List tokens, NFTs, or DAO treasury assets in fully sealed auctions where no participant can see competing bids. By eliminating front-running and MEV, ARCRYPT ensures fair competition. The highest bidder is incentivised to pay what your asset is truly worth.
+              {"\n\n"}Our general program and packaged SDK will cover all use-cases for sealed auctions on Solana. That includes FVD sealed bid-price for sealed token distribution to many people, as well as vickrey, highest-bid, uniform and pro-rata auctions for any generic SPL asset.
+              {"\n\n"}At the end of our roadmap, ARCRYPT will also build a launchpad to enable startups to raise funds with ultimate MEV and whale protection, as well as optimal price discovery through our program.
 
-              {"\n\n"}ARCRYPT leverages state of the art cryptography and MPC technology to keep your money entirely hidden from the chain.
+              {"\n\n"}ARCRYPT leverages state of the art cryptography and MPC technology to keep your money entirely hidden from the chain. Not only do we hide your bid, we hide the account that holds your bid - using UMBRA. 
+
               {"\n\n"}Selling assets is harder than it looks. OTC deals rely on negotiation and often do not result in the best price. Public auctions expose bids in real time, inviting bots, MEV, and front-running that distort true price discovery.
               {"\n\n"}ARCRYPT solves this with sealed, private auctions - removing information leakage and ensuring bidders compete based on true value, not strategy or manipulation. While it can integrate directly with DAOs to auction treasury assets through proposals, you don’t need to be a DAO to use it. Anyone can auction tokens, NFTs, or other on-chain assets they own, and optionally list them on the ARCRYPT marketplace to reach a wider pool of serious bidders without sacrificing privacy.
             </p>
