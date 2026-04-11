@@ -6,17 +6,17 @@ import {
   createSignerFromPrivateKeyBytes,
   getClaimableUtxoScannerFunction,
   getEncryptedBalanceToSelfClaimableUtxoCreatorFunction,
-
   getUmbraClient,
   getUmbraRelayer,
   getUserAccountQuerierFunction,
   getUserRegistrationFunction,
-getEncryptedBalanceQuerierFunction,
-  getPublicBalanceToEncryptedBalanceDirectDepositorFunction ,
-  getEncryptedBalanceToPublicBalanceDirectWithdrawerFunction ,
+  getEncryptedBalanceQuerierFunction,
+  getPublicBalanceToEncryptedBalanceDirectDepositorFunction,
+  getEncryptedBalanceToPublicBalanceDirectWithdrawerFunction,
   getSelfClaimableUtxoToEncryptedBalanceClaimerFunction,
-  type IUmbraSigner,
+  
 } from "@umbra-privacy/sdk";
+
 
 import {
   getCreateSelfClaimableUtxoFromEncryptedBalanceProver,
@@ -29,7 +29,7 @@ import {
   isQueryError,
   isRegistrationError,
 } from "@umbra-privacy/sdk/errors";
-import type { U64, U32 } from "@solana/kit";
+// import type { U64, U32 } from "@solana/kit";
 import { address as toAddress, type Address } from "@solana/kit";
 
 
@@ -106,7 +106,7 @@ function createUmbraAssetProxyFetch(originalFetch: typeof fetch): typeof fetch {
     return originalFetch(input as RequestInfo, init);
   };
 }
-
+type UmbraSigner = Awaited<ReturnType<typeof createSignerFromPrivateKeyBytes>>;
 export default function UmbraPanel({ zkProver }: Props) {
   const [mounted, setMounted] = useState(false);
   const [status, setStatus] = useState("Loading...");
@@ -116,7 +116,7 @@ export default function UmbraPanel({ zkProver }: Props) {
   const [withdrawing, setWithdrawing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 const [registrationLog, setRegistrationLog] = useState<string[]>([]);
-  const [signer, setSigner] = useState<IUmbraSigner | null>(null);
+const [signer, setSigner] = useState<UmbraSigner | null>(null);
   const [client, setClient] = useState<Awaited<ReturnType<typeof getUmbraClient>> | null>(null);
 
   const [accountState, setAccountState] = useState<AccountState>({ kind: "idle" });
@@ -375,6 +375,7 @@ const selfUtxoClaimer = useMemo(() => {
   let amount: bigint;
   try {
     amount = BigInt(utxoAmount.trim());
+
   } catch {
     setStatus("Invalid UTXO amount");
     return;
@@ -397,7 +398,7 @@ const selfUtxoClaimer = useMemo(() => {
     const result = await selfUtxoCreator({
       destinationAddress: client.signer.address,
       mint: activeMint,
-      amount,
+     amount: amount as unknown as Parameters<typeof selfUtxoCreator>[0]["amount"]
     });
 
     console.log("self-claimable UTXO created:", result);
@@ -422,9 +423,11 @@ const handleWithdrawSelfUtxos = useCallback(async () => {
   try {
     // Simple version: scan tree 0 from the start and sweep self-burnable UTXOs.
     // For a production version, you would persist / iterate tree indices.
+type ScannerArgs = Parameters<typeof claimableUtxoScanner>;
+
 const scanned = await claimableUtxoScanner(
-  0n as U32,
-  0n as U32
+  0n as ScannerArgs[0],
+  0n as ScannerArgs[1]
 );
     const utxos = scanned.selfBurnable;
 
@@ -579,11 +582,16 @@ const handleDeposit = useCallback(async () => {
     pushDepositLog(`Amount: ${amountBigInt.toString()} base units`);
     pushDepositLog("Submitting deposit transaction...");
 
-    const result = await depositFn(destination, activeMint, amountBigInt as U64, {
-      awaitCallback: true,
-      skipPreflight: true,
-      accountInfoCommitment: "confirmed",
-    });
+const result = await depositFn(
+  destination,
+  activeMint,
+  amountBigInt as Parameters<typeof depositFn>[2],
+  {
+    // awaitCallback: true,
+    // skipPreflight: true,
+    accountInfoCommitment: "confirmed",
+  }
+);
 
     pushDepositLog(`Queue signature: ${result.queueSignature}`);
 
@@ -645,9 +653,12 @@ const handleDeposit = useCallback(async () => {
     setStatus("Withdrawing...");
 
     try {
-      const amount = BigInt(withdrawAmount);
-      const destination = queryAddress.trim() || client.signer.address;
-      const result = await withdrawFn(destination, activeMint, amount);
+type WithdrawArgs = Parameters<typeof withdrawFn>;
+
+const amount = BigInt(withdrawAmount) as WithdrawArgs[2];
+const destination = (queryAddress.trim() || client.signer.address) as WithdrawArgs[0];
+
+const result = await withdrawFn(destination, activeMint, amount);
 
       setStatus(
         `Withdraw submitted for ${activeMint}. Queue=${result.queueSignature}${
