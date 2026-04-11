@@ -42,3 +42,6 @@ next-env.d.ts
 
 .env.local
 .env.*.local
+
+umbra-devnet.json
+script.sh

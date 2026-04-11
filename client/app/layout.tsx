@@ -29,11 +29,7 @@ export default function RootLayout({
         <SolanaWalletProvider>
           <Header />
 
-          <main
-            className={`min-h-screen bg-[radial-gradient(circle_at_top,rgba(217,70,239,0.10),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(34,211,238,0.08),transparent_28%)] pb-24 ${
-              isHomePage ? "pt-0" : "pt-20"
-            }`}
-          >
+<main className={`min-h-screen bg-[#00000] pb-24 ${isHomePage ? "pt-0" : "pt-10"}`}>
             {children}
           </main>
 

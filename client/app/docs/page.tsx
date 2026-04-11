@@ -88,7 +88,7 @@ export default function DocsPage() {
                 >
                   ETA
                 </a>
-                ) associated with your wallet address. This ETA is the link between the private world and the public chain. Funds can be moved in and out of your ARCRYPT account in the Profile page.
+                ) associated with your wallet address. This ETA is the link between the private world and the public chain. Funds can be moved in and out of your ARCRYPT account in the Encrypted Balance page.
               </p>
 
               <p>

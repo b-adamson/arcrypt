@@ -1,6 +1,6 @@
 
 "use client";
-// import UmbraPanel from "../../components/UmbraPanel";
+import UmbraPanel from "../../components/UmbraPanel";
 import dynamic from "next/dynamic";
 
 // const UmbraPanel = dynamic(() => import("../../components/UmbraPanel"), {
@@ -10,7 +10,7 @@ import dynamic from "next/dynamic";
 export default function UmbraPage() {
   return (
     <main className="p-6">
-      {/* <UmbraPanel /> */}
+      <UmbraPanel />
     </main>
   );
 }

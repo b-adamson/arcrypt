@@ -54,7 +54,14 @@ export default function HomePage() {
 
   const activeDetailRef = useRef<HTMLDivElement | null>(null);
 
+const didMountRef = useRef(false);
+
 useEffect(() => {
+  if (!didMountRef.current) {
+    didMountRef.current = true;
+    return;
+  }
+
   if (window.innerWidth < 1024) {
     activeDetailRef.current?.scrollIntoView({
       behavior: "smooth",

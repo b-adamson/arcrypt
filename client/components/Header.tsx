@@ -77,6 +77,10 @@ export default function Header() {
           <Link href="/docs" className="transition hover:text-[var(--foreground)]">
             Docs
           </Link>
+          <Link href="/umbra" className="transition hover:text-[var(--foreground)] leading-tight text-center">
+  <span className="block">Encrypted</span>
+  <span className="block">Balance [dev]</span>
+</Link>
         </nav>
 
         <div className="scale-90">
