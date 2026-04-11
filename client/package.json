@@ -36,6 +36,10 @@
     "@wallet-standard/features": "^1.1.0",
     "@wallet-standard/react": "^1.0.1",
     "@wallet-standard/react-core": "^1.0.1",
+
+    "@umbra-privacy/sdk": "^4.0.0",
+    "@umbra-privacy/web-zk-prover": "^2.0.1",
+  
     "bn": "^1.0.5",
     "bs58": "^6.0.0",
     "dotenv": "^17.3.1",

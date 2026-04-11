@@ -4,9 +4,7 @@
   "workspaces": [
     "client",
     "sdk"
-  ],
-  "dependencies": {
-    "@umbra-privacy/sdk": "^4.0.0",
-    "@umbra-privacy/web-zk-prover": "^2.0.1"
-  }
+  ]
+
+
 }
