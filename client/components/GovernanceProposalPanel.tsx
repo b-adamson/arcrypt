@@ -89,7 +89,7 @@ export default function GovernanceProposalPanel({
 }: Props) {
   const previewDescription = `${proposalDescription.trim()}
 
-Check it out here: http://localhost:3000/bid?auctionPk=<will be filled after creation>`;
+Check it out here: http://arcrypt.bid/bid?auctionPk=<will be filled after creation>`;
 
   return (
     <section className="relative overflow-hidden border border-[var(--line)] bg-[var(--surface)] p-6 shadow-none md:p-8">

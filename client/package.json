@@ -17,6 +17,7 @@
     "@metaplex-foundation/umi": "^1.5.1",
     "@metaplex-foundation/umi-bundle-defaults": "^1.5.1",
     "@noble/curves": "^2.0.1",
+    "@noble/hashes": "^2.0.1",
     "@pinata/sdk": "^2.1.0",
     "@project-serum/anchor": "^0.26.0",
     "@realms-today/spl-governance": "^0.3.33",
@@ -31,15 +32,13 @@
     "@solana/wallet-adapter-wallets": "^0.19.37",
     "@solana/web3.js": "^1.98.4",
     "@solana/webcrypto-ed25519-polyfill": "^6.5.0",
+    "@umbra-privacy/sdk": "^4.0.0",
+    "@umbra-privacy/web-zk-prover": "^2.0.1",
     "@wallet-standard/app": "^1.1.0",
     "@wallet-standard/base": "^1.1.0",
     "@wallet-standard/features": "^1.1.0",
     "@wallet-standard/react": "^1.0.1",
     "@wallet-standard/react-core": "^1.0.1",
-
-    "@umbra-privacy/sdk": "^4.0.0",
-    "@umbra-privacy/web-zk-prover": "^2.0.1",
-  
     "bn": "^1.0.5",
     "bs58": "^6.0.0",
     "dotenv": "^17.3.1",
@@ -52,7 +51,8 @@
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-syntax-highlighter": "^16.1.1",
-    "shiki": "^4.0.2"
+    "shiki": "^4.0.2",
+    "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

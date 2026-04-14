@@ -81,6 +81,32 @@ pub struct Bid {
     }
 
 #[instruction]
+pub fn place_encrypted_bid(
+    bidder: SerializedSolanaPublicKey,
+    amount_ctxt: Enc<Mxe, u64>,
+    state_ctxt: Enc<Mxe, AuctionState>,
+) -> Enc<Mxe, AuctionState> {
+    let amount = amount_ctxt.to_arcis();
+    let mut state = state_ctxt.to_arcis();
+
+    let bid = Bid { bidder, amount };
+
+    if bid.amount > state.highest.amount {
+        state.third_highest = state.second_highest;
+        state.second_highest = state.highest;
+        state.highest = bid;
+    } else if bid.amount > state.second_highest.amount {
+        state.third_highest = state.second_highest;
+        state.second_highest = bid;
+    } else if bid.amount > state.third_highest.amount {
+        state.third_highest = bid;
+    }
+
+    state.bid_count += 1;
+    state_ctxt.owner.from_arcis(state)
+}
+
+#[instruction]
 pub fn determine_winner_uniform(
     state_ctxt: Enc<Mxe, AuctionState>,
 ) -> UniformAuctionResult {

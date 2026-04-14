@@ -63,8 +63,8 @@ export default function DocsPage() {
               <br />
               At its core, Arcium enables totally decentralized confidential computation—allowing data to remain private while still being used in verifiable on-chain logic. This is critical for sealed auctions, where information leakage would otherwise undermine fairness.
               <br />
-              <br />
-              ARCRYPT leverages the Arcium Confidential Token Standard to securely escrow bidder funds. This introduces program-controlled private balances for the first time, enabling fully private, trustless auctions without compromising on-chain settlement or transparency of outcomes.
+              {/* <br />
+              ARCRYPT leverages the Arcium Confidential Token Standard to securely escrow bidder funds. This introduces program-controlled private balances for the first time, enabling fully private, trustless auctions without compromising on-chain settlement or transparency of outcomes. */}
             </p>
           </section>
 

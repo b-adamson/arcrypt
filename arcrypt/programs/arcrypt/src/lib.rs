@@ -22,6 +22,8 @@ const COMP_DEF_OFFSET_DETERMINE_WINNER_UNIFORM: u32 =
     comp_def_offset("determine_winner_uniform");
 const COMP_DEF_OFFSET_DETERMINE_WINNER_PRO_RATA: u32 =
     comp_def_offset("determine_winner_pro_rata");
+const COMP_DEF_OFFSET_PLACE_ENCRYPTED_BID: u32 =
+    comp_def_offset("place_encrypted_bid");
 
 
 
@@ -54,7 +56,7 @@ pub enum AssetKind {
 }
 
 #[arcium_program]
-pub mod sealed_bid_auction {
+pub mod arcrypt {
     use super::*;
 
 
@@ -77,6 +79,20 @@ pub mod sealed_bid_auction {
             Some(CircuitSource::OffChain(OffChainCircuitSource {
                 source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafybeiecyc3hanvupi6ai3yw4mclidmfkfa7iqp2osfwvzwmp3xviar7am".to_string(),
                 hash: circuit_hash!("place_bid"),
+            })),
+            None,
+        )?;
+        Ok(())
+    }
+
+    pub fn init_place_encrypted_bid_comp_def(
+        ctx: Context<InitPlaceEncryptedBidCompDef>,
+    ) -> Result<()> {
+        init_comp_def(
+            ctx.accounts,
+            Some(CircuitSource::OffChain(OffChainCircuitSource {
+                source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafybeibarpg257yjaihrjewyvdxanadanzjzqdeljfmouneqarcnxk3iee".to_string(),
+                hash: circuit_hash!("place_encrypted_bid"),
             })),
             None,
         )?;
@@ -139,126 +155,60 @@ pub fn init_determine_winner_pro_rata_comp_def(
     Ok(())
 }
 
-pub fn create_auction(
-    ctx: Context<CreateAuction>,
+
+
+pub fn place_encrypted_bid(
+    ctx: Context<PlaceEncryptedBid>,
     computation_offset: u64,
-    _auction_seed: [u8; 8],
-    auction_type: AuctionType,
-    asset_kind: AssetKind,
-    min_bid: u64,
-    end_time: i64,
-    sale_amount: u64,
-    auction_metadata_uri: String,
 ) -> Result<()> {
-    require!(!auction_metadata_uri.is_empty(), ErrorCode::InvalidMetadataUri);
+    let auction = &ctx.accounts.auction;
 
- match asset_kind {
-    AssetKind::MetadataOnly => {
-        require!(
-            matches!(auction_type, AuctionType::FirstPrice | AuctionType::Vickrey),
-            ErrorCode::MetadataOnlyDoesNotSupportMultiWinnerModes
-        );
-    }
+    require_bid_allowed(auction)?;
+    require_keys_eq!(
+        ctx.accounts.temp_bid.auction,
+        auction.key(),
+        ErrorCode::EscrowMismatch
+    );
+    require_keys_eq!(
+        ctx.accounts.temp_bid.shared_vault,
+        ctx.accounts.shared_vault.key(),
+        ErrorCode::InvalidSharedVault
+    );
+    require!(
+        !ctx.accounts.temp_bid.consumed,
+        ErrorCode::TempBidAlreadyConsumed
+    );
 
-    AssetKind::Nft | AssetKind::Fungible => {
-        require_keys_eq!(
-            ctx.accounts.authority_token_account.mint,
-            ctx.accounts.prize_mint.key(),
-            ErrorCode::InvalidMint
-        );
-
-        if asset_kind == AssetKind::Nft {
-            require!(
-                matches!(auction_type, AuctionType::FirstPrice | AuctionType::Vickrey),
-                ErrorCode::NftAuctionOnlySupportsSingleWinnerModes
-            );
-            require!(sale_amount == 1, ErrorCode::InvalidMint);
-            require!(ctx.accounts.prize_mint.decimals == 0, ErrorCode::InvalidMint);
-            require!(
-                ctx.accounts.authority_token_account.amount == 1,
-                ErrorCode::InvalidMint
-            );
-        }
-
-        if matches!(auction_type, AuctionType::Uniform | AuctionType::ProRata) {
-            require!(
-                sale_amount >= 3,
-                ErrorCode::InsufficientSupplyForMultiWinnerAuction
-            );
-        }
-
-        let cpi_accounts = TransferChecked {
-            mint: ctx.accounts.prize_mint.to_account_info(),
-            from: ctx.accounts.authority_token_account.to_account_info(),
-            to: ctx.accounts.prize_vault.to_account_info(),
-            authority: ctx.accounts.authority.to_account_info(),
-        };
-
-        let cpi_ctx = CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
-            cpi_accounts,
-        );
-
-        token_interface::transfer_checked(
-            cpi_ctx,
-            sale_amount,
-            ctx.accounts.prize_mint.decimals,
-        )?;
-    }
-}
-
-
-
-    let auction = &mut ctx.accounts.auction;
-
-    auction.bump = ctx.bumps.auction;
-    auction.authority = ctx.accounts.authority.key();
-    auction.auction_type = auction_type;
-    auction.asset_kind = asset_kind;
-    auction.status = AuctionStatus::Open;
-    auction.min_bid = min_bid;
-    auction.end_time = end_time;
-    auction.bid_count = 0;
-    auction.state_nonce = 0;
-    auction.encrypted_state = [[0u8; 32]; 10];
-
-    if asset_kind == AssetKind::MetadataOnly {
-        auction.token_mint = Pubkey::default();
-        auction.sale_amount = 0;
-        auction.prize_vault = Pubkey::default();
-        auction.vault_authority_bump = 0;
-        auction.prize_decimals = 0;
-    } else {
-        auction.token_mint = ctx.accounts.prize_mint.key();
-        auction.sale_amount = sale_amount;
-        auction.prize_vault = ctx.accounts.prize_vault.key();
-        auction.vault_authority_bump = ctx.bumps.vault_authority;
-        auction.prize_decimals = ctx.accounts.prize_mint.decimals;
-    }
-
-    auction.winner = Pubkey::default();
-    auction.payment_amount = 0;
-    auction.winner_paid = false;
-    auction.auction_metadata_uri = auction_metadata_uri;
-    auction.winners = [Pubkey::default(); 3];
-    auction.winner_bids = [0; 3];
-    auction.clearing_price = 0;
-    auction.total_bid = 0;
-    auction.winner_paid_multi = [false; 3];
-
+    ctx.accounts.temp_bid.consumed = true;
     ctx.accounts.sign_pda_account.bump = ctx.bumps.sign_pda_account;
 
-    let args = ArgBuilder::new().build();
+    let temp = &ctx.accounts.temp_bid;
+    let bidder_bytes = temp.bidder.to_bytes();
+    let bidder_lo = u128::from_le_bytes(bidder_bytes[0..16].try_into().unwrap());
+    let bidder_hi = u128::from_le_bytes(bidder_bytes[16..32].try_into().unwrap());
+
+    let args = ArgBuilder::new()
+        .plaintext_u128(bidder_lo)
+        .plaintext_u128(bidder_hi)
+        .plaintext_u128(temp.nonce)
+        .encrypted_u64(temp.encrypted_amount)
+        .plaintext_u128(auction.state_nonce)
+        .account(
+            auction.key(),
+            ENCRYPTED_STATE_OFFSET,
+            ENCRYPTED_STATE_SIZE,
+        )
+        .build();
 
     queue_computation(
         ctx.accounts,
         computation_offset,
         args,
-        vec![InitAuctionStateCallback::callback_ix(
+        vec![PlaceEncryptedBidCallback::callback_ix(
             computation_offset,
             &ctx.accounts.mxe_account,
             &[CallbackAccount {
-                pubkey: ctx.accounts.auction.key(),
+                pubkey: auction.key(),
                 is_writable: true,
             }],
         )?],
@@ -389,6 +339,41 @@ pub fn place_bid_callback(
     Ok(())
 }
 
+#[arcium_callback(encrypted_ix = "place_encrypted_bid")]
+pub fn place_encrypted_bid_callback(
+    ctx: Context<PlaceEncryptedBidCallback>,
+    output: SignedComputationOutputs<PlaceEncryptedBidOutput>,
+) -> Result<()> {
+    let o = match output.verify_output(
+        &ctx.accounts.cluster_account,
+        &ctx.accounts.computation_account,
+    ) {
+        Ok(PlaceEncryptedBidOutput { field_0 }) => field_0,
+        Err(_) => return Err(ErrorCode::AbortedComputation.into()),
+    };
+
+    let auction_key = ctx.accounts.auction.key();
+    let auction = &mut ctx.accounts.auction;
+
+    require_not_resolved(auction)?;
+    require!(auction.status == AuctionStatus::Open, ErrorCode::AuctionNotOpen);
+
+    auction.encrypted_state = o.ciphertexts;
+    auction.state_nonce = o.nonce;
+
+    auction.bid_count = auction
+        .bid_count
+        .checked_add(1)
+        .ok_or(ErrorCode::BidCountOverflow)?;
+
+    emit!(BidPlacedEvent {
+        auction: auction_key,
+        bid_count: auction.bid_count,
+    });
+
+    Ok(())
+}
+
 pub fn create_token_auction(
     ctx: Context<CreateTokenAuction>,
     computation_offset: u64,
@@ -472,6 +457,12 @@ pub fn create_token_auction(
         )?;
     }
 
+    ctx.accounts.shared_vault.bump = ctx.bumps.shared_vault;
+ctx.accounts.shared_vault.auction = ctx.accounts.auction.key();
+ctx.accounts.shared_vault.total_deposited = 0;
+
+ctx.accounts.auction.shared_vault = ctx.accounts.shared_vault.key();
+
     ctx.accounts.sign_pda_account.bump = ctx.bumps.sign_pda_account;
 
     let args = ArgBuilder::new().build();
@@ -532,6 +523,12 @@ pub fn create_metadata_auction(
         )?;
     }
 
+    ctx.accounts.shared_vault.bump = ctx.bumps.shared_vault;
+ctx.accounts.shared_vault.auction = ctx.accounts.auction.key();
+ctx.accounts.shared_vault.total_deposited = 0;
+
+ctx.accounts.auction.shared_vault = ctx.accounts.shared_vault.key();
+
     ctx.accounts.sign_pda_account.bump = ctx.bumps.sign_pda_account;
 
     let args = ArgBuilder::new().build();
@@ -551,6 +548,51 @@ pub fn create_metadata_auction(
         1,
         0,
     )?;
+
+    Ok(())
+}
+
+
+/// Stores a pending encrypted bid for later processing by `place_encrypted_bid`.
+///
+/// # PDA derivation
+/// - `shared_vault` = PDA(["shared-vault", auction])
+/// - `temp_bid` = PDA(["pending-encrypted-bid", auction, bidder, nonce_le_bytes])
+///
+/// # Accounts
+/// - `payer`: signer that pays rent for `temp_bid`
+/// - `auction`: target auction account
+/// - `shared_vault`: auction-scoped vault PDA that must already exist
+/// - `temp_bid`: pending bid PDA created here
+/// - `system_program`: required for account creation
+///
+/// # Notes
+/// - `bidder` is stored in the account and does not need to sign.
+/// - `nonce` must be unique per `(auction, bidder)` pair because it is part of the PDA seeds.
+/// - This instruction only records the encrypted bid metadata; it does not enqueue settlement.
+pub fn submit_encrypted_bid(
+    ctx: Context<SubmitEncryptedBid>,
+    bidder: Pubkey,
+    encrypted_amount: [u8; 32],
+    nonce: u128,
+) -> Result<()> {
+    let auction = &ctx.accounts.auction;
+
+    require_bid_allowed(auction)?;
+    require_keys_eq!(
+        ctx.accounts.shared_vault.auction,
+        auction.key(),
+        ErrorCode::InvalidSharedVault
+    );
+
+    let temp = &mut ctx.accounts.temp_bid;
+    temp.bump = ctx.bumps.temp_bid;
+    temp.auction = auction.key();
+    temp.shared_vault = ctx.accounts.shared_vault.key();
+    temp.bidder = bidder;
+    temp.nonce = nonce;
+    temp.encrypted_amount = encrypted_amount;
+    temp.consumed = false;
 
     Ok(())
 }
@@ -890,9 +932,10 @@ pub struct Auction {
     pub token_mint: Pubkey,
     pub sale_amount: u64,
 
-    pub prize_vault: Pubkey,
-    pub vault_authority_bump: u8,
-    pub prize_decimals: u8,
+pub prize_vault: Pubkey,
+pub shared_vault: Pubkey,
+pub vault_authority_bump: u8,
+pub prize_decimals: u8,
 
     pub winner: Pubkey,
     pub payment_amount: u64,
@@ -905,83 +948,6 @@ pub struct Auction {
     pub winner_paid_multi: [bool; 3],
 }
 
-#[queue_computation_accounts("init_auction_state", authority)]
-#[derive(Accounts)]
-#[instruction(computation_offset: u64, auction_seed: [u8;8])]
-pub struct CreateAuction<'info> {
-    #[account(mut)]
-    pub authority: Signer<'info>,
-
-    #[account(
-        init,
-        payer = authority,
-        space = 8 + Auction::INIT_SPACE,
-        seeds = [b"auction", authority.key().as_ref(), auction_seed.as_ref()],
-        bump,
-    )]
-    pub auction: Box<Account<'info, Auction>>,
-
-    pub prize_mint: Box<InterfaceAccount<'info, Mint>>,
-
-    #[account(
-        seeds = [b"vault-authority", auction.key().as_ref()],
-        bump
-    )]
-    /// CHECK: PDA used only as signer for token transfers. Seeds guarantee correctness.
-    pub vault_authority: UncheckedAccount<'info>,
-
-    #[account(mut)]
-    pub authority_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
-
-    #[account(mut)]
-    pub prize_vault: Box<InterfaceAccount<'info, TokenAccount>>,
-
-    pub token_program: Interface<'info, TokenInterface>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
-
-    #[account(
-        init_if_needed,
-        payer = authority,
-        space = 9,
-        seeds = [&SIGN_PDA_SEED],
-        bump,
-        address = derive_sign_pda!(),
-    )]
-    pub sign_pda_account: Box<Account<'info, ArciumSignerAccount>>,
-
-    #[account(address = derive_mxe_pda!())]
-    pub mxe_account: Box<Account<'info, MXEAccount>>,
-
-    #[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-    /// CHECK: mempool account address is validated by the constraint and the Arcium runtime.
-    pub mempool_account: UncheckedAccount<'info>,
-
-    #[account(mut, address = derive_execpool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-    /// CHECK: executing pool address is validated by the constraint and the Arcium runtime.
-    pub executing_pool: UncheckedAccount<'info>,
-
-    #[account(mut, address = derive_comp_pda!(computation_offset, mxe_account, ErrorCode::ClusterNotSet))]
-    /// CHECK: computation account address is validated by the constraint and the Arcium runtime.
-    pub computation_account: UncheckedAccount<'info>,
-
-    #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_INIT_AUCTION_STATE))]
-    pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
-
-    #[account(mut, address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-    /// CHECK: cluster account is validated by the address constraint and the Arcium runtime.
-    pub cluster_account: Box<Account<'info, Cluster>>,
-
-    #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
-    /// CHECK: fee pool account is validated by the address constraint and the Arcium runtime.
-    pub pool_account: Box<Account<'info, FeePool>>,
-
-    #[account(mut, address = ARCIUM_CLOCK_ACCOUNT_ADDRESS)]
-    /// CHECK: clock account is validated by the address constraint and the Arcium runtime.
-    pub clock_account: Box<Account<'info, ClockAccount>>,
-
-    pub system_program: Program<'info, System>,
-    pub arcium_program: Program<'info, Arcium>,
-}
 
 #[callback_accounts("init_auction_state")]
 #[derive(Accounts)]
@@ -1065,6 +1031,88 @@ pub struct PlaceBid<'info> {
     pub arcium_program: Program<'info, Arcium>,
 }
 
+#[queue_computation_accounts("place_encrypted_bid", cranker)]
+#[derive(Accounts)]
+#[instruction(computation_offset: u64)]
+pub struct PlaceEncryptedBid<'info> {
+    #[account(mut)]
+    pub cranker: Signer<'info>,
+
+    #[account(mut, has_one = shared_vault)]
+    pub auction: Box<Account<'info, Auction>>,
+
+    #[account(
+        mut,
+        seeds = [b"shared-vault", auction.key().as_ref()],
+        bump,
+        has_one = auction @ ErrorCode::InvalidSharedVault
+    )]
+    pub shared_vault: Box<Account<'info, SharedVault>>,
+
+    #[account(
+        mut,
+        has_one = auction @ ErrorCode::EscrowMismatch,
+        has_one = shared_vault @ ErrorCode::InvalidSharedVault,
+        constraint = !temp_bid.consumed @ ErrorCode::TempBidAlreadyConsumed
+    )]
+    pub temp_bid: Box<Account<'info, PendingEncryptedBid>>,
+
+    #[account(
+        init_if_needed,
+        space = 9,
+        payer = cranker,
+        seeds = [&SIGN_PDA_SEED],
+        bump,
+        address = derive_sign_pda!(),
+    )]
+    pub sign_pda_account: Box<Account<'info, ArciumSignerAccount>>,
+
+    #[account(address = derive_mxe_pda!())]
+    pub mxe_account: Box<Account<'info, MXEAccount>>,
+
+    #[account(
+        mut,
+        address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet)
+    )]
+    /// CHECK: mempool_account is validated by the PDA derivation and Arcium runtime.
+    pub mempool_account: UncheckedAccount<'info>,
+
+    #[account(
+        mut,
+        address = derive_execpool_pda!(mxe_account, ErrorCode::ClusterNotSet)
+    )]
+    /// CHECK: executing_pool is validated by the PDA derivation and Arcium runtime.
+    pub executing_pool: UncheckedAccount<'info>,
+
+    #[account(
+        mut,
+        address = derive_comp_pda!(computation_offset, mxe_account, ErrorCode::ClusterNotSet)
+    )]
+    /// CHECK: computation_account is validated by the PDA derivation and Arcium runtime.
+    pub computation_account: UncheckedAccount<'info>,
+
+    #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_PLACE_ENCRYPTED_BID))]
+    pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
+
+    #[account(
+        mut,
+        address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet)
+    )]
+    /// CHECK: cluster_account is validated by the PDA derivation and Arcium runtime.
+    pub cluster_account: Box<Account<'info, Cluster>>,
+
+    #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
+    /// CHECK: pool_account is a fixed Arcium fee pool address.
+    pub pool_account: Box<Account<'info, FeePool>>,
+
+    #[account(mut, address = ARCIUM_CLOCK_ACCOUNT_ADDRESS)]
+    /// CHECK: clock_account is a fixed Arcium clock address.
+    pub clock_account: Box<Account<'info, ClockAccount>>,
+
+    pub system_program: Program<'info, System>,
+    pub arcium_program: Program<'info, Arcium>,
+}
+
 #[callback_accounts("place_bid")]
 #[derive(Accounts)]
 pub struct PlaceBidCallback<'info> {
@@ -1079,6 +1127,25 @@ pub struct PlaceBidCallback<'info> {
     pub cluster_account: Account<'info, Cluster>,
     #[account(address = ::anchor_lang::solana_program::sysvar::instructions::ID)]
     /// CHECK: instructions_sysvar, checked by the account constraint
+    pub instructions_sysvar: AccountInfo<'info>,
+    #[account(mut)]
+    pub auction: Account<'info, Auction>,
+}
+
+#[callback_accounts("place_encrypted_bid")]
+#[derive(Accounts)]
+pub struct PlaceEncryptedBidCallback<'info> {
+    pub arcium_program: Program<'info, Arcium>,
+    #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_PLACE_ENCRYPTED_BID))]
+    pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
+    #[account(address = derive_mxe_pda!())]
+    pub mxe_account: Account<'info, MXEAccount>,
+    /// CHECK: computation_account, checked by Arcium program via constraints in the callback context.
+    pub computation_account: UncheckedAccount<'info>,
+    #[account(address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    pub cluster_account: Account<'info, Cluster>,
+    #[account(address = ::anchor_lang::solana_program::sysvar::instructions::ID)]
+    /// CHECK: instructions_sysvar, checked by the account constraint.
     pub instructions_sysvar: AccountInfo<'info>,
     #[account(mut)]
     pub auction: Account<'info, Auction>,
@@ -1278,6 +1345,15 @@ pub struct CreateMetadataAuction<'info> {
     pub auction: Box<Account<'info, Auction>>,
 
     #[account(
+    init,
+    payer = authority,
+    space = 8 + SharedVault::INIT_SPACE,
+    seeds = [b"shared-vault", auction.key().as_ref()],
+    bump,
+)]
+pub shared_vault: Box<Account<'info, SharedVault>>,
+
+    #[account(
         init_if_needed,
         payer = authority,
         space = 9,
@@ -1345,6 +1421,15 @@ pub struct CreateTokenAuction<'info> {
     )]
     /// CHECK: PDA used only as signer for token transfers; seeds constrain the address.
     pub vault_authority: UncheckedAccount<'info>,
+
+#[account(
+    init,
+    payer = authority,
+    space = 8 + SharedVault::INIT_SPACE,
+    seeds = [b"shared-vault", auction.key().as_ref()],
+    bump,
+)]
+pub shared_vault: Box<Account<'info, SharedVault>>,
 
     #[account(mut)]
     pub authority_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
@@ -1425,6 +1510,26 @@ pub struct InitPlaceBidCompDef<'info> {
     pub system_program: Program<'info, System>,
 }
 
+#[init_computation_definition_accounts("place_encrypted_bid", payer)]
+#[derive(Accounts)]
+pub struct InitPlaceEncryptedBidCompDef<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    #[account(mut, address = derive_mxe_pda!())]
+    pub mxe_account: Box<Account<'info, MXEAccount>>,
+    #[account(mut)]
+    /// CHECK: comp_def_account, checked by arcium program.
+    pub comp_def_account: UncheckedAccount<'info>,
+    #[account(mut, address = derive_mxe_lut_pda!(mxe_account.lut_offset_slot))]
+    /// CHECK: address_lookup_table, checked by arcium program.
+    pub address_lookup_table: UncheckedAccount<'info>,
+    #[account(address = LUT_PROGRAM_ID)]
+    /// CHECK: lut_program is the Address Lookup Table program.
+    pub lut_program: UncheckedAccount<'info>,
+    pub arcium_program: Program<'info, Arcium>,
+    pub system_program: Program<'info, System>,
+}
+
 #[init_computation_definition_accounts("determine_winner_first_price", payer)]
 #[derive(Accounts)]
 pub struct InitDetermineWinnerFirstPriceCompDef<'info> {
@@ -1464,6 +1569,42 @@ pub struct InitDetermineWinnerVickreyCompDef<'info> {
     pub arcium_program: Program<'info, Arcium>,
     pub system_program: Program<'info, System>,
 }
+
+#[derive(Accounts)]
+#[instruction(bidder: Pubkey, encrypted_amount: [u8; 32], nonce: u128)]
+pub struct SubmitEncryptedBid<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
+    #[account(mut)]
+    pub auction: Box<Account<'info, Auction>>,
+
+    #[account(
+        mut,
+        seeds = [b"shared-vault", auction.key().as_ref()],
+        bump,
+        has_one = auction @ ErrorCode::InvalidSharedVault
+    )]
+    pub shared_vault: Box<Account<'info, SharedVault>>,
+
+    #[account(
+        init,
+        payer = payer,
+        space = 8 + PendingEncryptedBid::INIT_SPACE,
+        seeds = [
+            b"pending-encrypted-bid",
+            auction.key().as_ref(),
+            bidder.as_ref(),
+            &nonce.to_le_bytes()
+        ],
+        bump
+    )]
+    pub temp_bid: Box<Account<'info, PendingEncryptedBid>>,
+
+    pub system_program: Program<'info, System>,
+}
+
+
 
 #[account]
 #[derive(InitSpace)]
@@ -2768,8 +2909,6 @@ pub struct FinalizeTokenWinnerPayout<'info> {
     pub system_program: Program<'info, System>,
 }
 
-
-
 }
 #[event]
 pub struct AuctionCreatedEvent {
@@ -2904,6 +3043,10 @@ pub enum ErrorCode {
     WrongAssetKind,
     #[msg("This auction already has bids and cannot be reclaimed as unsold")]
     CannotReclaimWithBids,
+    #[msg("Invalid shared vault")]
+    InvalidSharedVault,
+    #[msg("Pending encrypted bid already consumed")]
+    TempBidAlreadyConsumed,
 }
 
 fn require_not_resolved(auction: &Auction) -> Result<()> {
@@ -3000,6 +3143,7 @@ fn init_auction_common(
     auction.token_mint = token_mint;
     auction.sale_amount = sale_amount;
     auction.prize_vault = prize_vault;
+    auction.shared_vault = Pubkey::default();
     auction.vault_authority_bump = vault_authority_bump;
     auction.prize_decimals = prize_decimals;
 
@@ -3039,4 +3183,24 @@ fn settle_sol_escrow(
     }
 
     Ok(())
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct SharedVault {
+    pub bump: u8,
+    pub auction: Pubkey,
+    pub total_deposited: u64,
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct PendingEncryptedBid {
+    pub bump: u8,
+    pub auction: Pubkey,
+    pub shared_vault: Pubkey,
+    pub bidder: Pubkey,
+    pub nonce: u128,
+    pub encrypted_amount: [u8; 32],
+    pub consumed: bool,
 }
