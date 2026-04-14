@@ -273,7 +273,7 @@ const scrollTo =
           </div>
 
           <p className="mt-6 text-xs uppercase tracking-[0.32em] text-[var(--muted)] md:text-sm">
-            Eliminate MEV entirely
+            Deployed on Solana devnet
           </p>
         </div>
       </section>
@@ -296,7 +296,7 @@ const scrollTo =
               }
               subtitle={
                 <>
-                  ARCRYPT brings 100% sealed auctions to Solana so allocation, pricing, and settlement happen without exposing bids to the public mempool. That means cleaner launches, less extraction, and a market structure designed from the start to protect participants.
+                  ARCRYPT brings 100% sealed auctions to Solana so escrows, pricing, and settlement happen without exposing bids to the public mempool. This provides total MEV protection and a market structure designed from the start to protect participants. We use state-of-the-art cryptography including Arcium MPC for winner calculation, and CPI with the UMBRA program to keep escrows private.
                 </>
               }
             />
@@ -445,7 +445,7 @@ const scrollTo =
               A comprehensive sealed auction <span className="text-accent">SDK for developers</span>
             </h2>
             <p className="mt-6 max-w-3xl text-lg leading-8 text-[var(--muted)] md:text-2xl md:leading-10">
-              Build sealed-bid markets into protocols, launchpads, validators, and treasury tools without exposing bidder intent. ARCRYPT gives you the primitives to ship encrypted auctions as a product surface, not just a demo.
+              Build sealed-bid markets into protocols, launchpads, validators, and treasury tools without exposing bidder intent. ARCRYPT gives you the primitives to ship encrypted auctions with low latency.
             </p>
 
             <div className="mt-8 flex flex-col gap-4 sm:flex-row">
@@ -482,7 +482,7 @@ const scrollTo =
               Encrypted balances and shared secrets with MPC
             </h2>
             <p className="mt-6 max-w-4xl text-lg leading-8 text-[var(--muted)] md:text-2xl md:leading-10">
-              See how ARCRYPT securely locks encrypted bid escrows and determines the result of the auction without revealing the bid quantity anywhere on-chain.
+              See how ARCRYPT securely locks encrypted bid escrows and determines the result of the auction without revealing the bid quantity anywhere on-chain using multi-party computation.
             </p>
           </div>
 
