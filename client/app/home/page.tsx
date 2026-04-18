@@ -6,21 +6,23 @@ import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "re
 const launchPhrases = [
   "Launch a token",
   "Launch an NFT",
-  "Launch your DAO",
+  // "Launch your DAO",
   "Run sealed liquidation auctions",
   "Sell DAO treasuries",
-  "Liquidate positions",
-  "Order validator bundles",
+  // "Liquidate positions",
+  "Protect your project launch from MEV",
   "Sell a token",
   "Run private launch sales",
   "Sell an NFT",
   "Protect bids from MEV",
+  "Develop with sealed auctions"
 ] as const;
 
 const launchUseCases = [
-  "Launch your DAO",
-  "Launch your token / NFT",
-  "Liquidation auctions and transaction ordering",
+  // "Launch your Project",
+  "Launch your token",
+  "Launch an NFT",
+  "Liquidation auctions",
   "Custom build for apps and protocols",
 ] as const;
 
@@ -250,8 +252,7 @@ const scrollTo =
 
           <div className="mt-6 max-w-4xl flex flex-col items-center gap-2">
             <p className="hero-copy max-w-4xl text-lg leading-8 text-[var(--muted)] md:text-xl md:leading-9 lg:text-2xl lg:leading-[1.45]">
-              ARCRYPT is a sealed-bid auction stack for Solana that keeps bids, escrows, and settlement private while still producing an on-chain outcome.
-              Use it to launch tokens, run DAO sales, and build MEV resistent trading protocols immune from bot sniping.
+              ARCRYPT is a sealed-bid auction platform for Solana that keeps escrow balances and bids 100% private. Eliminate MEV entirely and launch with ARCRYPT. 
             </p>
 
             <div className="mt-6 flex flex-col justify-center gap-4 sm:flex-row">
@@ -342,10 +343,10 @@ const scrollTo =
                       {item}
                     </div>
                     <div className="mt-3 text-sm leading-6 text-[var(--muted)] md:text-base">
-                      {index === 0 && "Run sealed governance sales without exposing bids."}
-                      {index === 1 && "Sell assets with private demand discovery and no public sniping."}
-                      {index === 2 && "Cover liquidation auctions, bundle ordering, and other high-value execution flows."}
-                      {index === 3 && "Use the auction program directly inside your app or protocol."}
+                      {index === 0 && "Launch your project with total protection from bots and MEV."}
+                      {index === 1 && "Auction and bid for NFTs, completed sealed - create your own or sell an existing one."}
+                      {index === 2 && "Plug in with DAOs and Realms governance to propose treasury liquidations"}
+                      {index === 3 && "Use the auction program directly inside your app or protocol with the SDK"}
                     </div>
                   </div>
                 );
