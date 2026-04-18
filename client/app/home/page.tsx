@@ -10,7 +10,7 @@ const launchPhrases = [
   "Run sealed liquidation auctions",
   "Sell DAO treasuries",
   // "Liquidate positions",
-  "Protect your project launch from MEV",
+  "Protect your launch from MEV",
   "Sell a token",
   "Run private launch sales",
   "Sell an NFT",
