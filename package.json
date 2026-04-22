@@ -4,7 +4,8 @@
   "workspaces": [
     "client",
     "sdk"
-  ]
-
-
+  ],
+  "dependencies": {
+    "@arcium-hq/client": "^0.9.7"
+  }
 }

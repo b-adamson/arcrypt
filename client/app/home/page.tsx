@@ -15,7 +15,9 @@ const launchPhrases = [
   "Run private launch sales",
   "Sell an NFT",
   "Protect bids from MEV",
-  "Develop with sealed auctions"
+  "Develop with sealed auctions",
+  "Avoid OTC",
+  "Maximize price discovery"
 ] as const;
 
 const launchUseCases = [
@@ -33,15 +35,15 @@ const sdkPanels = [
   },
   {
     title: "Validator bundles",
-    copy: "Sealed transaction ordering for execution flows.",
+    copy: "Sealed transaction bundling for block building.",
   },
   {
     title: "DAO launchpads",
     copy: "Fully sealed bid collection for token and governance sales.",
   },
   {
-    title: "Custom build",
-    copy: "Use the auction program inside your apps and protocols.",
+    title: "Launch a token from your site",
+    copy: "Use the auction program inside your apps / protocols with our clientside tools.",
   },
 ] as const;
 
@@ -344,7 +346,7 @@ const scrollTo =
                     </div>
                     <div className="mt-3 text-sm leading-6 text-[var(--muted)] md:text-base">
                       {index === 0 && "Launch your project with total protection from bots and MEV."}
-                      {index === 1 && "Auction and bid for NFTs, completed sealed - create your own or sell an existing one."}
+                      {index === 1 && "Auction and bid for NFTs, completely sealed - create your own or sell an existing one."}
                       {index === 2 && "Plug in with DAOs and Realms governance to propose treasury liquidations"}
                       {index === 3 && "Use the auction program directly inside your app or protocol with the SDK"}
                     </div>
@@ -719,7 +721,7 @@ const scrollTo =
 
                   <p className="mt-4 text-sm text-[var(--muted)]">
                     Generate a sealed-auction instruction bundle that can be inserted into Realms
-                    or another DAO governance flow. Auction SPL tokens in the treasury.
+                    or another DAO governance flow. Auction SPL tokens in the treasury (perfect for TGEs)
                   </p>
 
                   <div className="mt-4 border border-[var(--line)] bg-[var(--background)] p-4 text-xs text-[var(--accent)]">

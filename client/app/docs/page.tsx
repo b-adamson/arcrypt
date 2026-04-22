@@ -144,7 +144,7 @@ export default function DocsPage() {
               <li>Publish the auction — bids remain encrypted until the reveal step, preserving bidder privacy throughout the process.</li>
             </ul>
 
-            <h3 id="auction-types" className="mb-2 text-lg font-semibold text-[var(--foreground)]">
+            <h3 id="auction-types" className="mb-2 text-lg font-semibold text-[var(--foreground)] scroll-mt-20 ">
               Auction types
             </h3>
             <ul className="mb-4 ml-5 list-disc space-y-2 text-[var(--muted)]">

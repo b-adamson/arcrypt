@@ -398,33 +398,33 @@ export default function AuctionCreateForm({
           </Field>
 
           <Field label="Image" hint="Optional. Uploaded first, then referenced from the JSON metadata.">
-<input
-  type="file"
-  accept="image/*"
-  onChange={(e) => {
-    const file = e.target.files?.[0] ?? null;
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
 
-    if (!file) {
-      setImageError(null);
-      onMetadataImageChange(null);
-      return;
-    }
+                if (!file) {
+                  setImageError(null);
+                  onMetadataImageChange(null);
+                  return;
+                }
 
-    if (file.size > MAX_METADATA_IMAGE_BYTES) {
-      setImageError("Image must be 5 MB or smaller.");
-      e.currentTarget.value = "";
-      onMetadataImageChange(null);
-      return;
-    }
+                if (file.size > MAX_METADATA_IMAGE_BYTES) {
+                  setImageError("Image must be 5 MB or smaller.");
+                  e.currentTarget.value = "";
+                  onMetadataImageChange(null);
+                  return;
+                }
 
-    setImageError(null);
-    onMetadataImageChange(file);
-  }}
-  className="block h-12 w-full border border-[var(--line)] bg-[var(--surface)] px-4 py-2 text-sm text-[var(--foreground)] outline-none file:mr-4 file:border-0 file:bg-[var(--background)] file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-[var(--foreground)] hover:file:bg-[var(--surface-2)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]/40"
-/>
-{imageError ? (
-  <p className="mt-2 text-xs text-red-500">{imageError}</p>
-) : null}
+                setImageError(null);
+                onMetadataImageChange(file);
+              }}
+              className="block h-12 w-full border border-[var(--line)] bg-[var(--surface)] px-4 py-2 text-sm text-[var(--foreground)] outline-none file:mr-4 file:border-0 file:bg-[var(--background)] file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-[var(--foreground)] hover:file:bg-[var(--surface-2)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]/40"
+            />
+            {imageError ? (
+              <p className="mt-2 text-xs text-red-500">{imageError}</p>
+            ) : null}
 
             {metadataImageFile ? (
               <div className="mt-3 overflow-hidden border border-[var(--line)] bg-[var(--background)]">
@@ -611,7 +611,20 @@ export default function AuctionCreateForm({
         </div>
 
         <div className="mt-4 grid gap-4 md:grid-cols-[1.2fr_0.8fr_auto] md:items-end">
-          <Field label="Auction type" hint="Uniform and Pro Rata are hidden for NFT / metadata-only.">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Link
+                href="/docs#auction-types"
+                aria-label="Open docs for auction types"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--accent)] bg-[var(--accent)]/10 text-[13px] font-bold text-[var(--accent)] transition hover:bg-[var(--accent)]/20"
+              >
+                i
+              </Link>
+              <label className="block text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+                Auction type
+              </label>
+            </div>
+            <p className="text-xs text-[var(--muted)]/80">Uniform and Pro Rata are hidden for NFT / metadata-only.</p>
             <select
               value={auctionType}
               onChange={(e) => onAuctionTypeChange(e.target.value as AuctionType)}
@@ -622,8 +635,11 @@ export default function AuctionCreateForm({
                   {type}
                 </option>
               ))}
+              <option value="__fdv_token_launch__" disabled>
+                FDV Token Launch (coming soon)
+              </option>
             </select>
-          </Field>
+          </div>
 
           <div className="border border-[var(--line)] bg-[var(--background)] px-4 py-3">
             <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--muted)]/70">Status</p>
