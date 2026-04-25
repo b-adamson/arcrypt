@@ -1,15 +1,15 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Connection, PublicKey } from "@solana/web3.js";
-import type { SealedBidAuction } from "./sealed_bid_auction";
+import type { Arcrypt } from "./Arcrypt";
 
 async function loadIdlFromPublic(): Promise<anchor.Idl> {
   if (typeof window !== "undefined") {
-    const resp = await fetch("/idl/sealed_bid_auction.json", {
+    const resp = await fetch("/idl/arcrypt.json", {
       cache: "no-store",
     });
     if (!resp.ok) {
       throw new Error(
-        "Could not load IDL from /idl/sealed_bid_auction.json (browser)"
+        "Could not load IDL from /idl/arcrypt.json (browser)"
       );
     }
     return resp.json();
@@ -166,7 +166,7 @@ export async function createAnchorProgramInBrowser(
  * Useful for listing accounts when the user hasn't connected a wallet.
  * - rpcUrl optional, programIdStr optional
  */
-export async function createReadOnlyProgram(rpcUrl?: string, programIdStr?: string): Promise<anchor.Program<SealedBidAuction>> {
+export async function createReadOnlyProgram(rpcUrl?: string, programIdStr?: string): Promise<anchor.Program<Arcrypt>> {
   const idl = await loadIdlFromPublic();
   const rpc = rpcUrl ?? process.env.RPC_URL ?? "https://api.devnet.solana.com";
   const connection = new Connection(rpc, "confirmed");

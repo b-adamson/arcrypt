@@ -1,7 +1,7 @@
 {
-  "address": "HPV5kXxCZ7gBGWgMJwyqc9wZhTryjZcwSJUMdeyQ7en4",
+  "address": "8icpcRrJNtQ4RBaTtttGoy2qzDDY8bQcxQaYm2dRvFRC",
   "metadata": {
-    "name": "sealed_bid_auction",
+    "name": "arcrypt",
     "version": "0.1.0",
     "spec": "0.1.0",
     "description": "Created with Arcium & Anchor"
@@ -88,218 +88,6 @@
       "args": []
     },
     {
-      "name": "create_auction",
-      "discriminator": [
-        234,
-        6,
-        201,
-        246,
-        47,
-        219,
-        176,
-        107
-      ],
-      "accounts": [
-        {
-          "name": "authority",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "auction",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  117,
-                  99,
-                  116,
-                  105,
-                  111,
-                  110
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "authority"
-              },
-              {
-                "kind": "arg",
-                "path": "auction_seed"
-              }
-            ]
-          }
-        },
-        {
-          "name": "prize_mint"
-        },
-        {
-          "name": "vault_authority",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  45,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "auction"
-              }
-            ]
-          }
-        },
-        {
-          "name": "authority_token_account",
-          "writable": true
-        },
-        {
-          "name": "prize_vault",
-          "writable": true
-        },
-        {
-          "name": "token_program"
-        },
-        {
-          "name": "sign_pda_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  65,
-                  114,
-                  99,
-                  105,
-                  117,
-                  109,
-                  83,
-                  105,
-                  103,
-                  110,
-                  101,
-                  114,
-                  65,
-                  99,
-                  99,
-                  111,
-                  117,
-                  110,
-                  116
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "mxe_account"
-        },
-        {
-          "name": "mempool_account",
-          "writable": true
-        },
-        {
-          "name": "executing_pool",
-          "writable": true
-        },
-        {
-          "name": "computation_account",
-          "writable": true
-        },
-        {
-          "name": "comp_def_account"
-        },
-        {
-          "name": "cluster_account",
-          "writable": true
-        },
-        {
-          "name": "pool_account",
-          "writable": true,
-          "address": "G2sRWJvi3xoyh5k2gY49eG9L8YhAEWQPtNb1zb1GXTtC"
-        },
-        {
-          "name": "clock_account",
-          "writable": true,
-          "address": "7EbMUTLo5DjdzbN7s8BXeZwXzEwNQb1hScfRvWg8a6ot"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        },
-        {
-          "name": "arcium_program",
-          "address": "Arcj82pX7HxYKLR92qvgZUAd7vGS1k4hQvAFcPATFdEQ"
-        }
-      ],
-      "args": [
-        {
-          "name": "computation_offset",
-          "type": "u64"
-        },
-        {
-          "name": "_auction_seed",
-          "type": {
-            "array": [
-              "u8",
-              8
-            ]
-          }
-        },
-        {
-          "name": "auction_type",
-          "type": {
-            "defined": {
-              "name": "AuctionType"
-            }
-          }
-        },
-        {
-          "name": "asset_kind",
-          "type": {
-            "defined": {
-              "name": "AssetKind"
-            }
-          }
-        },
-        {
-          "name": "min_bid",
-          "type": "u64"
-        },
-        {
-          "name": "end_time",
-          "type": "i64"
-        },
-        {
-          "name": "sale_amount",
-          "type": "u64"
-        },
-        {
-          "name": "auction_metadata_uri",
-          "type": "string"
-        }
-      ]
-    },
-    {
       "name": "create_metadata_auction",
       "discriminator": [
         45,
@@ -341,6 +129,35 @@
               {
                 "kind": "arg",
                 "path": "auction_seed"
+              }
+            ]
+          }
+        },
+        {
+          "name": "shared_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  104,
+                  97,
+                  114,
+                  101,
+                  100,
+                  45,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "auction"
               }
             ]
           }
@@ -525,6 +342,35 @@
                   105,
                   116,
                   121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "auction"
+              }
+            ]
+          }
+        },
+        {
+          "name": "shared_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  104,
+                  97,
+                  114,
+                  101,
+                  100,
+                  45,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
                 ]
               },
               {
@@ -2158,6 +2004,51 @@
       "args": []
     },
     {
+      "name": "init_place_encrypted_bid_comp_def",
+      "discriminator": [
+        55,
+        168,
+        158,
+        197,
+        157,
+        128,
+        121,
+        168
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mxe_account",
+          "writable": true
+        },
+        {
+          "name": "comp_def_account",
+          "writable": true
+        },
+        {
+          "name": "address_lookup_table",
+          "writable": true
+        },
+        {
+          "name": "lut_program",
+          "address": "AddressLookupTab1e1111111111111111111111111"
+        },
+        {
+          "name": "arcium_program",
+          "address": "Arcj82pX7HxYKLR92qvgZUAd7vGS1k4hQvAFcPATFdEQ"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "place_bid",
       "discriminator": [
         238,
@@ -2390,6 +2281,208 @@
       ]
     },
     {
+      "name": "place_encrypted_bid",
+      "discriminator": [
+        81,
+        23,
+        51,
+        92,
+        28,
+        61,
+        198,
+        7
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "auction",
+          "writable": true,
+          "relations": [
+            "shared_vault",
+            "temp_bid"
+          ]
+        },
+        {
+          "name": "shared_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  104,
+                  97,
+                  114,
+                  101,
+                  100,
+                  45,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "auction"
+              }
+            ]
+          },
+          "relations": [
+            "auction",
+            "temp_bid"
+          ]
+        },
+        {
+          "name": "temp_bid",
+          "writable": true
+        },
+        {
+          "name": "sign_pda_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  65,
+                  114,
+                  99,
+                  105,
+                  117,
+                  109,
+                  83,
+                  105,
+                  103,
+                  110,
+                  101,
+                  114,
+                  65,
+                  99,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "mxe_account"
+        },
+        {
+          "name": "mempool_account",
+          "writable": true
+        },
+        {
+          "name": "executing_pool",
+          "writable": true
+        },
+        {
+          "name": "computation_account",
+          "writable": true
+        },
+        {
+          "name": "comp_def_account"
+        },
+        {
+          "name": "cluster_account",
+          "writable": true
+        },
+        {
+          "name": "pool_account",
+          "writable": true,
+          "address": "G2sRWJvi3xoyh5k2gY49eG9L8YhAEWQPtNb1zb1GXTtC"
+        },
+        {
+          "name": "clock_account",
+          "writable": true,
+          "address": "7EbMUTLo5DjdzbN7s8BXeZwXzEwNQb1hScfRvWg8a6ot"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "arcium_program",
+          "address": "Arcj82pX7HxYKLR92qvgZUAd7vGS1k4hQvAFcPATFdEQ"
+        }
+      ],
+      "args": [
+        {
+          "name": "computation_offset",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "place_encrypted_bid_callback",
+      "discriminator": [
+        229,
+        184,
+        88,
+        158,
+        162,
+        67,
+        238,
+        211
+      ],
+      "accounts": [
+        {
+          "name": "arcium_program",
+          "address": "Arcj82pX7HxYKLR92qvgZUAd7vGS1k4hQvAFcPATFdEQ"
+        },
+        {
+          "name": "comp_def_account"
+        },
+        {
+          "name": "mxe_account"
+        },
+        {
+          "name": "computation_account"
+        },
+        {
+          "name": "cluster_account"
+        },
+        {
+          "name": "instructions_sysvar",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "auction",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "output",
+          "type": {
+            "defined": {
+              "name": "SignedComputationOutputs",
+              "generics": [
+                {
+                  "kind": "type",
+                  "type": {
+                    "defined": {
+                      "name": "PlaceEncryptedBidOutput"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "reclaim_unsold_metadata_item",
       "discriminator": [
         179,
@@ -2544,6 +2637,150 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "submit_encrypted_bid",
+      "docs": [
+        "Stores a pending encrypted bid for later processing by `place_encrypted_bid`.",
+        "",
+        "# PDA derivation",
+        "- `shared_vault` = PDA([\"shared-vault\", auction])",
+        "- `temp_bid` = PDA([\"pending-encrypted-bid\", auction, bidder, nonce_le_bytes])",
+        "",
+        "# Accounts",
+        "- `payer`: signer that pays rent for `temp_bid`",
+        "- `auction`: target auction account",
+        "- `shared_vault`: auction-scoped vault PDA that must already exist",
+        "- `temp_bid`: pending bid PDA created here",
+        "- `system_program`: required for account creation",
+        "",
+        "# Notes",
+        "- `bidder` is stored in the account and does not need to sign.",
+        "- `nonce` must be unique per `(auction, bidder)` pair because it is part of the PDA seeds.",
+        "- This instruction only records the encrypted bid metadata; it does not enqueue settlement."
+      ],
+      "discriminator": [
+        79,
+        24,
+        114,
+        130,
+        197,
+        38,
+        79,
+        99
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "auction",
+          "writable": true,
+          "relations": [
+            "shared_vault"
+          ]
+        },
+        {
+          "name": "shared_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  104,
+                  97,
+                  114,
+                  101,
+                  100,
+                  45,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "auction"
+              }
+            ]
+          }
+        },
+        {
+          "name": "temp_bid",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  110,
+                  100,
+                  105,
+                  110,
+                  103,
+                  45,
+                  101,
+                  110,
+                  99,
+                  114,
+                  121,
+                  112,
+                  116,
+                  101,
+                  100,
+                  45,
+                  98,
+                  105,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "auction"
+              },
+              {
+                "kind": "arg",
+                "path": "bidder"
+              },
+              {
+                "kind": "arg",
+                "path": "nonce"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "bidder",
+          "type": "pubkey"
+        },
+        {
+          "name": "encrypted_amount",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "nonce",
+          "type": "u128"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -2649,6 +2886,32 @@
         159,
         17,
         117
+      ]
+    },
+    {
+      "name": "PendingEncryptedBid",
+      "discriminator": [
+        8,
+        210,
+        37,
+        28,
+        37,
+        76,
+        222,
+        100
+      ]
+    },
+    {
+      "name": "SharedVault",
+      "discriminator": [
+        195,
+        36,
+        66,
+        128,
+        41,
+        62,
+        161,
+        142
       ]
     }
   ],
@@ -2918,6 +3181,16 @@
       "code": 6031,
       "name": "CannotReclaimWithBids",
       "msg": "This auction already has bids and cannot be reclaimed as unsold"
+    },
+    {
+      "code": 6032,
+      "name": "InvalidSharedVault",
+      "msg": "Invalid shared vault"
+    },
+    {
+      "code": 6033,
+      "name": "TempBidAlreadyConsumed",
+      "msg": "Pending encrypted bid already consumed"
     }
   ],
   "types": [
@@ -3055,6 +3328,10 @@
           },
           {
             "name": "prize_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "shared_vault",
             "type": "pubkey"
           },
           {
@@ -4525,7 +4802,74 @@
       }
     },
     {
+      "name": "PendingEncryptedBid",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "auction",
+            "type": "pubkey"
+          },
+          {
+            "name": "shared_vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "bidder",
+            "type": "pubkey"
+          },
+          {
+            "name": "nonce",
+            "type": "u128"
+          },
+          {
+            "name": "encrypted_amount",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "consumed",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
       "name": "PlaceBidOutput",
+      "docs": [
+        "The output of the callback instruction. Provided as a struct with ordered fields",
+        "as anchor does not support tuples and tuple structs yet."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "field_0",
+            "type": {
+              "defined": {
+                "name": "MXEEncryptedStruct",
+                "generics": [
+                  {
+                    "kind": "const",
+                    "value": "10"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PlaceEncryptedBidOutput",
       "docs": [
         "The output of the callback instruction. Provided as a struct with ordered fields",
         "as anchor does not support tuples and tuple structs yet."
@@ -4584,6 +4928,26 @@
                 "vec": "bool"
               }
             ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "SharedVault",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "auction",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_deposited",
+            "type": "u64"
           }
         ]
       }

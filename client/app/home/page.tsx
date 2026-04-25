@@ -721,7 +721,7 @@ const scrollTo =
 
                   <p className="mt-4 text-sm text-[var(--muted)]">
                     Generate a sealed-auction instruction bundle that can be inserted into Realms
-                    or another DAO governance flow. Auction SPL tokens in the treasury (perfect for TGEs)
+                    or another DAO governance path. Auction SPL tokens in the treasury (perfect for TGEs)
                   </p>
 
                   <div className="mt-4 border border-[var(--line)] bg-[var(--background)] p-4 text-xs text-[var(--accent)]">

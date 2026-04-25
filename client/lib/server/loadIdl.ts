@@ -8,7 +8,7 @@ export async function loadIdlFromFs(): Promise<anchor.Idl> {
     process.cwd(),
     "public",
     "idl",
-    "sealed_bid_auction.json"
+    "arcrypt.json"
   );
 
   const raw = await fs.promises.readFile(idlPath, "utf8");

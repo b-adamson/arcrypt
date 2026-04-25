@@ -108,7 +108,7 @@ async function main() {
   anchor.setProvider(provider);
 
   // Load local IDL (must exist)
-  const idlPath = path.resolve(process.cwd(), "target", "idl", "sealed_bid_auction.json");
+  const idlPath = path.resolve(process.cwd(), "target", "idl", "arcrypt.json");
   if (!fs.existsSync(idlPath)) throw new Error(`IDL not found at ${idlPath}`);
   const localIdl = JSON.parse(fs.readFileSync(idlPath, "utf8"));
 

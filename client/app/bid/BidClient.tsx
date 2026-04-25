@@ -137,6 +137,8 @@ export default function BidPageClient({ auctionPk }: { auctionPk: string | null 
   const [escrowExists, setEscrowExists] = useState<boolean | null>(null);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const walletBase58 = publicKey?.toBase58() ?? "";
 
   const auctionStatus = auctionData ? enumKey(auctionData.status).toLowerCase() : "";
@@ -430,6 +432,19 @@ export default function BidPageClient({ auctionPk }: { auctionPk: string | null 
     };
   }, []);
 
+async function safeSendTx(program: any, tx: Transaction) {
+  try {
+    const sig = await program.provider.sendAndConfirm(tx);
+    return sig;
+  } catch (e: any) {
+    if (String(e?.message).includes("already been processed")) {
+      console.warn("Tx already processed, treating as success");
+      return "already-processed";
+    }
+    throw e;
+  }
+}
+
   async function callPlaceBid(auctionPk: string, bidderPubkey: string, bidAmountSol: string, nonceHex: string | null) {
     const res = await fetch("/api/placeBid", {
       method: "POST",
@@ -461,6 +476,8 @@ export default function BidPageClient({ auctionPk }: { auctionPk: string | null 
 
   async function handlePlaceBid() {
     setStatus("Preparing placeBid...");
+      if (isSubmitting) return;
+  setIsSubmitting(true);
     try {
       if (!programClient || !publicKey) {
         throw new Error("Connect wallet and ensure program client ready");
@@ -481,101 +498,25 @@ export default function BidPageClient({ auctionPk }: { auctionPk: string | null 
       const tx = Transaction.from(Buffer.from(srv.txBase64, "base64"));
 
       setStatus("Signing and sending placeBid tx...");
-      const sig = await program.provider.sendAndConfirm(tx);
+      console.log("placeBid triggered");
+      const sig = await safeSendTx(program, tx);
 
-      setStatus("placeBid tx sent: " + sig);
+setStatus(
+  sig === "already-processed"
+    ? "Transaction already processed (confirmed)"
+    : "placeBid tx sent: " + sig
+);
+
+await refreshAuctionState();
+
+      // setStatus("placeBid tx sent: " + sig);
       await refreshAuctionState();
     } catch (err: any) {
       console.error("placeBid failed:", err);
       setStatus("placeBid failed: " + (err?.message ?? String(err)));
-    }
+    } finally {
+    setIsSubmitting(false);
   }
-
-  async function handleReclaimUnsoldItem() {
-    try {
-      if (!programClient || !publicKey || !auctionPkStr) {
-        throw new Error("Missing program client, wallet, or auction");
-      }
-
-      const program = programClient;
-      assertProviderReady(program);
-
-      const auctionPk = new PublicKey(auctionPkStr);
-      const auction = auctionData ?? (await program.account.auction.fetch(auctionPk));
-
-      const creatorPk = new PublicKey(auction.authority);
-      if (!creatorPk.equals(publicKey)) {
-        throw new Error("Only the creator can reclaim an unsold item.");
-      }
-
-      const bidCountNow = getBidCount(auction);
-      if (bidCountNow !== 0) {
-        throw new Error("This auction has bids, so it cannot be reclaimed as unsold.");
-      }
-
-      const statusKey = enumKey(auction.status).toLowerCase();
-      const endTime = Number(auction.endTime ?? auction.end_time ?? 0);
-      const now = Math.floor(Date.now() / 1000);
-
-      if (now < endTime && statusKey === "open") {
-        throw new Error("Auction has not ended yet.");
-      }
-
-      if (isMetadataAuction(auction)) {
-        const sig = await (program.methods as any)
-          .reclaimUnsoldMetadataItem()
-          .accounts({
-            creator: publicKey,
-            auction: auctionPk,
-          })
-          .rpc();
-
-        setStatus("Unsold metadata auction reclaimed: " + sig);
-        await program.provider.connection.confirmTransaction(sig, "confirmed");
-        await refreshAuctionState();
-        return;
-      }
-
-      if (!isTokenAuction(auction)) {
-        throw new Error("Unsupported asset kind for reclaim.");
-      }
-
-      const prizeMintPk = new PublicKey(auction.tokenMint ?? auction.token_mint);
-      const prizeVaultPk = new PublicKey(auction.prizeVault ?? auction.prize_vault);
-
-      const vaultAuthorityPda = PublicKey.findProgramAddressSync(
-        [Buffer.from("vault-authority"), auctionPk.toBuffer()],
-        program.programId
-      )[0];
-
-      const creatorAta = getAssociatedTokenAddressSync(
-        prizeMintPk,
-        publicKey,
-        false,
-        TOKEN_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID
-      );
-
-      const sig = await (program.methods as any)
-        .reclaimUnsoldTokenItem()
-        .accounts({
-          creator: publicKey,
-          auction: auctionPk,
-          prizeMint: prizeMintPk,
-          prizeVault: prizeVaultPk,
-          vaultAuthority: vaultAuthorityPda,
-          creatorAta,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-        })
-        .rpc();
-
-      setStatus("Unsold token item reclaimed: " + sig);
-      await program.provider.connection.confirmTransaction(sig, "confirmed");
-      await refreshAuctionState();
-    } catch (err: any) {
-      setStatus("Reclaim failed: " + (err?.message ?? String(err)));
-    }
   }
 
   async function callAuctionActions(body: {
@@ -621,10 +562,15 @@ export default function BidPageClient({ auctionPk }: { auctionPk: string | null 
       const tx = Transaction.from(Buffer.from(srv.txBase64, "base64"));
 
       setStatus("Signing and sending settlement tx...");
-      const sig = await program.provider.sendAndConfirm(tx);
+const sig = await safeSendTx(program, tx);
 
-      setStatus("Settlement tx sent: " + sig);
-      await refreshAuctionState();
+setStatus(
+  sig === "already-processed"
+    ? "Settlement already processed"
+    : "Settlement tx sent: " + sig
+);
+
+await refreshAuctionState();
     } catch (err: any) {
       console.error("Settlement failed:", err);
       setStatus("Settlement failed: " + (err?.message ?? String(err)));
@@ -658,10 +604,15 @@ export default function BidPageClient({ auctionPk }: { auctionPk: string | null 
       const tx = Transaction.from(Buffer.from(srv.txBase64, "base64"));
 
       setStatus("Signing and sending determineWinner tx...");
-      const sig = await program.provider.sendAndConfirm(tx);
+const sig = await safeSendTx(program, tx);
 
-      setStatus("determineWinner tx sent: " + sig);
-      await refreshAuctionState();
+setStatus(
+  sig === "already-processed"
+    ? "Determine winner already processed"
+    : "determineWinner tx sent: " + sig
+);
+
+await refreshAuctionState();
     } catch (err: any) {
       console.error("determineWinner failed:", err);
       setStatus("determineWinner failed: " + (err?.message ?? String(err)));

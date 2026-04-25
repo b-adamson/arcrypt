@@ -218,13 +218,27 @@ export default function AuctionClient() {
       const sigs: string[] = [];
     
       for (const tx of signedTxs) {
-        const sig = await connection.sendRawTransaction(tx.serialize());
-        await connection.confirmTransaction(sig, "confirmed");
-        sigs.push(sig);
+        try {
+          const sig = await connection.sendRawTransaction(tx.serialize());
+
+          await connection.confirmTransaction(sig, "confirmed");
+
+          sigs.push(sig);
+        } catch (e: any) {
+          if (String(e?.message).includes("already been processed")) {
+            console.warn("Serialized tx already processed, treating as success");
+            sigs.push("already-processed");
+            continue;
+          }
+
+          throw e;
+        }
       }
     
       return sigs;
     }
+
+
     
     async function loadRealmTreasuryAccounts() {
       if (!realmAddress) throw new Error("Enter a realm address first.");
@@ -340,17 +354,12 @@ useEffect(() => {
           cancelled = true;
         };
       }, [programClient, auctionPkStr, publicKey]);
-      async function sendIxs(ixs: TransactionInstruction[]) {
-      if (!ixs.length) return;
+
     
-      const tx = new Transaction().add(...ixs);
-      tx.feePayer = publicKey!;
-      tx.recentBlockhash = (await programClient.provider.connection.getLatestBlockhash()).blockhash;
-    
-      return await programClient.provider.sendAndConfirm(tx, []);
-    }
-    
-    async function handleCreateGovernanceProposal() {
+    async function handleCreateGovernanceProposal(
+  metadataUri?: string,
+  mint?: string
+) {
       setStatus("Preparing governance proposal...");
       try {
         if (!programClient || !publicKey) throw new Error("Connect wallet first.");
@@ -372,8 +381,13 @@ useEffect(() => {
         );
         if (!treasuryRow) throw new Error("Selected treasury token account was not found.");
     
-        setStatus("Uploading metadata to Pinata...");
-        const { metadataUri } = await uploadAuctionMetadata();
+let finalMetadataUri = metadataUri;
+
+if (!finalMetadataUri) {
+  setStatus("Uploading metadata to Pinata...");
+  const res = await uploadAuctionMetadata();
+  finalMetadataUri = res.metadataUri;
+}
     
         const res = await fetch("/api/makeGovernanceAuction", {
           method: "POST",
@@ -391,7 +405,7 @@ useEffect(() => {
             auctionType,
             assetKind,
             metadataUri,
-            tokenMint: treasuryRow.mint,
+            tokenMint: mint || treasuryRow.mint,
             saleAmountToken,
             sourceTokenAccountBase58: treasuryRow.pubkey,
           }),
@@ -416,14 +430,14 @@ useEffect(() => {
         setStatus("Governance proposal failed: " + (err?.message ?? String(err)));
       }
     }
-      async function callMakeAuction(authorityBase58: string) {
-        const res = await fetch("/api/makeAuction", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ authority: authorityBase58 }),
-        });
-        return res.json();
-      }
+      // async function callMakeAuction(authorityBase58: string) {
+      //   const res = await fetch("/api/makeAuction", {
+      //     method: "POST",
+      //     headers: { "Content-Type": "application/json" },
+      //     body: JSON.stringify({ authority: authorityBase58 }),
+      //   });
+      //   return res.json();
+      // }
     
       type PinMetadataResponse = {
       imageCid: string | null;
@@ -481,7 +495,10 @@ useEffect(() => {
       setIsWinner(isWinnerOfAuction(auction, publicKey?.toBase58() ?? ""));
     }
     
-async function handleMakeAuction(metadataUriOverride?: string) {
+async function handleMakeAuction(
+  metadataUriOverride?: string,
+  tokenMintOverride?: string
+) {
   setStatus("Preparing createAuction...");
 
   try {
@@ -507,7 +524,7 @@ async function handleMakeAuction(metadataUriOverride?: string) {
         durationSecs,
         auctionType,
         assetKind,
-        tokenMint: tokenMint || undefined,
+        tokenMint: tokenMintOverride || tokenMint || undefined,
         saleAmountToken: saleAmountToken || undefined,
       }),
     });
@@ -531,8 +548,6 @@ async function handleMakeAuction(metadataUriOverride?: string) {
   }
 }
 
-
-  // ...paste the rest of your current component here...
   return (
 <main style={{ padding: 20 }}>
   <h1>Sealed-bid Auction</h1>
@@ -708,7 +723,9 @@ async function handleMakeAuction(metadataUriOverride?: string) {
   onTokenMintChange={setTokenMint}
   onDurationSecsChange={setDurationSecs}
   onAuctionTypeChange={setAuctionType}
-  onSubmit={(metadataUri?: string) => handleCreateGovernanceProposal()}
+onSubmit={(metadataUri?: string, mint?: string) =>
+  handleCreateGovernanceProposal(metadataUri, mint)
+}
 />
 
           <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/55">
@@ -796,7 +813,9 @@ async function handleMakeAuction(metadataUriOverride?: string) {
   onTokenMintChange={setTokenMint}
   onDurationSecsChange={setDurationSecs}
   onAuctionTypeChange={setAuctionType}
-  onSubmit={(metadataUri?: string) => handleMakeAuction(metadataUri)}
+  onSubmit={(metadataUri?: string, mint?: string) =>
+  handleMakeAuction(metadataUri, mint)
+}
 />
   )}
 

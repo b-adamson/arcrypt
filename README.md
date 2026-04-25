@@ -224,7 +224,7 @@ main().catch(console.error);
 ## Program ID
 
 On devnet we are deployed at
-* `HPV5kXxCZ7gBGWgMJwyqc9wZhTryjZcwSJUMdeyQ7en4`
+* `8icpcRrJNtQ4RBaTtttGoy2qzDDY8bQcxQaYm2dRvFRC`
 
 ## Troubleshooting
 
