@@ -76,6 +76,7 @@ function Field({
   );
 }
 
+
 function AuctionCard({ item }: { item: AuctionSummary }) {
   const isMetadataOnly = item.assetKind === "metadataonly";
   const flash = useBidFlash(item.bidCount);

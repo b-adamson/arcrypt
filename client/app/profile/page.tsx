@@ -23,6 +23,7 @@ type AuctionSummary = {
   auctionType: string;
   assetKind: string;
   error?: string;
+  bidCount: number;
 };
 
 async function fetchAuctionPdasForWallet(walletBase58: string): Promise<AuctionEntry[]> {
@@ -152,6 +153,10 @@ async function buildAuctionSummary(programClient: any, entry: AuctionEntry): Pro
     let description = "";
     let image = "";
 
+    const bidCount = Number(
+      auction?.bidCount ?? auction?.bid_count ?? 0
+    );
+
     if (metadataUri) {
       const metadata = await fetchJsonWithTimeout(toHttpGateway(metadataUri), METADATA_TIMEOUT_MS);
 
@@ -173,6 +178,7 @@ async function buildAuctionSummary(programClient: any, entry: AuctionEntry): Pro
       decimals,
       auctionType: enumKey(auction?.auctionType ?? auction?.auction_type).toLowerCase(),
       assetKind: enumKey(auction?.assetKind ?? auction?.asset_kind).toLowerCase(),
+      bidCount,
     };
   } catch (err: any) {
     return {
@@ -186,6 +192,7 @@ async function buildAuctionSummary(programClient: any, entry: AuctionEntry): Pro
       decimals: 0,
       auctionType: "",
       assetKind: "",
+      bidCount: 0,
       error: err?.message ?? String(err),
     };
   }

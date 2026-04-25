@@ -36,6 +36,7 @@ async function loadAuctions(authorityStr: string) {
         status: acct.status ? Object.keys(acct.status)[0] : null,
         endTime: acct.endTime?.toString?.() ?? String(acct.endTime ?? ""),
         winner: acct.winner?.toBase58?.() ?? String(acct.winner ?? ""),
+        bidCount: Number(acct.bidCount ?? acct.bid_count ?? 0),
         paymentAmount:
           acct.paymentAmount?.toString?.() ?? String(acct.paymentAmount ?? ""),
       };
