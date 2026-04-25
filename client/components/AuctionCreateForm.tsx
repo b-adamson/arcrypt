@@ -236,6 +236,12 @@ const umi = useMemo(() => {
   }
 }, [assetKind]);
 
+useEffect(() => {
+  if (lockTokenMint && assetKind === "Nft") {
+    onAssetKindChange("Fungible");
+  }
+}, [lockTokenMint, assetKind]);
+
   useEffect(() => {
     if (debounceRef.current !== null) {
       window.clearTimeout(debounceRef.current);
@@ -373,7 +379,7 @@ async function handleSubmit() {
   let mintAddress: string | undefined = undefined;
 
   try {
-    if (assetKind === "Nft" && mintMode === "CreateNew") {
+    if (!lockTokenMint && assetKind === "Nft" && mintMode === "CreateNew") {
       if (!metadataName.trim()) {
         throw new Error("NFT name required");
       }
@@ -466,9 +472,13 @@ mintAddress = await mintNft(
               onChange={(e) => onAssetKindChange(e.target.value as AssetKind)}
               className={selectClass}
             >
-              <option value="Fungible">SPL Token</option>
-              <option value="Nft">NFT</option>
-              <option value="MetadataOnly">Metadata Only</option>
+<option value="Fungible">SPL Token</option>
+
+{!lockTokenMint && (
+  <option value="Nft">NFT</option>
+)}
+
+<option value="MetadataOnly">Metadata Only</option>
             </select>
           </Field>
           {assetKind === "Nft" && (

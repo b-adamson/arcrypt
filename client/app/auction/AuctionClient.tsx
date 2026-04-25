@@ -404,8 +404,8 @@ if (!finalMetadataUri) {
             durationSecs,
             auctionType,
             assetKind,
-            metadataUri,
-            tokenMint: mint || treasuryRow.mint,
+            metadataUri: finalMetadataUri,
+            tokenMint: treasuryRow.mint,
             saleAmountToken,
             sourceTokenAccountBase58: treasuryRow.pubkey,
           }),
@@ -526,7 +526,8 @@ async function handleMakeAuction(
         assetKind,
         tokenMint: tokenMintOverride || tokenMint || undefined,
         saleAmountToken: saleAmountToken || undefined,
-      }),
+        sourceTokenAccountBase58: selectedTreasuryAccount || undefined, // 🔥 REQUIRED
+      })
     });
 
     const json = await res.json();
