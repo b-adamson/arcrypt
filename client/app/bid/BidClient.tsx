@@ -505,16 +505,28 @@ async function safeSendTx(program: any, tx: Transaction) {
       console.log("placeBid triggered");
       const sig = await safeSendTx(program, tx);
 
+      setAuctionData((prev: any) => {
+  if (!prev) return prev;
+
+  const current = Number(prev?.bidCount ?? prev?.bid_count ?? 0);
+
+  return {
+    ...prev,
+    bidCount: current + 1,
+    bid_count: current + 1, // keep both for safety
+  };
+});
+
 setStatus(
   sig === "already-processed"
     ? "Transaction already processed (confirmed)"
     : "placeBid tx sent: " + sig
 );
 
-await refreshAuctionState();
+// await refreshAuctionState();
 
       // setStatus("placeBid tx sent: " + sig);
-      await refreshAuctionState();
+      // await refreshAuctionState();
     } catch (err: any) {
       console.error("placeBid failed:", err);
       setStatus("placeBid failed: " + (err?.message ?? String(err)));
@@ -623,6 +635,12 @@ await refreshAuctionState();
     }
   }
 
+  const isBidDisabled =
+  !connected ||
+  !auctionPkStr ||
+  auctionEnded ||
+  isSubmitting;
+
   return (
     <main className="page-shell min-h-screen px-5 py-5 md:px-8 md:py-8">
       <AuctionWinConfetti show={showWinConfetti} />
@@ -663,7 +681,9 @@ await refreshAuctionState();
         <div className="mt-6">
 <AuctionBidForm
   bidAmountSol={bidAmountSol}
-  disabled={!connected || !auctionPkStr}
+  disabled={isBidDisabled}
+  isSubmitting={isSubmitting}
+  auctionEnded={auctionEnded}
   onBidAmountSolChange={setBidAmountSol}
   onSubmit={handlePlaceBid}
 />

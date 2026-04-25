@@ -3,6 +3,8 @@
 type Props = {
   bidAmountSol: string;
   disabled?: boolean;
+  isSubmitting?: boolean;
+  auctionEnded?: boolean;
   onBidAmountSolChange: (value: string) => void;
   onSubmit: () => void;
 };
@@ -10,6 +12,8 @@ type Props = {
 export default function AuctionBidForm({
   bidAmountSol,
   disabled,
+  isSubmitting,
+  auctionEnded,
   onBidAmountSolChange,
   onSubmit,
 }: Props) {
@@ -45,7 +49,11 @@ export default function AuctionBidForm({
   disabled={disabled}
   className="btn btn-primary w-full md:w-auto"
 >
-  Place bid
+  {isSubmitting
+    ? "Submitting..."
+    : auctionEnded
+      ? "Auction ended"
+      : "Place bid"}
 </button>
         </div>
       </div>
