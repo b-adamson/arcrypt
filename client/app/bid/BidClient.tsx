@@ -178,8 +178,12 @@ export default function BidPageClient({ auctionPk }: { auctionPk: string | null 
 
   const primaryActionLabel = metadataOnly || isCreator ? "Settle auction" : "Claim winner payout";
 
-  const outcomeText = !auctionData
-    ? "Loading..."
+const outcomeText = !auctionData
+  ? "Loading..."
+  : !connected
+    ? auctionEnded
+      ? "Auction ended — connect wallet to see results"
+      : "Connect wallet to see outcome"
     : !auctionEnded
       ? "Auction in progress"
       : !isResolved && hasNoBids
@@ -652,7 +656,7 @@ await refreshAuctionState();
   isWinner={winnerNow}
   winnerBase58={resolvedWinnerBase58}
   tokenDecimals={tokenDecimals ?? undefined}
-  bidCount={bidCount}   // 👈 ADD THIS
+  bidCount={bidCount}  
 />
         ) : null}
 
@@ -664,6 +668,12 @@ await refreshAuctionState();
   onSubmit={handlePlaceBid}
 />
         </div>
+
+        {!connected && (
+  <div className="mb-6 border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm">
+    <strong>Wallet not connected.</strong> Connect your wallet to interact with this auction and view full results.
+  </div>
+)}
 
         <div className={panelClass}>
           <div className="mb-4 flex items-center justify-between gap-3">

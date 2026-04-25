@@ -14,6 +14,7 @@ export default function AuctionBidForm({
   onSubmit,
 }: Props) {
   return (
+    
     <section className="mt-6 overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.04] p-6 shadow-[0_20px_70px_rgba(0,0,0,0.35)] backdrop-blur-xl">
       <div className="mb-5">
         <h3 className="text-lg font-semibold text-white">Place bid</h3>
@@ -21,6 +22,7 @@ export default function AuctionBidForm({
           Your bid is securely encrypted before being sent on-chain.
         </p>
       </div>
+      
 
       <div className="grid gap-4 md:grid-cols-[1fr_auto]">
         <label className="block">
