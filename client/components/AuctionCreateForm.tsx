@@ -11,6 +11,10 @@ import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import { mplTokenMetadata, fetchDigitalAsset } from "@metaplex-foundation/mpl-token-metadata";
 import { publicKey as umiPublicKey } from "@metaplex-foundation/umi";
 
+import { mintNft } from "../lib/mintNft";
+
+import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-adapters";
+
 type AuctionType = "FirstPrice" | "Vickrey" | "Uniform" | "ProRata";
 type AssetKind = "Fungible" | "Nft" | "MetadataOnly";
 
@@ -27,7 +31,7 @@ type TokenOption = {
 const METADATA_PROGRAM_ID = new PublicKeyCtor("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL ?? "https://api.devnet.solana.com";
 
-const umi = createUmi(RPC_URL).use(mplTokenMetadata());
+// const umi = createUmi(RPC_URL).use(mplTokenMetadata());
 
 const tokenMetadataCache = new Map<string, TokenOption>();
 const tokenMetadataInFlight = new Map<string, Promise<TokenOption>>();
@@ -75,7 +79,7 @@ async function fetchJson(url?: string): Promise<any | null> {
   }
 }
 
-async function enrichTokenOption(option: TokenOption): Promise<TokenOption> {
+async function enrichTokenOption(option: TokenOption, umi: any): Promise<TokenOption> {
   const cached = tokenMetadataCache.get(option.mint);
   if (cached) return cached;
 
@@ -86,6 +90,8 @@ async function enrichTokenOption(option: TokenOption): Promise<TokenOption> {
     let next = { ...option };
 
     try {
+      if (!umi) return next;
+
       const asset = await fetchDigitalAsset(umi, umiPublicKey(option.mint));
       const uri = asset.metadata.uri?.replace(/\0/g, "").trim();
       const json = await fetchJson(uri);
@@ -136,7 +142,7 @@ type Props = {
   onTokenMintChange: (value: string) => void;
   onDurationSecsChange: (value: number) => void;
   onAuctionTypeChange: (value: AuctionType) => void;
-  onSubmit: () => void;
+onSubmit: (metadataUri?: string, tokenMintOverride?: string) => void;
 };
 
 function Field({
@@ -197,11 +203,24 @@ export default function AuctionCreateForm({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const { connection } = useConnection();
-  const { publicKey, connected } = useWallet();
+const { publicKey, connected, wallet } = useWallet();
+const adapter = wallet?.adapter;
+
+const umi = useMemo(() => {
+  if (!adapter) return null;
+
+  return createUmi(RPC_URL)
+    .use(walletAdapterIdentity(adapter))
+    .use(mplTokenMetadata());
+}, [adapter]);
+
 
   const [walletTokens, setWalletTokens] = useState<TokenOption[]>([]);
   const [tokenSearch, setTokenSearch] = useState("");
   const [showTokenDropdown, setShowTokenDropdown] = useState(false);
+
+  const [mintMode, setMintMode] = useState<"Existing" | "CreateNew">("CreateNew");
+  const [isMinting, setIsMinting] = useState(false);
 
   const loadedKeyRef = useRef<string>("");
   const debounceRef = useRef<number | null>(null);
@@ -210,6 +229,12 @@ export default function AuctionCreateForm({
   const rpcEndpoint = connection.rpcEndpoint;
 
   const [imageError, setImageError] = useState<string | null>(null);
+
+  useEffect(() => {
+  if (assetKind === "Nft") {
+    onSaleAmountTokenChange("1");
+  }
+}, [assetKind]);
 
   useEffect(() => {
     if (debounceRef.current !== null) {
@@ -274,8 +299,11 @@ export default function AuctionCreateForm({
 
           const options = [...byMint.values()].map(({ rawAmount, ...rest }) => rest);
 
-          const enriched = await Promise.all(options.slice(0, 8).map((opt) => enrichTokenOption(opt)));
-
+         const enriched = await Promise.all(
+options.slice(0, 8).map((opt) =>
+  umi ? enrichTokenOption(opt, umi) : opt
+)
+);
           if (!controller.signal.aborted) {
             setWalletTokens(enriched);
           }
@@ -338,6 +366,71 @@ export default function AuctionCreateForm({
     setShowTokenDropdown(false);
   }
 
+async function handleSubmit() {
+  if (isDisabled) return;
+
+  let metadataUri: string | undefined = undefined;
+  let mintAddress: string | undefined = undefined;
+
+  try {
+    if (assetKind === "Nft" && mintMode === "CreateNew") {
+      if (!metadataName.trim()) {
+        throw new Error("NFT name required");
+      }
+
+      if (!publicKey) {
+        throw new Error("Wallet not connected");
+      }
+
+      if (!umi) {
+        throw new Error("Wallet not ready");
+      }
+
+      setIsMinting(true);
+
+      // Upload metadata
+      const formData = new FormData();
+      formData.append("name", metadataName.trim());
+      formData.append("description", metadataDescription.trim());
+
+      if (metadataImageFile) {
+        formData.append("image", metadataImageFile);
+      }
+
+      const res = await fetch("/api/pin-metadata", {
+        method: "POST",
+        body: formData,
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json?.error || "Metadata upload failed");
+      }
+
+      metadataUri = json.metadataUri;
+
+      // Mint NFT
+mintAddress = await mintNft(
+  umi,
+  publicKey.toBase58(),
+  metadataUri!,
+  metadataName
+);
+
+      onTokenMintChange(mintAddress);
+    }
+
+    // continue
+    onSubmit(metadataUri, mintAddress);
+  } catch (err: any) {
+    console.error(err);
+    alert(err?.message || "Failed to create NFT");
+  } finally {
+    setIsMinting(false);
+  }
+}
+
   return (
     <section className="relative overflow-hidden border border-[var(--line)] bg-[var(--surface)] p-6 shadow-none md:p-8">
       <div className="absolute inset-x-0 top-0 h-px bg-[var(--accent)]" />
@@ -378,6 +471,18 @@ export default function AuctionCreateForm({
               <option value="MetadataOnly">Metadata Only</option>
             </select>
           </Field>
+          {assetKind === "Nft" && (
+  <Field label="NFT source" hint="Use an existing NFT or mint a new one.">
+    <select
+      value={mintMode}
+      onChange={(e) => setMintMode(e.target.value as any)}
+      className={selectClass}
+    >
+      <option value="Existing">Use existing NFT</option>
+      <option value="CreateNew">Create new NFT</option>
+    </select>
+  </Field>
+)}
 
           <Field label="Name" hint="Optional. Saved into JSON metadata if provided.">
             <input
@@ -468,7 +573,8 @@ export default function AuctionCreateForm({
             </Field>
           ) : null}
 
-          {assetKind !== "MetadataOnly" ? (
+{assetKind !== "MetadataOnly" &&
+ !(assetKind === "Nft" && mintMode === "CreateNew") ? (
             <Field
               label="Token mint"
               hint={lockTokenMint ? "Locked in proposal mode." : "Type a mint directly or pick one from your wallet tokens."}
@@ -648,9 +754,13 @@ export default function AuctionCreateForm({
             </p>
           </div>
 
-          <button onClick={onSubmit} disabled={isDisabled} className="btn btn-primary h-12 px-5 text-sm font-semibold">
-            Make Auction
-          </button>
+<button
+  onClick={handleSubmit}
+  disabled={isDisabled || isMinting}
+  className="btn btn-primary h-12 px-5 text-sm font-semibold"
+>
+  {isMinting ? "Minting NFT..." : "Make Auction"}
+</button>
         </div>
 
         {auctionPkStr ? (

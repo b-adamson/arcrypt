@@ -147,7 +147,7 @@ export default function AuctionClient() {
     const [tokenDecimals, setTokenDecimals] = useState<number>(6);
     const [tokenMint, setTokenMint] = useState<string>("");
     
-    const [assetKind, setAssetKind] = useState<AssetKind>("Fungible");
+    const [assetKind, setAssetKind] = useState<AssetKind>("Nft");
     const [metadataName, setMetadataName] = useState("");
     const [metadataDescription, setMetadataDescription] = useState("");
     
@@ -481,49 +481,55 @@ useEffect(() => {
       setIsWinner(isWinnerOfAuction(auction, publicKey?.toBase58() ?? ""));
     }
     
-    async function handleMakeAuction() {
-      setStatus("Preparing createAuction...");
-      try {
-        if (!programClient || !publicKey) {
-          throw new Error("Connect wallet and ensure program client ready");
-        }
-    
-        setStatus("Uploading metadata to Pinata...");
-        const { metadataUri } = await uploadAuctionMetadata();
-    
-        const res = await fetch("/api/makeAuction", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            authority: publicKey.toBase58(),
-            metadataUri,
-            minBidSol,
-            durationSecs,
-            auctionType,
-            assetKind,
-            tokenMint: tokenMint || undefined,
-            saleAmountToken: saleAmountToken || undefined,
-          }),
-        });
-    
-        const json = await res.json();
-    
-        if (!res.ok) {
-          throw new Error(json?.error ?? "Failed to build auction transaction");
-        }
-    
-        const [sig] = await signAndSendSerializedTxs([json.txBase64]);
-    
-        setStatus(`createAuction sent: ${sig}`);
-        setAuctionPkStr(json.auctionPda);
-        setAuctionSeedHex(json.auctionSeedHex ?? null);
-        persistAuctionForWallet(publicKey.toBase58(), json.auctionPda);
-        await refreshAuctionState(json.auctionPda);
-      } catch (err: any) {
-        console.error("createAuction failed:", err);
-        setStatus("createAuction failed: " + (err?.message ?? String(err)));
-      }
+async function handleMakeAuction(metadataUriOverride?: string) {
+  setStatus("Preparing createAuction...");
+
+  try {
+    if (!programClient || !publicKey) {
+      throw new Error("Connect wallet first");
     }
+
+    let metadataUri = metadataUriOverride;
+
+    if (!metadataUri) {
+      setStatus("Uploading metadata to Pinata...");
+      const res = await uploadAuctionMetadata();
+      metadataUri = res.metadataUri;
+    }
+
+    const res = await fetch("/api/makeAuction", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        authority: publicKey.toBase58(),
+        metadataUri,
+        minBidSol,
+        durationSecs,
+        auctionType,
+        assetKind,
+        tokenMint: tokenMint || undefined,
+        saleAmountToken: saleAmountToken || undefined,
+      }),
+    });
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      throw new Error(json?.error ?? "Failed to build auction transaction");
+    }
+
+    const [sig] = await signAndSendSerializedTxs([json.txBase64]);
+
+    setStatus(`createAuction sent: ${sig}`);
+    setAuctionPkStr(json.auctionPda);
+    setAuctionSeedHex(json.auctionSeedHex ?? null);
+    persistAuctionForWallet(publicKey.toBase58(), json.auctionPda);
+    await refreshAuctionState(json.auctionPda);
+  } catch (err: any) {
+    console.error(err);
+    setStatus("createAuction failed: " + (err?.message ?? String(err)));
+  }
+}
 
 
   // ...paste the rest of your current component here...
@@ -702,7 +708,7 @@ useEffect(() => {
   onTokenMintChange={setTokenMint}
   onDurationSecsChange={setDurationSecs}
   onAuctionTypeChange={setAuctionType}
-  onSubmit={handleCreateGovernanceProposal}
+  onSubmit={(metadataUri?: string) => handleCreateGovernanceProposal()}
 />
 
           <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/55">
@@ -790,7 +796,7 @@ useEffect(() => {
   onTokenMintChange={setTokenMint}
   onDurationSecsChange={setDurationSecs}
   onAuctionTypeChange={setAuctionType}
-  onSubmit={handleMakeAuction}
+  onSubmit={(metadataUri?: string) => handleMakeAuction(metadataUri)}
 />
   )}
 

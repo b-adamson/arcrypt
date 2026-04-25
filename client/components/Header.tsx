@@ -45,48 +45,72 @@ export default function Header() {
   }, [isHomePage]);
 
   return (
-    <header
-      className={`fixed left-0 top-0 z-50 w-full border-b border-[var(--line)] bg-[var(--background)]/95 backdrop-blur-xl transition-all duration-300 ${
-        visible ? "translate-y-0 opacity-100 pointer-events-auto" : "-translate-y-4 opacity-0 pointer-events-none"
-      }`}
-    >
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
-        <Link href="/" className="relative h-10 w-32 overflow-hidden">
-          <Image
-            src="/logo/GRADIENT_TRANSPARENT.png"
-            alt="ARCRYPT logo"
-            fill
-            className="object-cover scale-110"
-            priority
-          />
-        </Link>
+  <header
+  className={`fixed left-0 top-0 z-50 w-full border-b border-[var(--line-strong)] bg-[var(--background)]/95 backdrop-blur-xl transition-all duration-300 shadow-[0_4px_30px_rgba(0,0,0,0.6)] ${
+    visible
+      ? "translate-y-0 opacity-100 pointer-events-auto"
+      : "-translate-y-4 opacity-0 pointer-events-none"
+  }`}
+>
+  <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
+    
+    {/* Logo */}
+    <Link href="/" className="relative h-10 w-32 overflow-hidden group">
+      <Image
+        src="/logo/GRADIENT_TRANSPARENT.png"
+        alt="ARCRYPT logo"
+        fill
+        className="object-cover scale-110 transition duration-300 group-hover:scale-115 group-hover:brightness-125"
+        priority
+      />
+    </Link>
 
-        <nav className="flex items-center gap-6 text-sm text-[var(--muted)]">
-          <Link href="/" className="transition hover:text-[var(--foreground)]">
-            Home
-          </Link>
-          <Link href="/auction" className="transition hover:text-[var(--foreground)]">
-            Create auction
-          </Link>
-          <Link href="/market" className="transition hover:text-[var(--foreground)]">
-            View auctions
-          </Link>
-          <Link href="/profile" className="transition hover:text-[var(--foreground)]">
-            Profile
-          </Link>
-          <Link href="/docs" className="transition hover:text-[var(--foreground)]">
-            Docs
-          </Link>
-          <Link href="/umbra" className="transition hover:text-[var(--foreground)] leading-tight text-center">
-  <span className="block">Encrypted</span>
-  <span className="block">Balance [dev]</span>
-</Link>
-        </nav>
+    {/* Nav */}
+    <nav className="flex items-center gap-6 text-sm font-semibold tracking-wide">
+      
+      <Link href="/" className="text-[var(--foreground)]/80 hover:text-white transition">
+        Home
+      </Link>
 
-        <div className="scale-90">
-          <WalletSection />
-        </div>
-      </div>
-    </header>
+      {/* 🔥 PRIMARY CTA */}
+      <Link
+        href="/auction"
+        className="relative px-4 py-2 text-black bg-[var(--accent)] font-bold tracking-wide border border-[var(--accent)] overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-[0_0_18px_var(--accent)]"
+      >
+        <span className="relative z-10">Create auction</span>
+
+        {/* glow layer */}
+        <span className="absolute inset-0 opacity-0 hover:opacity-100 transition duration-300 bg-[radial-gradient(circle_at_center,var(--accent)_0%,transparent_70%)] blur-md"></span>
+      </Link>
+
+      <Link href="/market" className="text-[var(--foreground)]/80 hover:text-white transition">
+        View auctions
+      </Link>
+
+      <Link href="/profile" className="text-[var(--foreground)]/80 hover:text-white transition">
+        Profile
+      </Link>
+
+      <Link href="/docs" className="text-[var(--foreground)]/80 hover:text-white transition">
+        Docs
+      </Link>
+
+      <Link
+        href="/umbra"
+        className="text-[var(--foreground)]/70 hover:text-white transition leading-tight text-center"
+      >
+        <span className="block">Encrypted Balance</span>
+        <span className="block text-xs text-[var(--accent)]">
+          [dev]
+        </span>
+      </Link>
+    </nav>
+
+    {/* Wallet */}
+    <div className="scale-95 brightness-110">
+      <WalletSection />
+    </div>
+  </div>
+</header>
   );
 }

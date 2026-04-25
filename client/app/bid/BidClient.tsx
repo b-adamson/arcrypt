@@ -695,24 +695,23 @@ export default function BidPageClient({ auctionPk }: { auctionPk: string | null 
         ) : null}
 
         {auctionData ? (
-          <AuctionResultCard
-            auctionData={auctionData}
-            auctionEnded={auctionEnded}
-            isWinner={winnerNow}
-            winnerBase58={resolvedWinnerBase58}
-            tokenDecimals={tokenDecimals ?? undefined}
-          />
+<AuctionResultCard
+  auctionData={auctionData}
+  auctionEnded={auctionEnded}
+  isWinner={winnerNow}
+  winnerBase58={resolvedWinnerBase58}
+  tokenDecimals={tokenDecimals ?? undefined}
+  bidCount={bidCount}   // 👈 ADD THIS
+/>
         ) : null}
 
         <div className="mt-6">
-          <AuctionBidForm
-            bidAmountSol={bidAmountSol}
-            bidNonceHex={bidNonceHex}
-            disabled={!connected || !auctionPkStr}
-            onBidAmountSolChange={setBidAmountSol}
-            onBidNonceHexChange={setBidNonceHex}
-            onSubmit={handlePlaceBid}
-          />
+<AuctionBidForm
+  bidAmountSol={bidAmountSol}
+  disabled={!connected || !auctionPkStr}
+  onBidAmountSolChange={setBidAmountSol}
+  onSubmit={handlePlaceBid}
+/>
         </div>
 
         <div className={panelClass}>

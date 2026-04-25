@@ -58,7 +58,7 @@ export default function DocsPage() {
               >
                 Arcium
               </a>{' '}
-              is a next-generation privacy layer on Solana, built using Multi-Party Computation (MPC). This means bid amounts are never exposed in plaintext—not even to the network. Bids are encrypted client-side and processed collectively by Arcium nodes, which compute the highest bid without revealing any individual inputs.
+              is a next-generation privacy layer on Solana, built using Multi-Party Computation (MPC). This means bid amounts are never exposed in plaintext - not even to the network. Bids are encrypted client-side and processed collectively by Arcium nodes, which compute the highest bid without revealing any individual inputs.
               <br />
               <br />
               At its core, Arcium enables totally decentralized confidential computation—allowing data to remain private while still being used in verifiable on-chain logic. This is critical for sealed auctions, where information leakage would otherwise undermine fairness.
@@ -141,7 +141,7 @@ export default function DocsPage() {
               <li>If applicable, you can connect with Realms, MetaDAO or any DAO that accepts arbitrary instructions to propose the auction of a specific number of treasury tokens.</li>
               <li>Set a floor price and choose an auction type (first-price, Vickrey, pro-rata or uniform).</li>
               <li>Specify a custom duration (up to 30 days) and attach optional metadata (descriptions, provenance, external links).</li>
-              <li>Publish the auction — bids remain encrypted until the reveal step, preserving bidder privacy throughout the process.</li>
+              <li>Publish the auction - bids remain encrypted until the reveal step, preserving bidder privacy throughout the process.</li>
             </ul>
 
             <h3 id="auction-types" className="mb-2 text-lg font-semibold text-[var(--foreground)] scroll-mt-20 ">
@@ -155,7 +155,7 @@ export default function DocsPage() {
                 <strong className="text-[var(--foreground)]">Vickrey (second-price) auction:</strong> the highest bidder wins, but pays the second-highest bid. Incentivizes bidders to submit true valuations.
               </li>
               <li>
-                <strong className="text-[var(--foreground)]">Uniform-price auction:</strong> used for multiple identical items — winning bidders all pay the same clearing price (e.g., the highest losing bid or the lowest winning bid depending on rules).
+                <strong className="text-[var(--foreground)]">Uniform-price auction:</strong> used for multiple identical items - winning bidders all pay the same clearing price (e.g., the highest losing bid or the lowest winning bid depending on rules).
               </li>
               <li>
   <strong className="text-[var(--foreground)]">Pro-rata auction:</strong> winners receive a proportional share of the asset based on bid size.
@@ -175,7 +175,7 @@ export default function DocsPage() {
             <ul className="ml-5 list-disc space-y-2 text-[var(--muted)]">
               <li>At auction close, bids are revealed and the winner is determined according to the chosen auction type.</li>
               <li>On-chain settlement transfers the asset to the winner and the proceeds to the seller; all escrowed bidders who didn’t win are automatically refunded.</li>
-              <li>Every transfer is verifiable while preserving bid privacy—so outcomes are auditable without leaking individual bid amounts.</li>
+              <li>Every transfer is verifiable while preserving bid privacy - so outcomes are auditable without leaking individual bid amounts.</li>
             </ul>
           </section>
 
@@ -203,7 +203,7 @@ export default function DocsPage() {
             <CodeBlock language="bash" code={`npm install @arcrypt/sdk`} />
 
             <p className="mt-2 text-sm text-[var(--muted)]">
-              Note: the package is not deployed yet — use the SDK directly from the{' '}
+              Note: the package is not deployed yet - use the SDK directly from the{' '}
               <a
                 href="https://github.com/b-adamson/arcrypt"
                 target="_blank"

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { PublicKey } from "@solana/web3.js";
+import { useBidFlash } from "../hooks/addBidFlash"; // adjust path
 
 type Props = {
   auctionData: any | null;
@@ -9,6 +10,7 @@ type Props = {
   isWinner?: boolean;
   winnerBase58?: string | null;
   tokenDecimals?: number;
+  bidCount?: number;   // 👈 ADD
 };
 
 type AuctionMetadata = {
@@ -183,6 +185,9 @@ export default function AuctionResultCard({
   const formattedPayment = formatSolAmount(paymentAmount ?? 0);
   const formattedSaleAmount = isMetadataOnly(auctionData) ? "Metadata only" : formatTokenAmount(saleAmount ?? 0, tokenDecimals);
 
+  const bidCount = Number(auctionData?.bidCount ?? auctionData?.bid_count ?? 0);
+  const flash = useBidFlash(bidCount);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -231,6 +236,7 @@ export default function AuctionResultCard({
   if (!auctionData) return null;
 
   const metadataImage = metadata?.image ? toHttpGateway(metadata.image) : "";
+  
 
   return (
     <section className="mt-6 overflow-hidden border border-[var(--line)] bg-[var(--surface)] p-6 shadow-none">
@@ -290,6 +296,28 @@ export default function AuctionResultCard({
           </div>
         </div>
       ) : null}
+
+<div className="mb-5">
+  <div
+    className={`
+      surface-strong px-6 py-5 transition-all
+      ${flash ? "border-accent pulse-accent" : ""}
+    `}
+  >
+    <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--muted)]">
+      Bids submitted
+    </div>
+
+    <div
+      className={`
+        mt-2 text-4xl font-bold transition-colors
+        ${flash ? "text-accent" : "text-[var(--foreground)]"}
+      `}
+    >
+      {bidCount}
+    </div>
+  </div>
+</div>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         <CopyableField label="Status" value={status} />
@@ -364,14 +392,20 @@ function CopyableField({
         <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
           {label}
         </div>
-        <button
-          type="button"
-          onClick={handleCopy}
-          disabled={!copyText}
-          className="btn px-2.5 py-1 text-[11px] font-medium disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {copied ? "Copied" : "Copy"}
-        </button>
+<button
+  onClick={handleCopy}
+  className="inline-flex items-center justify-center border border-[var(--line)] 
+             bg-[var(--background)] px-2 py-1 text-xs text-[var(--muted)]
+             hover:border-[var(--line-strong)] hover:text-[var(--foreground)]
+             transition min-w-[52px]"
+  title="Copy"
+>
+  {copied ? (
+    <span className="text-[var(--accent)]">Copied</span>
+  ) : (
+    "⧉"
+  )}
+</button>
       </div>
       <div className="mt-1 break-words text-sm text-[var(--foreground)]">{value}</div>
     </div>
