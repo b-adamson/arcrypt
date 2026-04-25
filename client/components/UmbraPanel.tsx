@@ -4,23 +4,23 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { install } from "@solana/webcrypto-ed25519-polyfill";
 import {
   createSignerFromPrivateKeyBytes,
-  getClaimableUtxoScannerFunction,
-  getEncryptedBalanceToSelfClaimableUtxoCreatorFunction,
+  // getClaimableUtxoScannerFunction,
+  // getEncryptedBalanceToSelfClaimableUtxoCreatorFunction,
   getUmbraClient,
-  getUmbraRelayer,
+  // getUmbraRelayer,
   getUserAccountQuerierFunction,
   getUserRegistrationFunction,
   getEncryptedBalanceQuerierFunction,
   getPublicBalanceToEncryptedBalanceDirectDepositorFunction,
   getEncryptedBalanceToPublicBalanceDirectWithdrawerFunction,
-  getSelfClaimableUtxoToEncryptedBalanceClaimerFunction,
+  // getSelfClaimableUtxoToEncryptedBalanceClaimerFunction,
   
 } from "@umbra-privacy/sdk";
 
 
 import {
-  getCreateSelfClaimableUtxoFromEncryptedBalanceProver,
-  getClaimSelfClaimableUtxoIntoEncryptedBalanceProver,
+  // getCreateSelfClaimableUtxoFromEncryptedBalanceProver,
+  // getClaimSelfClaimableUtxoIntoEncryptedBalanceProver,
   getUserRegistrationProver,
 } from "@umbra-privacy/web-zk-prover";
 import {
@@ -128,14 +128,14 @@ const [signer, setSigner] = useState<UmbraSigner | null>(null);
   const [registerAnonymous, setRegisterAnonymous] = useState(true);
   const [queryAddress, setQueryAddress] = useState("");
 
-  const [utxoAmount, setUtxoAmount] = useState("10000");
-const [utxoCreating, setUtxoCreating] = useState(false);
-const [utxoClaiming, setUtxoClaiming] = useState(false);
-const [utxoLog, setUtxoLog] = useState<string[]>([]);
+//   const [utxoAmount, setUtxoAmount] = useState("10000");
+// const [utxoCreating, setUtxoCreating] = useState(false);
+// const [utxoClaiming, setUtxoClaiming] = useState(false);
+// const [utxoLog, setUtxoLog] = useState<string[]>([]);
 
-const pushUtxoLog = useCallback((message: string) => {
-  setUtxoLog((prev) => [...prev, `${new Date().toISOString()}  ${message}`]);
-}, []);
+// const pushUtxoLog = useCallback((message: string) => {
+//   setUtxoLog((prev) => [...prev, `${new Date().toISOString()}  ${message}`]);
+// }, []);
 
   useEffect(() => {
   const originalFetch = globalThis.fetch.bind(globalThis);
@@ -288,38 +288,38 @@ const address =
   }
 }, [client, queryAddress, userAccountQuery]);
 
-const selfUtxoCreator = useMemo(() => {
-  if (!client) return null;
+// const selfUtxoCreator = useMemo(() => {
+//   if (!client) return null;
 
-  return getEncryptedBalanceToSelfClaimableUtxoCreatorFunction(
-    { client },
-    { zkProver: getCreateSelfClaimableUtxoFromEncryptedBalanceProver() },
-  );
-}, [client]);
+//   return getEncryptedBalanceToSelfClaimableUtxoCreatorFunction(
+//     { client },
+//     { zkProver: getCreateSelfClaimableUtxoFromEncryptedBalanceProver() },
+//   );
+// }, [client]);
 
-const claimableUtxoScanner = useMemo(() => {
-  if (!client) return null;
-  return getClaimableUtxoScannerFunction({ client });
-}, [client]);
+// const claimableUtxoScanner = useMemo(() => {
+//   if (!client) return null;
+//   return getClaimableUtxoScannerFunction({ client });
+// }, [client]);
 
-const selfUtxoClaimer = useMemo(() => {
-  if (!client || !client.fetchBatchMerkleProof) return null;
+// const selfUtxoClaimer = useMemo(() => {
+//   if (!client || !client.fetchBatchMerkleProof) return null;
 
-  const relayer = getUmbraRelayer({
-    apiEndpoint:
-      process.env.NEXT_PUBLIC_UMBRA_RELAYER_API_ENDPOINT ??
-      "https://relayer.api-devnet.umbraprivacy.com",
-  });
+//   const relayer = getUmbraRelayer({
+//     apiEndpoint:
+//       process.env.NEXT_PUBLIC_UMBRA_RELAYER_API_ENDPOINT ??
+//       "https://relayer.api-devnet.umbraprivacy.com",
+//   });
 
-  return getSelfClaimableUtxoToEncryptedBalanceClaimerFunction(
-    { client },
-    {
-      fetchBatchMerkleProof: client.fetchBatchMerkleProof, // 👈 THIS is what you're missing
-      zkProver: getClaimSelfClaimableUtxoIntoEncryptedBalanceProver(),
-      relayer,
-    },
-  );
-}, [client]);
+//   return getSelfClaimableUtxoToEncryptedBalanceClaimerFunction(
+//     { client },
+//     {
+//       fetchBatchMerkleProof: client.fetchBatchMerkleProof, // 👈 THIS is what you're missing
+//       zkProver: getClaimSelfClaimableUtxoIntoEncryptedBalanceProver(),
+//       relayer,
+//     },
+//   );
+// }, [client]);
 
   const refreshBalance = useCallback(async () => {
     if (!client || !encryptedBalanceQuery) return;
@@ -369,90 +369,90 @@ const selfUtxoClaimer = useMemo(() => {
     }
   }, [activeMint, client, encryptedBalanceQuery]);
 
-  const handleCreateSelfUtxo = useCallback(async () => {
-  if (!client || !selfUtxoCreator || !activeMint || utxoCreating) return;
+//   const handleCreateSelfUtxo = useCallback(async () => {
+//   if (!client || !selfUtxoCreator || !activeMint || utxoCreating) return;
 
-  let amount: bigint;
-  try {
-    amount = BigInt(utxoAmount.trim());
+//   let amount: bigint;
+//   try {
+//     amount = BigInt(utxoAmount.trim());
 
-  } catch {
-    setStatus("Invalid UTXO amount");
-    return;
-  }
+//   } catch {
+//     setStatus("Invalid UTXO amount");
+//     return;
+//   }
 
-  if (amount <= 0n) {
-    setStatus("UTXO amount must be greater than 0");
-    return;
-  }
+//   if (amount <= 0n) {
+//     setStatus("UTXO amount must be greater than 0");
+//     return;
+//   }
 
-  setUtxoCreating(true);
-  setStatus("Creating self-claimable UTXO...");
-  setUtxoLog([]);
+//   setUtxoCreating(true);
+//   setStatus("Creating self-claimable UTXO...");
+//   setUtxoLog([]);
 
-  try {
-    pushUtxoLog(`Creating self-claimable UTXO for ${activeMint}`);
-    pushUtxoLog(`Amount: ${amount.toString()} base units`);
-    pushUtxoLog(`Recipient: ${client.signer.address}`);
+//   try {
+//     pushUtxoLog(`Creating self-claimable UTXO for ${activeMint}`);
+//     pushUtxoLog(`Amount: ${amount.toString()} base units`);
+//     pushUtxoLog(`Recipient: ${client.signer.address}`);
 
-    const result = await selfUtxoCreator({
-      destinationAddress: client.signer.address,
-      mint: activeMint,
-     amount: amount as unknown as Parameters<typeof selfUtxoCreator>[0]["amount"]
-    });
+//     const result = await selfUtxoCreator({
+//       destinationAddress: client.signer.address,
+//       mint: activeMint,
+//      amount: amount as unknown as Parameters<typeof selfUtxoCreator>[0]["amount"]
+//     });
 
-    console.log("self-claimable UTXO created:", result);
-    pushUtxoLog("UTXO creation succeeded");
-    setStatus("Self-claimable UTXO created.");
-  } catch (error: any) {
-    console.error(error);
-    pushUtxoLog(`UTXO creation failed: ${error?.message ?? "unknown error"}`);
-    setStatus(`UTXO creation failed: ${error?.message ?? "unknown error"}`);
-  } finally {
-    setUtxoCreating(false);
-  }
-}, [activeMint, client, pushUtxoLog, selfUtxoCreator, utxoAmount, utxoCreating]);
+//     console.log("self-claimable UTXO created:", result);
+//     pushUtxoLog("UTXO creation succeeded");
+//     setStatus("Self-claimable UTXO created.");
+//   } catch (error: any) {
+//     console.error(error);
+//     pushUtxoLog(`UTXO creation failed: ${error?.message ?? "unknown error"}`);
+//     setStatus(`UTXO creation failed: ${error?.message ?? "unknown error"}`);
+//   } finally {
+//     setUtxoCreating(false);
+//   }
+// }, [activeMint, client, pushUtxoLog, selfUtxoCreator, utxoAmount, utxoCreating]);
 
-const handleWithdrawSelfUtxos = useCallback(async () => {
-  if (!client || !claimableUtxoScanner || !selfUtxoClaimer || utxoClaiming) return;
+// const handleWithdrawSelfUtxos = useCallback(async () => {
+//   if (!client || !claimableUtxoScanner || !selfUtxoClaimer || utxoClaiming) return;
 
-  setUtxoClaiming(true);
-  setStatus("Scanning for claimable self UTXOs...");
-  setUtxoLog([]);
+//   setUtxoClaiming(true);
+//   setStatus("Scanning for claimable self UTXOs...");
+//   setUtxoLog([]);
 
-  try {
-    // Simple version: scan tree 0 from the start and sweep self-burnable UTXOs.
-    // For a production version, you would persist / iterate tree indices.
-type ScannerArgs = Parameters<typeof claimableUtxoScanner>;
+//   try {
+//     // Simple version: scan tree 0 from the start and sweep self-burnable UTXOs.
+//     // For a production version, you would persist / iterate tree indices.
+// type ScannerArgs = Parameters<typeof claimableUtxoScanner>;
 
-const scanned = await claimableUtxoScanner(
-  0n as ScannerArgs[0],
-  0n as ScannerArgs[1]
-);
-    const utxos = scanned.selfBurnable;
+// const scanned = await claimableUtxoScanner(
+//   0n as ScannerArgs[0],
+//   0n as ScannerArgs[1]
+// );
+//     const utxos = scanned.selfBurnable;
 
-    if (utxos.length === 0) {
-      pushUtxoLog("No self-burnable UTXOs found in tree 0.");
-      setStatus("No self-claimable UTXOs found.");
-      return;
-    }
+//     if (utxos.length === 0) {
+//       pushUtxoLog("No self-burnable UTXOs found in tree 0.");
+//       setStatus("No self-claimable UTXOs found.");
+//       return;
+//     }
 
-    pushUtxoLog(`Found ${utxos.length} self-burnable UTXO(s). Claiming to encrypted balance...`);
+//     pushUtxoLog(`Found ${utxos.length} self-burnable UTXO(s). Claiming to encrypted balance...`);
 
-    const claimResult = await selfUtxoClaimer(utxos);
+//     const claimResult = await selfUtxoClaimer(utxos);
 
-    console.log("claim result:", claimResult);
-    pushUtxoLog("Claim succeeded");
-    setStatus(`Claimed ${utxos.length} UTXO(s) back to your ETA.`);
-    await refreshBalance();
-  } catch (error: any) {
-    console.error(error);
-    pushUtxoLog(`Claim failed: ${error?.message ?? "unknown error"}`);
-    setStatus(`Claim failed: ${error?.message ?? "unknown error"}`);
-  } finally {
-    setUtxoClaiming(false);
-  }
-}, [claimableUtxoScanner, client, pushUtxoLog, refreshBalance, selfUtxoClaimer, utxoClaiming]);
+//     console.log("claim result:", claimResult);
+//     pushUtxoLog("Claim succeeded");
+//     setStatus(`Claimed ${utxos.length} UTXO(s) back to your ETA.`);
+//     await refreshBalance();
+//   } catch (error: any) {
+//     console.error(error);
+//     pushUtxoLog(`Claim failed: ${error?.message ?? "unknown error"}`);
+//     setStatus(`Claim failed: ${error?.message ?? "unknown error"}`);
+//   } finally {
+//     setUtxoClaiming(false);
+//   }
+// }, [claimableUtxoScanner, client, pushUtxoLog, refreshBalance, selfUtxoClaimer, utxoClaiming]);
 
  const handleRegister = useCallback(async () => {
   if (!client || registering) return;
@@ -726,7 +726,7 @@ return (
           </div>
         </div>
 
-        <div className="mt-6 grid gap-3 md:grid-cols-3">
+        <div className="mt-6 grid gap-3 md:grid-cols-2">
           <button
             onClick={handleDeposit}
             disabled={!client || depositing}
@@ -741,13 +741,13 @@ return (
           >
             {withdrawing ? "Withdrawing..." : `Withdraw`}
           </button>
-          <button
+          {/* <button
             onClick={handleWithdrawSelfUtxos}
             disabled={!client || utxoClaiming}
             className="btn w-full px-6 py-4 text-base font-semibold disabled:cursor-not-allowed disabled:opacity-50"
           >
             {utxoClaiming ? "Reclaiming..." : "Reclaim self UTXOs"}
-          </button>
+          </button> */}
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-3">
@@ -771,7 +771,7 @@ return (
             />
           </label>
 
-          <label className="surface flex items-center gap-3 px-4 py-3 text-sm">
+          {/* <label className="surface flex items-center gap-3 px-4 py-3 text-sm">
             <span className="text-muted">UTXO amount</span>
             <input
               value={utxoAmount}
@@ -779,7 +779,7 @@ return (
               className="ml-auto w-32 bg-transparent text-right outline-none"
               placeholder="100"
             />
-          </label>
+          </label> */}
         </div>
       </section>
 
@@ -901,7 +901,7 @@ return (
               </div>
             </section>
 
-            <section className="card p-4 xl:col-span-2">
+            {/* <section className="card p-4 xl:col-span-2">
               <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-accent">Logs</h2>
               <div className="mt-3 max-h-[28rem] space-y-2 overflow-auto text-xs leading-5 text-muted">
                 {registrationLog.length === 0 && depositLog.length === 0 && utxoLog.length === 0 ? (
@@ -940,7 +940,7 @@ return (
                   {utxoClaiming ? "Withdrawing..." : "Reclaim Self UTXOs"}
                 </button>
               </div>
-            </section>
+            </section> */}
           </div>
 
           <div className="mt-5 text-xs text-muted">

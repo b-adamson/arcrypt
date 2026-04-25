@@ -760,7 +760,7 @@ mintAddress = await mintNft(
           <div className="border border-[var(--line)] bg-[var(--background)] px-4 py-3">
             <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--muted)]/70">Status</p>
             <p className="mt-1 text-sm text-[var(--foreground)]">
-              {isDisabled ? "Connect wallet to continue." : "Ready to create."}
+              {isDisabled ? "Connect wallet to continue" : "Wallet Connected"}
             </p>
           </div>
 
