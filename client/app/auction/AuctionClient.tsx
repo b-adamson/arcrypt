@@ -100,7 +100,7 @@ export default function AuctionClient() {
     const [realmAddress, setRealmAddress] = useState("");
     const [governanceAddress, setGovernanceAddress] = useState("");
     
-    type AuctionType = "FirstPrice" | "Vickrey" | "Uniform" | "ProRata";
+    type AuctionType = "FirstPrice" | "Vickrey" | "Uniform";
     type TreasuryAccountRow = {
       pubkey: string;
       mint: string;
@@ -136,7 +136,7 @@ export default function AuctionClient() {
       const [programClient, setProgramClient] = useState<any | null>(null);
       const [status, setStatus] = useState<string | null>(null);
       const [minBidSol, setMinBidSol] = useState<string>("1");
-      const [auctionType, setAuctionType] = useState<AuctionType>("FirstPrice");
+      const [auctionType, setAuctionType] = useState<AuctionType>("Uniform");
       const [durationSecs, setDurationSecs] = useState<number>(60 * 60);
       const [auctionSeedHex, setAuctionSeedHex] = useState<string | null>(null);
       const [auctionData, setAuctionData] = useState<any | null>(null);
@@ -147,7 +147,7 @@ export default function AuctionClient() {
     const [tokenDecimals, setTokenDecimals] = useState<number>(6);
     const [tokenMint, setTokenMint] = useState<string>("");
     
-    const [assetKind, setAssetKind] = useState<AssetKind>("Nft");
+    const [assetKind, setAssetKind] = useState<AssetKind>("Fungible");
     const [metadataName, setMetadataName] = useState("");
     const [metadataDescription, setMetadataDescription] = useState("");
     
@@ -167,7 +167,7 @@ export default function AuctionClient() {
     const [loadingTreasuries, setLoadingTreasuries] = useState(false);
     
     function getAllowedAuctionTypes(kind: AssetKind): AuctionType[] {
-      if (kind === "Fungible") return ["FirstPrice", "Vickrey", "Uniform", "ProRata"];
+      if (kind === "Fungible") return ["FirstPrice", "Vickrey", "Uniform"];
       return ["FirstPrice", "Vickrey"];
     }
     
@@ -176,19 +176,26 @@ export default function AuctionClient() {
       return allowed.includes(current) ? current : allowed[0];
     }
     
-    function handleAssetKindChange(nextKind: AssetKind) {
-      setAssetKind(nextKind);
-      setAuctionType((current) => normalizeAuctionType(nextKind, current));
-    
-      if (nextKind === "Nft") {
-        setSaleAmountToken("1");
-      }
-    
-      if (nextKind === "MetadataOnly") {
-        setTokenMint("");
-        setSaleAmountToken("");
-      }
-    }
+function handleAssetKindChange(nextKind: AssetKind) {
+  setAssetKind(nextKind);
+
+  if (nextKind === "Fungible") {
+    setAuctionType("Uniform"); // ✅ force default
+  } else {
+    setAuctionType((current) =>
+      normalizeAuctionType(nextKind, current)
+    );
+  }
+
+  if (nextKind === "Nft") {
+    setSaleAmountToken("1");
+  }
+
+  if (nextKind === "MetadataOnly") {
+    setTokenMint("");
+    setSaleAmountToken("");
+  }
+}
     
     function deserializeTxFromBase64(txBase64: string): Transaction {
       return Transaction.from(Buffer.from(txBase64, "base64"));
@@ -497,7 +504,10 @@ if (!finalMetadataUri) {
     
 async function handleMakeAuction(
   metadataUriOverride?: string,
-  tokenMintOverride?: string
+  tokenOverride?: {
+    mint: string;
+    sourceAta?: string;
+  }
 ) {
   setStatus("Preparing createAuction...");
 
@@ -514,6 +524,14 @@ async function handleMakeAuction(
       metadataUri = res.metadataUri;
     }
 
+    const mintFinal =
+      tokenOverride?.mint || tokenMint || undefined;
+
+    const sourceAta =
+      tokenOverride?.sourceAta ||
+      selectedTreasuryAccount ||
+      undefined;
+
     const res = await fetch("/api/makeAuction", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -524,9 +542,9 @@ async function handleMakeAuction(
         durationSecs,
         auctionType,
         assetKind,
-        tokenMint: tokenMintOverride || tokenMint || undefined,
+        tokenMint: mintFinal,
         saleAmountToken: saleAmountToken || undefined,
-        sourceTokenAccountBase58: selectedTreasuryAccount || undefined, // 🔥 REQUIRED
+        sourceTokenAccountBase58: sourceAta,
       })
     });
 
@@ -724,8 +742,11 @@ async function handleMakeAuction(
   onTokenMintChange={setTokenMint}
   onDurationSecsChange={setDurationSecs}
   onAuctionTypeChange={setAuctionType}
-onSubmit={(metadataUri?: string, mint?: string) =>
-  handleCreateGovernanceProposal(metadataUri, mint)
+onSubmit={(metadataUri, tokenOverride) =>
+  handleCreateGovernanceProposal(
+    metadataUri,
+    tokenOverride?.mint
+  )
 }
 />
 
@@ -814,8 +835,8 @@ onSubmit={(metadataUri?: string, mint?: string) =>
   onTokenMintChange={setTokenMint}
   onDurationSecsChange={setDurationSecs}
   onAuctionTypeChange={setAuctionType}
-  onSubmit={(metadataUri?: string, mint?: string) =>
-  handleMakeAuction(metadataUri, mint)
+onSubmit={(metadataUri, tokenOverride) =>
+  handleMakeAuction(metadataUri, tokenOverride)
 }
 />
   )}

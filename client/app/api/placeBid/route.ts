@@ -6,7 +6,7 @@ import { createPlaceBid } from "@arcrypt/sdk";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { auctionPk, bidderPubkey, bidAmountSol, nonceHex } = body ?? {};
+    const { auctionPk, bidderPubkey, bidAmountSol, bidPriceSol, nonceHex } = body ?? {};
 
     if (!auctionPk || !bidderPubkey || typeof bidAmountSol === "undefined") {
       return NextResponse.json(
@@ -31,6 +31,7 @@ export async function POST(req: Request) {
     const bundle = await createPlaceBid({
       programClient: program,
       programId: new PublicKey(programIdStr),
+      bidPriceSol,
       publicKey: bidderPk,
       auctionPk: new PublicKey(auctionPk),
       bidAmountSol: String(bidAmountSol),

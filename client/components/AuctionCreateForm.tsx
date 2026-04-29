@@ -7,6 +7,8 @@ import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import type { PublicKey } from "@solana/web3.js";
 import { PublicKey as PublicKeyCtor } from "@solana/web3.js";
 
+import { mintToken } from "../lib/mintToken";
+
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import { mplTokenMetadata, fetchDigitalAsset } from "@metaplex-foundation/mpl-token-metadata";
 import { publicKey as umiPublicKey } from "@metaplex-foundation/umi";
@@ -15,7 +17,7 @@ import { mintNft } from "../lib/mintNft";
 
 import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-adapters";
 
-type AuctionType = "FirstPrice" | "Vickrey" | "Uniform" | "ProRata";
+type AuctionType = "FirstPrice" | "Vickrey" | "Uniform";
 type AssetKind = "Fungible" | "Nft" | "MetadataOnly";
 
 type TokenOption = {
@@ -142,7 +144,13 @@ type Props = {
   onTokenMintChange: (value: string) => void;
   onDurationSecsChange: (value: number) => void;
   onAuctionTypeChange: (value: AuctionType) => void;
-onSubmit: (metadataUri?: string, tokenMintOverride?: string) => void;
+onSubmit: (
+  metadataUri?: string,
+  tokenOverride?: {
+    mint: string;
+    sourceAta?: string;
+  }
+) => void;
 };
 
 function Field({
@@ -229,6 +237,34 @@ const umi = useMemo(() => {
   const rpcEndpoint = connection.rpcEndpoint;
 
   const [imageError, setImageError] = useState<string | null>(null);
+
+  const [tokenMintMode, setTokenMintMode] = useState<"Existing" | "CreateNew">("CreateNew");
+
+const [totalSupply, setTotalSupply] = useState("");
+const [keepAmount, setKeepAmount] = useState("");
+const split = useMemo(() => {
+  const total = Number(totalSupply || 0);
+  const userReserve = Number(keepAmount || 0);
+
+  if (total <= 0 || userReserve < 0 || userReserve > total) {
+    return {
+      auction: 0,
+      raydium: 0,
+      user: userReserve,
+    };
+  }
+
+  const remaining = total - userReserve;
+
+  const raydiumReserve = Math.floor(remaining * 0.2);
+  const auctionSupply = remaining - raydiumReserve;
+
+  return {
+    auction: auctionSupply,
+    raydium: raydiumReserve,
+    user: userReserve,
+  };
+}, [totalSupply, keepAmount]);
 
   useEffect(() => {
   if (assetKind === "Nft") {
@@ -376,8 +412,95 @@ async function handleSubmit() {
   if (isDisabled) return;
 
   let metadataUri: string | undefined = undefined;
-  let mintAddress: string | undefined = undefined;
+  let mintAddress = "";
 
+ if (
+  assetKind === "Fungible" &&
+  tokenMintMode === "CreateNew"
+) {
+  try {
+   if (!publicKey || !wallet?.adapter) {
+  throw new Error("Wallet not connected");
+}
+
+    const total = Number(totalSupply);
+    const keep = Number(keepAmount);
+
+    if (!total || total <= 0) {
+      throw new Error("Total supply required");
+    }
+
+    if (keep < 0 || keep > total) {
+      throw new Error("Invalid keep amount");
+    }
+
+   const auctionAmountUi = split.auction;
+const raydiumReserve = split.raydium;
+const userReserve = split.user;
+localStorage.setItem("raydiumReserve", String(raydiumReserve));
+localStorage.setItem("totalSupply", String(total));
+localStorage.setItem("userReserve", String(userReserve));
+
+    if (auctionAmountUi <= 0) {
+      throw new Error("Auction amount must be > 0");
+    }
+
+    if (auctionType === "Uniform" && auctionAmountUi < 3) {
+      throw new Error("Uniform auctions require at least 3 tokens");
+    }
+
+    setIsMinting(true);
+
+    // ✅ Upload metadata FIRST (same as NFT)
+    const formData = new FormData();
+    formData.append("name", metadataName.trim());
+    formData.append("description", metadataDescription.trim());
+
+    if (metadataImageFile) {
+      formData.append("image", metadataImageFile);
+    }
+
+    const res = await fetch("/api/pin-metadata", {
+      method: "POST",
+      body: formData,
+    });
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      throw new Error(json?.error || "Metadata upload failed");
+    }
+
+    const metadataUri = json.metadataUri;
+
+    // ✅ Mint token
+const { mint, ownerAta } = await mintToken(
+  connection,
+  wallet.adapter,
+  publicKey,
+  total
+);
+
+mintAddress = mint.toBase58();
+
+onTokenMintChange(mintAddress);
+onSaleAmountTokenChange(String(auctionAmountUi));
+
+// ✅ CORRECT
+onSubmit(metadataUri, {
+  mint: mintAddress,
+  sourceAta: ownerAta.toBase58(),
+});
+
+  } catch (err: any) {
+    console.error(err);
+    alert(err?.message || "Failed to mint token");
+  } finally {
+    setIsMinting(false);
+  }
+
+  return;
+}
   try {
     if (!lockTokenMint && assetKind === "Nft" && mintMode === "CreateNew") {
       if (!metadataName.trim()) {
@@ -428,7 +551,9 @@ mintAddress = await mintNft(
     }
 
     // continue
-    onSubmit(metadataUri, mintAddress);
+    onSubmit(metadataUri, {
+  mint: mintAddress,
+});
   } catch (err: any) {
     console.error(err);
     alert(err?.message || "Failed to create NFT");
@@ -565,26 +690,39 @@ mintAddress = await mintNft(
             />
           </Field>
 
-          {assetKind === "Fungible" ? (
-            <Field label="Prize amount" hint="Token amount sent to the winner(s).">
-              <input
-                type="number"
-                step="0.000001"
-                min={0}
-                value={saleAmountToken}
-                onChange={(e) => onSaleAmountTokenChange(e.target.value)}
-                className={inputClass}
-                placeholder="1000"
-              />
-            </Field>
-          ) : assetKind === "Nft" ? (
-            <Field label="Prize amount" hint="NFT mode is fixed to exactly 1.">
-              <input type="text" value="1" disabled className={`${inputClass} cursor-not-allowed opacity-60`} />
-            </Field>
-          ) : null}
+        {assetKind === "Fungible" && tokenMintMode !== "CreateNew" ? (
+  <Field label="Prize amount" hint="Token amount sent to the winner(s).">
+    <input
+      type="number"
+      step="0.000001"
+      min={0}
+      value={saleAmountToken}
+      onChange={(e) => onSaleAmountTokenChange(e.target.value)}
+      className={inputClass}
+      placeholder="1000"
+    />
+  </Field>
+) : assetKind === "Nft" ? (
+  <Field label="Prize amount" hint="NFT mode is fixed to exactly 1.">
+    <input type="text" value="1" disabled className={`${inputClass} cursor-not-allowed opacity-60`} />
+  </Field>
+) : null}
+          {assetKind === "Fungible" && (
+  <Field label="Token source">
+    <select
+      value={tokenMintMode}
+      onChange={(e) => setTokenMintMode(e.target.value as any)}
+      className={selectClass}
+    >
+      <option value="CreateNew">Create new token</option>
+      <option value="Existing">Use existing token</option>
+    </select>
+  </Field>
+)}
 
 {assetKind !== "MetadataOnly" &&
- !(assetKind === "Nft" && mintMode === "CreateNew") ? (
+ !(assetKind === "Nft" && mintMode === "CreateNew") &&
+ !(assetKind === "Fungible" && tokenMintMode === "CreateNew") ? (
             <Field
               label="Token mint"
               hint={lockTokenMint ? "Locked in proposal mode." : "Type a mint directly or pick one from your wallet tokens."}
@@ -684,6 +822,43 @@ mintAddress = await mintNft(
             </Field>
           ) : null}
 
+          {assetKind === "Fungible" && tokenMintMode === "CreateNew" && (
+  <>
+    <Field label="Total supply">
+      <input
+        type="number"
+        min={0}
+        value={totalSupply}
+        onChange={(e) => setTotalSupply(e.target.value)}
+        className={inputClass}
+        placeholder="1000"
+      />
+    </Field>
+
+    <Field label="Amount to keep">
+      <input
+        type="number"
+        min={0}
+        value={keepAmount}
+        onChange={(e) => setKeepAmount(e.target.value)}
+        className={inputClass}
+        placeholder="200"
+      />
+    </Field>
+
+    <Field label="Auction amount">
+      <div className="text-sm text-[var(--foreground)]">
+        {split.auction}
+      </div>
+    </Field>
+    <Field label="Raydium reserve">
+  <div className="text-sm text-[var(--foreground)]">
+    {split.raydium}
+  </div>
+</Field>
+  </>
+)}
+
           <Field label="Duration" hint="Set auction length (days, hours, minutes, seconds).">
             <div className="flex w-full gap-3">
               {[
@@ -769,7 +944,11 @@ mintAddress = await mintNft(
   disabled={isDisabled || isMinting}
   className="btn btn-primary h-12 px-5 text-sm font-semibold"
 >
-  {isMinting ? "Minting NFT..." : "Make Auction"}
+  {isMinting
+  ? assetKind === "Fungible"
+    ? "Minting Token..."
+    : "Minting NFT..."
+  : "Make Auction"}
 </button>
         </div>
 

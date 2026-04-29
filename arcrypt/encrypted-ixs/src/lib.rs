@@ -4,11 +4,11 @@ use arcis::*;
 mod circuits {
     use arcis::*;
 
-
-pub struct Bid {
-    pub bidder: SerializedSolanaPublicKey,
-    pub amount: u64,
-}
+    pub struct Bid {
+        pub bidder: SerializedSolanaPublicKey,
+        pub amount: u64,
+        pub price: u64, // NEW
+    }
 
     pub struct AuctionState {
         pub highest: Bid,
@@ -42,14 +42,17 @@ pub struct Bid {
             highest: Bid {
                 bidder: SerializedSolanaPublicKey { lo: 0, hi: 0 },
                 amount: 0,
+                price: 0,
             },
             second_highest: Bid {
                 bidder: SerializedSolanaPublicKey { lo: 0, hi: 0 },
                 amount: 0,
+                price: 0,
             },
             third_highest: Bid {
                 bidder: SerializedSolanaPublicKey { lo: 0, hi: 0 },
                 amount: 0,
+                price: 0,
             },
             bid_count: 0,
         };
@@ -64,14 +67,15 @@ pub struct Bid {
         let bid = bid_ctxt.to_arcis();
         let mut state = state_ctxt.to_arcis();
 
-        if bid.amount > state.highest.amount {
+        // 🔥 RANK BY PRICE (NOT AMOUNT)
+        if bid.price > state.highest.price {
             state.third_highest = state.second_highest;
             state.second_highest = state.highest;
             state.highest = bid;
-        } else if bid.amount > state.second_highest.amount {
+        } else if bid.price > state.second_highest.price {
             state.third_highest = state.second_highest;
             state.second_highest = bid;
-        } else if bid.amount > state.third_highest.amount {
+        } else if bid.price > state.third_highest.price {
             state.third_highest = bid;
         }
 
@@ -80,75 +84,78 @@ pub struct Bid {
         state_ctxt.owner.from_arcis(state)
     }
 
-#[instruction]
-pub fn place_encrypted_bid(
-    bidder: SerializedSolanaPublicKey,
-    amount_ctxt: Enc<Mxe, u64>,
-    state_ctxt: Enc<Mxe, AuctionState>,
-) -> Enc<Mxe, AuctionState> {
-    let amount = amount_ctxt.to_arcis();
-    let mut state = state_ctxt.to_arcis();
+    #[instruction]
+    pub fn place_encrypted_bid(
+        bidder: SerializedSolanaPublicKey,
+        amount_ctxt: Enc<Mxe, u64>,
+        price_ctxt: Enc<Mxe, u64>, // NEW
+        state_ctxt: Enc<Mxe, AuctionState>,
+    ) -> Enc<Mxe, AuctionState> {
+        let amount = amount_ctxt.to_arcis();
+        let price = price_ctxt.to_arcis();
+        let mut state = state_ctxt.to_arcis();
 
-    let bid = Bid { bidder, amount };
+        let bid = Bid { bidder, amount, price };
 
-    if bid.amount > state.highest.amount {
-        state.third_highest = state.second_highest;
-        state.second_highest = state.highest;
-        state.highest = bid;
-    } else if bid.amount > state.second_highest.amount {
-        state.third_highest = state.second_highest;
-        state.second_highest = bid;
-    } else if bid.amount > state.third_highest.amount {
-        state.third_highest = bid;
+        // 🔥 RANK BY PRICE
+        if bid.price > state.highest.price {
+            state.third_highest = state.second_highest;
+            state.second_highest = state.highest;
+            state.highest = bid;
+        } else if bid.price > state.second_highest.price {
+            state.third_highest = state.second_highest;
+            state.second_highest = bid;
+        } else if bid.price > state.third_highest.price {
+            state.third_highest = bid;
+        }
+
+        state.bid_count += 1;
+        state_ctxt.owner.from_arcis(state)
     }
 
-    state.bid_count += 1;
-    state_ctxt.owner.from_arcis(state)
-}
+    #[instruction]
+    pub fn determine_winner_uniform(
+        state_ctxt: Enc<Mxe, AuctionState>,
+    ) -> UniformAuctionResult {
+        let state = state_ctxt.to_arcis();
 
-#[instruction]
-pub fn determine_winner_uniform(
-    state_ctxt: Enc<Mxe, AuctionState>,
-) -> UniformAuctionResult {
-    let state = state_ctxt.to_arcis();
+        let highest = state.highest;
+        let second_highest = state.second_highest;
+        let third_highest = state.third_highest;
 
-    let highest = state.highest;
-    let second_highest = state.second_highest;
-    let third_highest = state.third_highest;
+        // 🔥 CLEARING PRICE = 3rd highest PRICE
+        let clearing_price = third_highest.price;
 
-    let clearing_price = third_highest.amount;
-
-    UniformAuctionResult {
-        winner1: highest,
-        winner2: second_highest,
-        winner3: third_highest,
-        clearing_price,
+        UniformAuctionResult {
+            winner1: highest,
+            winner2: second_highest,
+            winner3: third_highest,
+            clearing_price,
+        }
+        .reveal()
     }
-    .reveal()
-}
 
-#[instruction]
-pub fn determine_winner_pro_rata(
-    state_ctxt: Enc<Mxe, AuctionState>,
-) -> ProRataAuctionResult {
-    let state = state_ctxt.to_arcis();
+    #[instruction]
+    pub fn determine_winner_pro_rata(
+        state_ctxt: Enc<Mxe, AuctionState>,
+    ) -> ProRataAuctionResult {
+        let state = state_ctxt.to_arcis();
 
-    let highest = state.highest;
-    let second_highest = state.second_highest;
-    let third_highest = state.third_highest;
+        let highest = state.highest;
+        let second_highest = state.second_highest;
+        let third_highest = state.third_highest;
 
-    let total_bid = highest.amount + second_highest.amount + third_highest.amount;
+        let total_bid = highest.amount + second_highest.amount + third_highest.amount;
 
-    ProRataAuctionResult {
-        winner1: highest,
-        winner2: second_highest,
-        winner3: third_highest,
-        total_bid,
+        ProRataAuctionResult {
+            winner1: highest,
+            winner2: second_highest,
+            winner3: third_highest,
+            total_bid,
+        }
+        .reveal()
     }
-    .reveal()
-}
 
-    /// Winner pays their bid.
     #[instruction]
     pub fn determine_winner_first_price(state_ctxt: Enc<Mxe, AuctionState>) -> AuctionResult {
         let state = state_ctxt.to_arcis();
@@ -160,7 +167,6 @@ pub fn determine_winner_pro_rata(
         .reveal()
     }
 
-    /// Winner pays second-highest bid (incentivizes truthful bidding).
     #[instruction]
     pub fn determine_winner_vickrey(state_ctxt: Enc<Mxe, AuctionState>) -> AuctionResult {
         let state = state_ctxt.to_arcis();

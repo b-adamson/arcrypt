@@ -68,7 +68,7 @@ function getAuctionType(auction: any): string {
 }
 
 function isMultiWinnerAuction(auctionType: string): boolean {
-  return auctionType === "uniform" || auctionType === "prorata";
+  return auctionType === "uniform";
 }
 
 function isMetadataOnly(auction: any): boolean {
@@ -236,6 +236,28 @@ export default function AuctionResultCard({
   if (!auctionData) return null;
 
   const metadataImage = metadata?.image ? toHttpGateway(metadata.image) : "";
+
+  const winnerPrices = Array.isArray(auctionData?.winnerPrices ?? auctionData?.winner_prices)
+  ? (auctionData?.winnerPrices ?? auctionData?.winner_prices)
+  : [];
+const formatOrDash = (v: any) => {
+  const val = BigInt(v?.toString?.() ?? 0);
+  return val === 0n ? "-" : formatSolAmount(v);
+};
+
+const formattedWinnerBids = winnerBids.length
+  ? winnerBids.map((v: any) => formatOrDash(v)).join(", ")
+  : "Not available yet";
+
+const formattedWinnerPrices = winnerPrices.length
+  ? winnerPrices.map((v: any) => formatOrDash(v)).join(", ")
+  : "Not available yet";
+
+const hasEnoughBids = bidCount >= 3;
+
+const formattedClearingPrice = hasEnoughBids
+  ? formatSolAmount(clearingPrice ?? 0)
+  : "Not enough bids";
   
 
   return (
@@ -332,7 +354,11 @@ export default function AuctionResultCard({
         />
         <CopyableField label="Min bid" value={formatSolAmount(minBid ?? 0)} />
         <CopyableField label="End time" value={formatEndTime(endTime)} />
-
+{multi && bidCount < 3 && (
+  <div className="col-span-full border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm">
+    Uniform auctions require at least 3 bids. Results are incomplete.
+  </div>
+)}
         {!multi ? (
           <>
             <CopyableField
@@ -349,13 +375,26 @@ export default function AuctionResultCard({
               value={multiWinners.length ? multiWinners.map(shorten).join(", ") : "Not resolved yet"}
               copyValue={multiWinners.join(", ")}
             />
+           <CopyableField
+  label="Winner bids"
+  value={formattedWinnerBids}
+  copyValue={winnerBids.join(", ")}
+/>
+
+<CopyableField
+  label="Winner prices"
+  value={formattedWinnerPrices}
+  copyValue={winnerPrices.join(", ")}
+/>
+
+<CopyableField
+  label="Clearing price"
+  value={formattedClearingPrice}
+/>
             <CopyableField
-              label="Winner bids"
-              value={winnerBids.length ? winnerBids.join(", ") : "Not available yet"}
-              copyValue={winnerBids.join(", ")}
-            />
-            <CopyableField label="Clearing price" value={toStringMaybe(clearingPrice ?? 0)} />
-            <CopyableField label="Total bid" value={toStringMaybe(totalBid ?? 0)} />
+  label="Total bid"
+  value={formatSolAmount(totalBid ?? 0)}
+/>
           </>
         )}
       </div>

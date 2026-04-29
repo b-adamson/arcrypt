@@ -18,11 +18,8 @@ import {
 } from "@umbra-privacy/sdk";
 
 
-import {
-  // getCreateSelfClaimableUtxoFromEncryptedBalanceProver,
-  // getClaimSelfClaimableUtxoIntoEncryptedBalanceProver,
-  getUserRegistrationProver,
-} from "@umbra-privacy/web-zk-prover";
+
+
 import {
   isEncryptedDepositError,
   isEncryptedWithdrawalError,
@@ -38,7 +35,7 @@ import keyFile from "../umbra-devnet.json";
 
 install();
 
-const registrationProver = getUserRegistrationProver();
+
 
 const rpcUrl =
   process.env.NEXT_PUBLIC_RPC_URL ??
@@ -469,18 +466,13 @@ const address =
     await client.masterSeed.getMasterSeed();
     pushLog("Master seed is available");
 
-    if (registerAnonymous && zkProver?.prepareAnonymousRegistration) {
-      pushLog("Preparing anonymous-mode prover...");
-      setStatus("Preparing anonymous-mode prover...");
-      await zkProver.prepareAnonymousRegistration();
-      pushLog("Anonymous-mode prover ready");
-    }
 
-    const register = getUserRegistrationFunction({ client }, {zkProver: registrationProver});
+
+    const register = getUserRegistrationFunction({ client });
 
     const signatures = await register({
       confidential: registerConfidential,
-      anonymous: registerAnonymous,
+      anonymous: false,
       accountInfoCommitment: "confirmed",
       callbacks: {
         userAccountInitialisation: {

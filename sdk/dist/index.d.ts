@@ -1,5 +1,5 @@
 import { PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
-export type AuctionType = "FirstPrice" | "Vickrey" | "Uniform" | "ProRata";
+export type AuctionType = "FirstPrice" | "Vickrey" | "Uniform";
 export type AssetKind = "Fungible" | "Nft" | "MetadataOnly";
 export type MakeAuctionServerResponse = {
     auctionPda: string;
@@ -66,7 +66,7 @@ export type GovernanceAuctionBundle = AuctionCoreResult & {
     transactions: Transaction[];
 };
 export declare function createSPLGovernanceProposal(params: CreateSPLGovernanceProposalParams): Promise<GovernanceAuctionBundle>;
-export type DetermineWinnerKind = "first" | "vickrey" | "uniform" | "proRata";
+export type DetermineWinnerKind = "first" | "vickrey" | "uniform";
 export type SettlementAction = "auto" | "reclaimUnsold" | "claimRefund" | "settleWinner";
 export type PlaceBidServerResponse = {
     enc_lo: number[];
@@ -123,6 +123,7 @@ export type BuildPlaceBidTransactionParams = {
     auctionPk: PublicKey;
     bidAmountSol: string;
     nonceHex?: string | null;
+    bidPriceSol: string;
 };
 export type ResolveDetermineWinnerContextParams = {
     provider: any;

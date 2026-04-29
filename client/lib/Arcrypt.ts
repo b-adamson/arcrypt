@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/arcrypt.json`.
  */
 export type Arcrypt = {
-  "address": "8icpcRrJNtQ4RBaTtttGoy2qzDDY8bQcxQaYm2dRvFRC",
+  "address": "5u3mcLQx7fqoTAaPCFMRVNXFPyu1CEKDNc2AHEgiTR1x",
   "metadata": {
     "name": "arcrypt",
     "version": "0.1.0",
@@ -61,6 +61,106 @@ export type Arcrypt = {
               }
             ]
           }
+        },
+        {
+          "name": "bidderWsolAta",
+          "writable": true
+        },
+        {
+          "name": "escrowTokenAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "escrowAccount"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "wsolMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "wsolMint"
+        },
+        {
+          "name": "tokenProgram"
         }
       ],
       "args": []
@@ -1245,6 +1345,10 @@ export type Arcrypt = {
           "writable": true
         },
         {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
           "name": "winnerEscrow",
           "writable": true,
           "pda": {
@@ -1274,6 +1378,110 @@ export type Arcrypt = {
         {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "escrowTokenAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "winnerEscrow"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "wsolMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "creatorWsolAta",
+          "writable": true
+        },
+        {
+          "name": "winnerWsolAta",
+          "writable": true
+        },
+        {
+          "name": "wsolMint"
+        },
+        {
+          "name": "tokenProgram"
         }
       ],
       "args": []
@@ -1339,6 +1547,107 @@ export type Arcrypt = {
           "name": "prizeMint"
         },
         {
+          "name": "escrowTokenAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "winnerEscrow"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "wsolMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "creatorWsolAta",
+          "writable": true
+        },
+        {
+          "name": "winnerWsolAta",
+          "writable": true
+        },
+        {
+          "name": "wsolMint"
+        },
+        {
           "name": "vaultAuthority",
           "writable": true,
           "pda": {
@@ -1474,208 +1783,6 @@ export type Arcrypt = {
         {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "finalizeWinnerPayout",
-      "discriminator": [
-        145,
-        122,
-        145,
-        172,
-        212,
-        73,
-        86,
-        112
-      ],
-      "accounts": [
-        {
-          "name": "payer",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "auction",
-          "writable": true
-        },
-        {
-          "name": "creator",
-          "writable": true
-        },
-        {
-          "name": "winnerWallet",
-          "writable": true
-        },
-        {
-          "name": "winnerEscrow",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  101,
-                  115,
-                  99,
-                  114,
-                  111,
-                  119
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "auction"
-              },
-              {
-                "kind": "account",
-                "path": "winnerWallet"
-              }
-            ]
-          }
-        },
-        {
-          "name": "systemProgram",
-          "address": "11111111111111111111111111111111"
-        },
-        {
-          "name": "prizeMint"
-        },
-        {
-          "name": "prizeVault",
-          "writable": true
-        },
-        {
-          "name": "vaultAuthority",
-          "docs": [
-            "CHECK"
-          ],
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  118,
-                  97,
-                  117,
-                  108,
-                  116,
-                  45,
-                  97,
-                  117,
-                  116,
-                  104,
-                  111,
-                  114,
-                  105,
-                  116,
-                  121
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "auction"
-              }
-            ]
-          }
-        },
-        {
-          "name": "winnerAta",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "winnerWallet"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "prizeMint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "tokenProgram"
-        },
-        {
-          "name": "associatedTokenProgram",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         }
       ],
       "args": []
@@ -2104,6 +2211,110 @@ export type Arcrypt = {
           }
         },
         {
+          "name": "bidderWsolAta",
+          "writable": true
+        },
+        {
+          "name": "wsolMint"
+        },
+        {
+          "name": "tokenProgram"
+        },
+        {
+          "name": "escrowTokenAccount",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "escrowAccount"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "wsolMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "associatedTokenProgram",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
           "name": "signPdaAccount",
           "writable": true,
           "pda": {
@@ -2205,6 +2416,15 @@ export type Arcrypt = {
         },
         {
           "name": "encryptedAmount",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "encryptedPrice",
           "type": {
             "array": [
               "u8",
@@ -2783,6 +3003,15 @@ export type Arcrypt = {
           }
         },
         {
+          "name": "encryptedPrice",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
           "name": "nonce",
           "type": "u128"
         }
@@ -3197,6 +3426,11 @@ export type Arcrypt = {
       "code": 6033,
       "name": "tempBidAlreadyConsumed",
       "msg": "Pending encrypted bid already consumed"
+    },
+    {
+      "code": 6034,
+      "name": "bidTooSmall",
+      "msg": "Escrow must be >= price"
     }
   ],
   "types": [
@@ -3308,7 +3542,7 @@ export type Arcrypt = {
                     32
                   ]
                 },
-                10
+                13
               ]
             }
           },
@@ -3359,6 +3593,15 @@ export type Arcrypt = {
           {
             "name": "winnerPaid",
             "type": "bool"
+          },
+          {
+            "name": "winnerPrices",
+            "type": {
+              "array": [
+                "u64",
+                3
+              ]
+            }
           },
           {
             "name": "winners",
@@ -3945,6 +4188,10 @@ export type Arcrypt = {
           {
             "name": "field1",
             "type": "u64"
+          },
+          {
+            "name": "field2",
+            "type": "u64"
           }
         ]
       }
@@ -3981,6 +4228,10 @@ export type Arcrypt = {
           {
             "name": "field1",
             "type": "u64"
+          },
+          {
+            "name": "field2",
+            "type": "u64"
           }
         ]
       }
@@ -4016,6 +4267,10 @@ export type Arcrypt = {
           },
           {
             "name": "field1",
+            "type": "u64"
+          },
+          {
+            "name": "field2",
             "type": "u64"
           }
         ]
@@ -4109,6 +4364,10 @@ export type Arcrypt = {
           {
             "name": "field1",
             "type": "u64"
+          },
+          {
+            "name": "field2",
+            "type": "u64"
           }
         ]
       }
@@ -4145,6 +4404,10 @@ export type Arcrypt = {
           {
             "name": "field1",
             "type": "u64"
+          },
+          {
+            "name": "field2",
+            "type": "u64"
           }
         ]
       }
@@ -4180,6 +4443,10 @@ export type Arcrypt = {
           },
           {
             "name": "field1",
+            "type": "u64"
+          },
+          {
+            "name": "field2",
             "type": "u64"
           }
         ]
@@ -4386,7 +4653,7 @@ export type Arcrypt = {
                 "generics": [
                   {
                     "kind": "const",
-                    "value": "10"
+                    "value": "13"
                   }
                 ]
               }
@@ -4555,6 +4822,15 @@ export type Arcrypt = {
           },
           {
             "name": "winnerBids",
+            "type": {
+              "array": [
+                "u64",
+                3
+              ]
+            }
+          },
+          {
+            "name": "winnerPrices",
             "type": {
               "array": [
                 "u64",
@@ -4844,6 +5120,15 @@ export type Arcrypt = {
           {
             "name": "consumed",
             "type": "bool"
+          },
+          {
+            "name": "encryptedPrice",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           }
         ]
       }
@@ -4865,7 +5150,7 @@ export type Arcrypt = {
                 "generics": [
                   {
                     "kind": "const",
-                    "value": "10"
+                    "value": "13"
                   }
                 ]
               }
@@ -4891,7 +5176,7 @@ export type Arcrypt = {
                 "generics": [
                   {
                     "kind": "const",
-                    "value": "10"
+                    "value": "13"
                   }
                 ]
               }

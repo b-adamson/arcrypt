@@ -11,11 +11,18 @@ import AuctionBidForm from "../../components/AuctionBidForm";
 import AuctionResultCard from "../../components/AuctionResultCard";
 import AuctionWinConfetti from "../../components/AuctionWinConfetti";
 import {
-  ASSOCIATED_TOKEN_PROGRAM_ID,
-  TOKEN_PROGRAM_ID,
-  getAssociatedTokenAddressSync,
+
   getMint,
 } from "@solana/spl-token";
+import { SystemProgram } from "@solana/web3.js";
+import {
+  NATIVE_MINT,
+  createAssociatedTokenAccountInstruction,
+  createSyncNativeInstruction,
+  getAssociatedTokenAddressSync,
+} from "@solana/spl-token";
+import { TransactionInstruction } from "@solana/web3.js";
+import { VersionedTransaction } from "@solana/web3.js";
 
 function deriveEscrowPda(auctionPk: PublicKey, bidderPk: PublicKey, programId: PublicKey) {
   return PublicKey.findProgramAddressSync(
@@ -122,7 +129,8 @@ export default function BidPageClient({ auctionPk }: { auctionPk: string | null 
   const [programClient, setProgramClient] = useState<any | null>(null);
   const [readOnlyProgram, setReadOnlyProgram] = useState<any | null>(null);
   const [status, setStatus] = useState<string | null>(null);
-  const [bidAmountSol, setBidAmountSol] = useState<string>("1");
+const [bidAmountSol, setBidAmountSol] = useState("1");
+const [bidPriceSol, setBidPriceSol] = useState("1"); // NEW
   const [bidNonceHex, setBidNonceHex] = useState<string | null>(null);
   const [auctionSeedHex, setAuctionSeedHex] = useState<string | null>(null);
   const [auctionData, setAuctionData] = useState<any | null>(null);
@@ -140,6 +148,11 @@ export default function BidPageClient({ auctionPk }: { auctionPk: string | null 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const walletBase58 = publicKey?.toBase58() ?? "";
+
+  const [poolResult, setPoolResult] = useState<{
+  txs: string[];
+  swapUrl: string;
+} | null>(null);
 
   const auctionStatus = auctionData ? enumKey(auctionData.status).toLowerCase() : "";
   const isOpen = auctionStatus === "open";
@@ -200,18 +213,22 @@ const outcomeText = !auctionData
                 : "You lost the auction — no refund to claim"
           : "Auction ended — winner pending";
 
-  const showDetermineWinnerPanel = canDetermineWinner;
 
-  const determineWinnerKind =
-    auctionType === "firstprice"
-      ? "first"
-      : auctionType === "vickrey"
-        ? "vickrey"
-        : auctionType === "uniform"
-          ? "uniform"
-          : auctionType === "prorata"
-            ? "proRata"
-            : null;
+
+const determineWinnerKind =
+  auctionType === "firstprice"
+    ? "first"
+    : auctionType === "vickrey"
+      ? "vickrey"
+      : auctionType === "uniform"
+        ? "uniform"
+        : null;
+
+      const canCreatePool =
+  !!auctionData &&
+  auctionEnded &&
+  isResolved &&
+  isCreator;
 
   const determineWinnerLabel =
     determineWinnerKind === "first"
@@ -244,6 +261,8 @@ const outcomeText = !auctionData
       return;
     }
 
+
+
     const endTime = Number(auctionData.endTime ?? auctionData.end_time ?? 0);
 
     const tick = async () => {
@@ -275,6 +294,26 @@ const outcomeText = !auctionData
     return () => clearInterval(interval);
   }, [auctionData]);
 
+      useEffect(() => {
+  if (!auctionPkStr) return;
+
+  try {
+    const stored = localStorage.getItem(
+      `raydium-pool:${auctionPkStr}`
+    );
+
+    if (stored) {
+      setPoolResult(JSON.parse(stored));
+    }
+  } catch (e) {
+    console.warn("Failed to load poolResult", e);
+  }
+}, [auctionPkStr]);
+
+useEffect(() => {
+  setPoolResult(null);
+}, [auctionPkStr]);
+
   function formatTimeLeft(seconds: number | null): string {
     if (seconds === null) return "Loading...";
     if (seconds <= 0) return "0s";
@@ -293,6 +332,46 @@ const outcomeText = !auctionData
   function getBidCount(auction: any): number {
     return Number(auction?.bidCount ?? auction?.bid_count ?? 0);
   }
+  async function buildWrapSolInstructions(
+  connection: Connection,
+  payer: PublicKey,
+  amountLamports: number
+) {
+  const ata = getAssociatedTokenAddressSync(
+    NATIVE_MINT,
+    payer,
+    false
+  );
+
+  const ixs: TransactionInstruction[] = [];
+
+  const ataInfo = await connection.getAccountInfo(ata);
+
+  if (!ataInfo) {
+    ixs.push(
+      createAssociatedTokenAccountInstruction(
+        payer,
+        ata,
+        payer,
+        NATIVE_MINT
+      )
+    );
+  }
+
+  // transfer SOL → ATA
+  ixs.push(
+    SystemProgram.transfer({
+      fromPubkey: payer,
+      toPubkey: ata,
+      lamports: amountLamports,
+    })
+  );
+
+  // sync wSOL
+  ixs.push(createSyncNativeInstruction(ata));
+
+  return { ata, ixs };
+}
 
   useEffect(() => {
     let cancelled = false;
@@ -449,16 +528,17 @@ async function safeSendTx(program: any, tx: Transaction) {
   }
 }
 
-  async function callPlaceBid(auctionPk: string, bidderPubkey: string, bidAmountSol: string, nonceHex: string | null) {
+  async function callPlaceBid(auctionPk: string, bidderPubkey: string, bidAmountSol: string, bidPriceSol: string, nonceHex: string | null) {
     const res = await fetch("/api/placeBid", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        auctionPk,
-        bidderPubkey,
-        bidAmountSol,
-        nonceHex,
-      }),
+body: JSON.stringify({
+  auctionPk,
+  bidderPubkey,
+  bidAmountSol,
+  bidPriceSol, // NEW
+  nonceHex,
+}),
     });
     return res.json();
   }
@@ -489,17 +569,78 @@ async function safeSendTx(program: any, tx: Transaction) {
       if (!auctionPkStr) {
         throw new Error("Select or create an auction first (auction PDA)");
       }
+      if (auctionType === "uniform") {
+  if (Number(bidAmountSol) < Number(bidPriceSol)) {
+    throw new Error("Amount must be >= price");
+  }
+}
 
       const program = programClient;
       assertProviderReady(program);
 
-      const srv = await callPlaceBid(auctionPkStr, publicKey.toBase58(), bidAmountSol, bidNonceHex ?? null);
+      const finalPrice =
+  auctionType === "uniform"
+    ? bidPriceSol
+    : bidAmountSol;
+
+const srv = await callPlaceBid(
+  auctionPkStr,
+  publicKey.toBase58(),
+  bidAmountSol,
+  finalPrice, // NEW
+  bidNonceHex ?? null
+);
 
       if (srv?.error) {
         throw new Error(srv.error);
       }
 
-      const tx = Transaction.from(Buffer.from(srv.txBase64, "base64"));
+ const tx = Transaction.from(Buffer.from(srv.txBase64, "base64"));
+
+const connection = program.provider.connection;
+
+const lamports = Math.floor(Number(bidAmountSol) * LAMPORTS_PER_SOL);
+
+const ata = getAssociatedTokenAddressSync(NATIVE_MINT, publicKey);
+
+let wrapIxs: TransactionInstruction[] = [];
+
+const ataInfo = await connection.getAccountInfo(ata);
+
+let currentBalance = 0;
+
+if (ataInfo) {
+  try {
+    const bal = await connection.getTokenAccountBalance(ata);
+    currentBalance = Number(bal.value.amount);
+  } catch {}
+}
+
+const needed = lamports - currentBalance;
+
+if (!ataInfo) {
+  wrapIxs.push(
+    createAssociatedTokenAccountInstruction(
+      publicKey,
+      ata,
+      publicKey,
+      NATIVE_MINT
+    )
+  );
+}
+
+if (needed > 0) {
+  wrapIxs.push(
+    SystemProgram.transfer({
+      fromPubkey: publicKey,
+      toPubkey: ata,
+      lamports: needed,
+    })
+  );
+
+  wrapIxs.push(createSyncNativeInstruction(ata));
+}
+tx.instructions = [...wrapIxs, ...tx.instructions];
 
       setStatus("Signing and sending placeBid tx...");
       console.log("placeBid triggered");
@@ -539,7 +680,7 @@ setStatus(
     kind: "determineWinner" | "settlement";
     auctionPk: string;
     publicKey: string;
-    which?: "first" | "vickrey" | "uniform" | "proRata";
+    which?: "first" | "vickrey" | "uniform";
     action?: "auto" | "reclaimUnsold" | "claimRefund" | "settleWinner";
   }) {
     const res = await fetch("/api/auctionAction", {
@@ -550,6 +691,98 @@ setStatus(
 
     return res.json();
   }
+async function handleCreatePool() {
+  try {
+    if (!programClient || !publicKey || !auctionData) {
+      throw new Error("Missing state");
+    }
+
+    const connection = programClient.provider.connection;
+
+    const paymentAmount = Number(
+      auctionData.paymentAmount ?? auctionData.payment_amount ?? 0
+    );
+
+    const liquidityTokens = Number(
+      localStorage.getItem("raydiumReserve") || "0"
+    );
+
+    if (liquidityTokens <= 0) {
+      throw new Error("No liquidity tokens available");
+    }
+
+    setStatus("Building Raydium pool tx...");
+
+    const res = await fetch("/api/createRaydiumPool", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        owner: publicKey.toBase58(),
+        tokenMint: auctionData.tokenMint ?? auctionData.token_mint,
+        wsolAmount: paymentAmount,
+        tokenAmount: liquidityTokens,
+      }),
+    });
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      throw new Error(json?.error || "Pool creation failed");
+    }
+
+   const adapter = wallet?.adapter as any;
+
+    if (!adapter?.signTransaction) {
+      throw new Error("Wallet cannot sign transactions");
+    }
+
+    const txs = json.txs.map((b64: string) =>
+      VersionedTransaction.deserialize(Buffer.from(b64, "base64"))
+    );
+
+    setStatus("Signing pool creation transactions...");
+
+    const sigs: string[] = [];
+
+    for (const tx of txs) {
+      // 🔥 set fresh blockhash
+      const { blockhash } = await connection.getLatestBlockhash();
+      tx.message.recentBlockhash = blockhash;
+
+      // 🔥 SIGN (correct context)
+      const signed = await adapter.signTransaction(tx);
+
+      const sig = await connection.sendRawTransaction(signed.serialize());
+      await connection.confirmTransaction(sig, "confirmed");
+
+      sigs.push(sig);
+    }
+
+// ✅ build swap URL
+const swapUrl = `https://raydium.io/swap/?inputMint=So11111111111111111111111111111111111111112&outputMint=${auctionData.tokenMint ?? auctionData.token_mint}`;
+
+const result = {
+  txs: sigs,
+  swapUrl,
+};
+
+// ✅ persist
+localStorage.setItem(
+  `raydium-pool:${auctionPkStr}`,
+  JSON.stringify(result)
+);
+
+// ✅ update UI
+setPoolResult(result);
+
+    setStatus("Pool created: " + sigs.join(", "));
+  } catch (err: any) {
+    console.error(err);
+    setStatus("Pool creation failed: " + err?.message);
+  }
+}
 
   async function handleSettleAuction(action: "auto" | "reclaimUnsold" | "claimRefund" | "settleWinner" = "auto") {
     setStatus("Preparing settlement...");
@@ -593,7 +826,7 @@ await refreshAuctionState();
     }
   }
 
-  async function handleDetermineWinner(which: "first" | "vickrey" | "uniform" | "proRata") {
+  async function handleDetermineWinner(which: "first" | "vickrey" | "uniform") {
     setStatus("Preparing determine winner...");
     try {
       if (!programClient || !publicKey) {
@@ -678,13 +911,61 @@ await refreshAuctionState();
 />
         ) : null}
 
+        {poolResult && (
+  <div className="mt-6 border border-[var(--line)] bg-[var(--surface)] p-5">
+    <h3 className="text-lg font-semibold text-[var(--foreground)]">
+      Liquidity Pool Created
+    </h3>
+
+    <div className="mt-3 space-y-3 text-sm">
+
+      {/* 🔗 Swap link */}
+      <div>
+        <span className="text-[var(--muted)]">Trade on Raydium:</span>
+        <br />
+        <a
+          href={poolResult.swapUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-500 underline break-all"
+        >
+          {poolResult.swapUrl}
+        </a>
+      </div>
+
+      {/* 🔗 TX links */}
+      <div>
+        <span className="text-[var(--muted)]">Transactions:</span>
+
+        <ul className="mt-1 space-y-1">
+          {poolResult.txs.map((sig, i) => (
+            <li key={sig}>
+              <a
+                href={`https://explorer.solana.com/tx/${sig}?cluster=devnet`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-500 underline break-all"
+              >
+                TX {i + 1}: {sig.slice(0, 8)}...{sig.slice(-8)}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </div>
+)}
+
         <div className="mt-6">
 <AuctionBidForm
   bidAmountSol={bidAmountSol}
   disabled={isBidDisabled}
   isSubmitting={isSubmitting}
+    bidPriceSol={bidPriceSol}
+  auctionType={auctionType}
   auctionEnded={auctionEnded}
   onBidAmountSolChange={setBidAmountSol}
+  onBidPriceSolChange={setBidPriceSol} 
   onSubmit={handlePlaceBid}
 />
         </div>
@@ -732,6 +1013,12 @@ await refreshAuctionState();
                 Settle auction
               </button>
             ) : null}
+
+{canCreatePool && !poolResult && (
+  <button onClick={handleCreatePool} className={buttonPrimary}>
+    Create Raydium Pool
+  </button>
+)}
 
             {canDetermineWinner ? (
               <button

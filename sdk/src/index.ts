@@ -38,10 +38,14 @@ import {
   getArciumProgram,
 } from "@arcium-hq/client";
 import dotenv from "dotenv";
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  NATIVE_MINT,
+} from "@solana/spl-token";
 
 dotenv.config();
 
-export type AuctionType = "FirstPrice" | "Vickrey" | "Uniform" | "ProRata";
+export type AuctionType = "FirstPrice" | "Vickrey" | "Uniform";
 export type AssetKind = "Fungible" | "Nft" | "MetadataOnly";
 
 export type MakeAuctionServerResponse = {
@@ -171,7 +175,7 @@ function txFromIxs(...ixs: TransactionInstruction[]): Transaction {
 }
 
 function getAllowedAuctionTypes(kind: AssetKind): AuctionType[] {
-  if (kind === "Fungible") return ["FirstPrice", "Vickrey", "Uniform", "ProRata"];
+  if (kind === "Fungible") return ["FirstPrice", "Vickrey", "Uniform"];
   return ["FirstPrice", "Vickrey"];
 }
 
@@ -181,13 +185,11 @@ function normalizeAuctionType(kind: AssetKind, current: AuctionType): AuctionTyp
 }
 
 function auctionTypeToArg(auctionType: AuctionType) {
-  return auctionType === "FirstPrice"
-    ? { firstPrice: {} }
-    : auctionType === "Vickrey"
-      ? { vickrey: {} }
-      : auctionType === "Uniform"
-        ? { uniform: {} }
-        : { proRata: {} };
+  if (auctionType === "FirstPrice") return { firstPrice: {} };
+  if (auctionType === "Vickrey") return { vickrey: {} };
+  if (auctionType === "Uniform") return { uniform: {} };
+
+  throw new Error("Invalid auction type");
 }
 
 function assetKindToArg(assetKind: AssetKind) {
@@ -539,7 +541,7 @@ Check it out here: http://localhost:3000/bid?auctionPk=${core.srv.auctionPda}`;
 // Place bid, determine winner, reclaim, refund, settle
 // =======================================================
 
-export type DetermineWinnerKind = "first" | "vickrey" | "uniform" | "proRata";
+export type DetermineWinnerKind = "first" | "vickrey" | "uniform";
 export type SettlementAction = "auto" | "reclaimUnsold" | "claimRefund" | "settleWinner";
 
 export type PlaceBidServerResponse = {
@@ -603,6 +605,7 @@ export type BuildPlaceBidTransactionParams = {
   auctionPk: PublicKey;
   bidAmountSol: string;
   nonceHex?: string | null;
+  bidPriceSol: string;
 };
 
 export type ResolveDetermineWinnerContextParams = {
@@ -766,13 +769,24 @@ function resolveWinnerTargetForSettlement(auction: any, walletBase58: string): s
 export async function buildPlaceBidTransaction(
   params: BuildPlaceBidTransactionParams
 ): Promise<PlaceBidBundle> {
-  const { programClient, programId, publicKey, auctionPk, bidAmountSol, nonceHex } = params;
-  if (!programClient || !publicKey) throw new Error("Wallet / program client not ready.");
+  const {
+    programClient,
+    programId,
+    publicKey,
+    auctionPk,
+    bidAmountSol,
+    nonceHex,
+    bidPriceSol,
+  } = params;
+
+  if (!programClient || !publicKey) {
+    throw new Error("Wallet / program client not ready.");
+  }
 
   const provider = programClient.provider;
   const arciumEnv = getArciumEnv();
 
-  const mxePk = await Promise.resolve(getMXEAccAddress(programId));
+  const mxePk = getMXEAccAddress(programId);
   const clusterPk = new PublicKey(getClusterAccAddress(arciumEnv.arciumClusterOffset));
   const mempoolPk = new PublicKey(getMempoolAccAddress(arciumEnv.arciumClusterOffset));
   const executingPoolPk = new PublicKey(getExecutingPoolAccAddress(arciumEnv.arciumClusterOffset));
@@ -783,21 +797,32 @@ export async function buildPlaceBidTransaction(
   const compDefPk = getCompDefAccAddress(programId, compDefOffset);
 
   const computationOffset = new BN(crypto.randomBytes(8), "hex");
-  const computationPk = getComputationAccAddress(arciumEnv.arciumClusterOffset, computationOffset);
+  const computationPk = getComputationAccAddress(
+    arciumEnv.arciumClusterOffset,
+    computationOffset
+  );
 
   const mxePublicKey = await getMXEPublicKey(provider, programId);
   if (!mxePublicKey) {
     throw new Error("MXE x25519 public key not set on-chain");
   }
 
+  // ========================
+  // Encryption
+  // ========================
   const privateKey = x25519.utils.randomSecretKey();
   const bidderX25519Pub = x25519.getPublicKey(privateKey);
   const sharedSecret = x25519.getSharedSecret(privateKey, mxePublicKey);
   const cipher = new RescueCipher(sharedSecret);
 
-  const bidderPubBytes = publicKey.toBytes();
-  const bidderLo = BigInt(new BN(Buffer.from(bidderPubBytes.slice(0, 16)), "le").toString());
-  const bidderHi = BigInt(new BN(Buffer.from(bidderPubBytes.slice(16, 32)), "le").toString());
+  const bidderBytes = publicKey.toBytes();
+  const bidderLo = BigInt(
+    new BN(Buffer.from(bidderBytes.slice(0, 16)), "le").toString()
+  );
+  const bidderHi = BigInt(
+    new BN(Buffer.from(bidderBytes.slice(16, 32)), "le").toString()
+  );
+
   const amount = BigInt(solToLamportsBN(bidAmountSol).toString());
 
   const nonce =
@@ -805,15 +830,44 @@ export async function buildPlaceBidTransaction(
       ? Buffer.from(nonceHex.replace(/^0x/, ""), "hex")
       : crypto.randomBytes(16);
 
-  const ciphertext = cipher.encrypt([bidderLo, bidderHi, amount], nonce);
+  const price = bidPriceSol
+    ? BigInt(solToLamportsBN(bidPriceSol).toString())
+    : amount;
+
+  const ciphertext = cipher.encrypt(
+    [bidderLo, bidderHi, amount, price],
+    nonce
+  );
+
   const nonceBN = new BN(deserializeLE(nonce).toString(10), 10);
 
+  // ========================
+  // PDAs
+  // ========================
   const escrowPda = deriveEscrowPda(auctionPk, publicKey, programId);
+
   const signPda = PublicKey.findProgramAddressSync(
     [Buffer.from("ArciumSignerAccount")],
     programId
   )[0];
 
+  // ========================
+  // 🔥 FIX: REQUIRED TOKEN ACCOUNTS
+  // ========================
+  const bidderWsolAta = getAssociatedTokenAddressSync(
+    NATIVE_MINT,
+    publicKey
+  );
+
+  const escrowTokenAta = getAssociatedTokenAddressSync(
+    NATIVE_MINT,
+    escrowPda,
+    true // PDA owner
+  );
+
+  // ========================
+  // Instruction
+  // ========================
   const ix = await (programClient.methods as any)
     .placeBid(
       computationOffset,
@@ -821,6 +875,7 @@ export async function buildPlaceBidTransaction(
       Array.from(ciphertext[0]),
       Array.from(ciphertext[1]),
       Array.from(ciphertext[2]),
+      Array.from(ciphertext[3]),
       Array.from(bidderX25519Pub),
       nonceBN
     )
@@ -828,6 +883,15 @@ export async function buildPlaceBidTransaction(
       bidder: publicKey,
       auction: auctionPk,
       escrowAccount: escrowPda,
+
+      // ✅ REQUIRED FIX
+      bidderWsolAta: bidderWsolAta,
+      escrowTokenAccount: escrowTokenAta,
+      wsolMint: NATIVE_MINT,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+
+      // Arcium infra
       signPdaAccount: signPda,
       mxeAccount: new PublicKey(mxePk),
       mempoolAccount: mempoolPk,
@@ -879,14 +943,12 @@ export async function buildDetermineWinnerTransaction(
   const computationOffset = new BN(srv.computationOffset);
   const compDefPk = new PublicKey(srv.compDefPk);
 
-  const methodName =
-    which === "first"
-      ? "determineWinnerFirstPrice"
-      : which === "vickrey"
-        ? "determineWinnerVickrey"
-        : which === "uniform"
-          ? "determineWinnerUniform"
-          : "determineWinnerProRata";
+const methodName =
+  which === "first"
+    ? "determineWinnerFirstPrice"
+    : which === "vickrey"
+      ? "determineWinnerVickrey"
+      : "determineWinnerUniform";
 
   const ixCall = (programClient.methods as any)[methodName];
   if (!ixCall) throw new Error(`Program method ${methodName} missing in client program`);
@@ -998,24 +1060,60 @@ export async function buildClaimRefundTransaction(
 export async function buildSettleWinnerTransaction(
   params: BuildSettleWinnerTransactionParams
 ): Promise<AuctionActionBundle> {
-  const { programClient, programId, publicKey, auctionPk, auctionData, targetWinnerBase58 } = params;
+  const {
+    programClient,
+    programId,
+    publicKey,
+    auctionPk,
+    auctionData,
+    targetWinnerBase58,
+  } = params;
+
   if (!programClient || !publicKey) throw new Error("Wallet / program client not ready.");
   if (!auctionData) throw new Error("Auction data is required.");
 
   const creatorPk = new PublicKey(auctionData.authority);
   const walletBase58 = publicKey.toBase58();
+
   const metadataOnly = auctionIsMetadataOnly(auctionData);
   const isWinnerNow = auctionResolvedWinnerKeys(auctionData).includes(walletBase58);
 
   const targetWinner =
     targetWinnerBase58 ??
-    (isWinnerNow ? walletBase58 : resolveWinnerTargetForSettlement(auctionData, walletBase58));
+    (isWinnerNow
+      ? walletBase58
+      : resolveWinnerTargetForSettlement(auctionData, walletBase58));
 
   if (!targetWinner) throw new Error("Could not determine settlement target.");
 
   const targetWinnerPk = new PublicKey(targetWinner);
-  const winnerEscrowPda = deriveWinnerEscrowPda(auctionPk, targetWinnerPk, programId);
 
+  const winnerEscrowPda = deriveWinnerEscrowPda(
+    auctionPk,
+    targetWinnerPk,
+    programId
+  );
+
+  // 🔥 REQUIRED ATA DERIVATIONS
+  const escrowTokenAccount = getAssociatedTokenAddressSync(
+    NATIVE_MINT,
+    winnerEscrowPda,
+    true
+  );
+
+  const creatorWsolAta = getAssociatedTokenAddressSync(
+    NATIVE_MINT,
+    creatorPk
+  );
+
+  const winnerWsolAta = getAssociatedTokenAddressSync(
+    NATIVE_MINT,
+    targetWinnerPk
+  );
+
+  // ========================
+  // METADATA ONLY
+  // ========================
   if (metadataOnly) {
     const ix = await (programClient.methods as any)
       .finalizeMetadataWinnerPayout()
@@ -1024,37 +1122,65 @@ export async function buildSettleWinnerTransaction(
         creator: creatorPk,
         winnerWallet: targetWinnerPk,
         winnerEscrow: winnerEscrowPda,
+
+        // 🔥 FIX
+        escrowTokenAccount,
+        creatorWsolAta,
+        winnerWsolAta,
+        wsolMint: NATIVE_MINT,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        tokenProgram: TOKEN_PROGRAM_ID,
       })
       .instruction();
 
     return txBundleFromInstruction(ix);
   }
 
-  if (!auctionIsTokenAuction(auctionData)) {
-    throw new Error("Unsupported auction asset kind.");
-  }
+  // ========================
+  // TOKEN / NFT
+  // ========================
+  const prizeMintPk = new PublicKey(
+    auctionData.tokenMint ?? auctionData.token_mint
+  );
 
-  const prizeMintPk = new PublicKey(auctionData.tokenMint ?? auctionData.token_mint);
-  const prizeVaultPk = new PublicKey(auctionData.prizeVault ?? auctionData.prize_vault);
+  const prizeVaultPk = new PublicKey(
+    auctionData.prizeVault ?? auctionData.prize_vault
+  );
+
   const vaultAuthorityPda = PublicKey.findProgramAddressSync(
     [Buffer.from("vault-authority"), auctionPk.toBuffer()],
     programId
   )[0];
-  const winnerAta = getAssociatedTokenAddressSync(prizeMintPk, targetWinnerPk, false, TOKEN_PROGRAM_ID);
+
+  const winnerAta = getAssociatedTokenAddressSync(
+    prizeMintPk,
+    targetWinnerPk,
+    false,
+    TOKEN_PROGRAM_ID
+  );
 
   const ix = await (programClient.methods as any)
     .finalizeTokenWinnerPayout()
     .accounts({
       payer: publicKey,
       auction: auctionPk,
+
       creator: creatorPk,
       winnerWallet: targetWinnerPk,
       winnerEscrow: winnerEscrowPda,
+
+      // 🔥 CRITICAL FIX
+      escrowTokenAccount,
+      creatorWsolAta,
+      winnerWsolAta,
+      wsolMint: NATIVE_MINT,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      tokenProgram: TOKEN_PROGRAM_ID,
+
       prizeMint: prizeMintPk,
       prizeVault: prizeVaultPk,
       vaultAuthority: vaultAuthorityPda,
       winnerAta,
-      tokenProgram: TOKEN_PROGRAM_ID,
     })
     .instruction();
 
@@ -1078,7 +1204,7 @@ export async function createAuction(
 export async function createPlaceBid(
   params: BuildPlaceBidTransactionParams
 ): Promise<PlaceBidBundle> {
-  const { programClient, programId, publicKey, auctionPk, bidAmountSol, nonceHex } = params;
+  const { programClient, programId, publicKey, auctionPk, bidAmountSol, nonceHex, bidPriceSol } = params;
 
   const arciumEnv = getArciumEnv();
 
@@ -1108,11 +1234,18 @@ export async function createPlaceBid(
   const bidderHi = BigInt(new BN(Buffer.from(bidderBytes.slice(16, 32)), "le").toString());
   const amount = BigInt(solToLamportsBN(bidAmountSol).toString());
 
+  
+
   const nonce = nonceHex
     ? Buffer.from(nonceHex.replace(/^0x/, ""), "hex")
     : crypto.randomBytes(16);
 
-  const ciphertext = cipher.encrypt([bidderLo, bidderHi, amount], nonce);
+    const price =
+  bidPriceSol
+    ? BigInt(solToLamportsBN(bidPriceSol).toString())
+    : amount;
+
+  const ciphertext = cipher.encrypt([bidderLo, bidderHi, amount, price], nonce)
   const nonceBN = new BN(deserializeLE(nonce).toString());
 
   const escrowPda = PublicKey.findProgramAddressSync(
@@ -1125,30 +1258,49 @@ export async function createPlaceBid(
     programId
   )[0];
 
+  const bidderWsolAta = getAssociatedTokenAddressSync(
+  NATIVE_MINT,
+  publicKey
+);
+
+const escrowTokenAta = getAssociatedTokenAddressSync(
+  NATIVE_MINT,
+  escrowPda,
+  true // PDA owner
+);
+
   const ix = await programClient.methods
-    .placeBid(
-      computationOffset,
-      new BN(amount.toString()),
-      Array.from(ciphertext[0]),
-      Array.from(ciphertext[1]),
-      Array.from(ciphertext[2]),
-      Array.from(bidderX25519Pub),
-      nonceBN
-    )
+.placeBid(
+  computationOffset,
+  new BN(amount.toString()),
+  Array.from(ciphertext[0]), // bidder_lo
+  Array.from(ciphertext[1]), // bidder_hi
+  Array.from(ciphertext[2]), // amount
+  Array.from(ciphertext[3]), // 🔥 price (MISSING RIGHT NOW)
+  Array.from(bidderX25519Pub),
+  nonceBN
+)
     .accounts({
-      bidder: publicKey,
-      auction: auctionPk,
-      escrowAccount: escrowPda,
-      signPdaAccount: signPda,
-      mxeAccount: new PublicKey(mxePk),
-      mempoolAccount: mempoolPk,
-      executingPool: executingPoolPk,
-      computationAccount: computationPk,
-      compDefAccount: compDefPk,
-      clusterAccount: clusterPk,
-      poolAccount: poolPk,
-      clockAccount: clockPk,
-    })
+  bidder: publicKey,
+  auction: auctionPk,
+  escrowAccount: escrowPda,
+
+  bidderWsolAta: bidderWsolAta,
+  escrowTokenAccount: escrowTokenAta,
+  wsolMint: NATIVE_MINT,
+  tokenProgram: TOKEN_PROGRAM_ID,
+  associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+
+  signPdaAccount: signPda,
+  mxeAccount: new PublicKey(mxePk),
+  mempoolAccount: mempoolPk,
+  executingPool: executingPoolPk,
+  computationAccount: computationPk,
+  compDefAccount: compDefPk,
+  clusterAccount: clusterPk,
+  poolAccount: poolPk,
+  clockAccount: clockPk,
+})
     .instruction();
 
   const tx = new Transaction().add(ix);

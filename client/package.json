@@ -21,6 +21,7 @@
     "@noble/hashes": "^2.0.1",
     "@pinata/sdk": "^2.1.0",
     "@project-serum/anchor": "^0.26.0",
+    "@raydium-io/raydium-sdk-v2": "^0.2.41-alpha",
     "@realms-today/spl-governance": "^0.3.33",
     "@solana/kit": "^6.7.0",
     "@solana/react": "^6.5.0",

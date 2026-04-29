@@ -27,11 +27,11 @@ const COMP_DEF_OFFSET_PLACE_ENCRYPTED_BID: u32 =
 
 
 
-declare_id!("8icpcRrJNtQ4RBaTtttGoy2qzDDY8bQcxQaYm2dRvFRC");
+declare_id!("5u3mcLQx7fqoTAaPCFMRVNXFPyu1CEKDNc2AHEgiTR1x");
 // Auction account byte offset: 8 (discriminator) + 1 + 32 + 1 + 1 + 8 + 8 + 2 + 16 = 77
 const AUCTION_HEADER_SIZE: u32 = 8 + 1 + 32 + 1 + 1 + 8 + 8 + 2 + 16;
 const ENCRYPTED_STATE_OFFSET: u32 = AUCTION_HEADER_SIZE;
-const ENCRYPTED_STATE_SIZE: u32 = 32 * 10;
+const ENCRYPTED_STATE_SIZE: u32 = 32 * 13;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace)]
 pub enum AuctionType {
@@ -65,7 +65,7 @@ pub mod arcrypt {
         init_comp_def(
             ctx.accounts,
             Some(CircuitSource::OffChain(OffChainCircuitSource {
-                source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafkreifubtqufag2ibhxqlxhjoye7jv5pfeue5ajmnznp3yuiziwj6llsi".to_string(),
+                source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafkreiaueovbknzwvu5beoqmkvz37zkz66f6j3zghe7d4vflhgh4whblmy".to_string(),
                 hash: circuit_hash!("init_auction_state"),
             })),
             None,
@@ -77,7 +77,7 @@ pub mod arcrypt {
         init_comp_def(
             ctx.accounts,
             Some(CircuitSource::OffChain(OffChainCircuitSource {
-                source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafybeiecyc3hanvupi6ai3yw4mclidmfkfa7iqp2osfwvzwmp3xviar7am".to_string(),
+                source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafybeieskvhdeiitw5yznxrjrbjfgj4v6gfajisilbjxwm234ad5j3tukq".to_string(),
                 hash: circuit_hash!("place_bid"),
             })),
             None,
@@ -91,7 +91,7 @@ pub mod arcrypt {
         init_comp_def(
             ctx.accounts,
             Some(CircuitSource::OffChain(OffChainCircuitSource {
-                source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafybeibarpg257yjaihrjewyvdxanadanzjzqdeljfmouneqarcnxk3iee".to_string(),
+                source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafybeibv7lkooq34ppohfmd3bpi7bqi2npf6xid5jzqeb4xd4sb7hylv2q".to_string(),
                 hash: circuit_hash!("place_encrypted_bid"),
             })),
             None,
@@ -105,7 +105,7 @@ pub mod arcrypt {
         init_comp_def(
             ctx.accounts,
             Some(CircuitSource::OffChain(OffChainCircuitSource {
-                source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafybeiaszvk7hguuj3f4e3mx4xehdzmm7ectzsrzkb357nxx3omr2iafiy".to_string(),
+                source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafybeiefmnztrgiateqpt6y6envwpc3x3njcvdxsfgcwapu2gsgb5ntmma".to_string(),
                 hash: circuit_hash!("determine_winner_first_price"),
             })),
             None,
@@ -119,7 +119,7 @@ pub mod arcrypt {
         init_comp_def(
             ctx.accounts,
             Some(CircuitSource::OffChain(OffChainCircuitSource {
-                source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafybeidxuyzflwhspamwjourw2h56p35djfcsd44dkprr2z5kxw4itt7vi".to_string(),
+                source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafybeidkfctp2hnqg57hk4axct7n357qivihqw7zsgnd4y6xpczkvubocm".to_string(),
                 hash: circuit_hash!("determine_winner_vickrey"),
             })),
             None,
@@ -133,7 +133,7 @@ pub mod arcrypt {
     init_comp_def(
         ctx.accounts,
         Some(CircuitSource::OffChain(OffChainCircuitSource {
-            source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafybeign5anmbdjvk5xppqmg6oyreoo2ztlibnl3aphiqxewsysnrwbsea".to_string(),
+            source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafybeidmjicntkzrgw5xbgitdgk3rysaml53r3uqirukzuybr5ljfyqny4".to_string(),
             hash: circuit_hash!("determine_winner_uniform"),
         })),
         None,
@@ -147,7 +147,7 @@ pub fn init_determine_winner_pro_rata_comp_def(
     init_comp_def(
         ctx.accounts,
         Some(CircuitSource::OffChain(OffChainCircuitSource {
-            source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafybeigzoxmgbea23jcpwakptxmppk4iefuk6xuxtiyex3lh7m7vl5xkqy".to_string(),
+            source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafybeifkov6ajj5w5kzpmzlkcqmud7jiqjzsj5f47y5pklfjuwge66pi3q".to_string(),
             hash: circuit_hash!("determine_winner_pro_rata"),
         })),
         None,
@@ -186,12 +186,24 @@ pub fn place_encrypted_bid(
     let bidder_bytes = temp.bidder.to_bytes();
     let bidder_lo = u128::from_le_bytes(bidder_bytes[0..16].try_into().unwrap());
     let bidder_hi = u128::from_le_bytes(bidder_bytes[16..32].try_into().unwrap());
+    
+    let encrypted_price_final = if matches!(
+    auction.auction_type,
+    AuctionType::FirstPrice | AuctionType::Vickrey
+) {
+    temp.encrypted_amount
+} else {
+    temp.encrypted_price
+};
+    
+    
 
     let args = ArgBuilder::new()
         .plaintext_u128(bidder_lo)
         .plaintext_u128(bidder_hi)
         .plaintext_u128(temp.nonce)
         .encrypted_u64(temp.encrypted_amount)
+.encrypted_u64(encrypted_price_final) // NEW
         .plaintext_u128(auction.state_nonce)
         .account(
             auction.key(),
@@ -199,6 +211,8 @@ pub fn place_encrypted_bid(
             ENCRYPTED_STATE_SIZE,
         )
         .build();
+    
+        
 
     queue_computation(
         ctx.accounts,
@@ -226,6 +240,7 @@ pub fn place_bid(
     encrypted_bidder_lo: [u8; 32],
     encrypted_bidder_hi: [u8; 32],
     encrypted_amount: [u8; 32],
+    encrypted_price: [u8; 32], // NEW
     bidder_pubkey: [u8; 32],
     nonce: u128,
 ) -> Result<()> {
@@ -233,6 +248,13 @@ pub fn place_bid(
 
     require_bid_allowed(auction)?;
     require!(escrow_amount >= auction.min_bid, ErrorCode::BidBelowMinimum);
+    use anchor_spl::token::spl_token::native_mint;
+
+require_keys_eq!(
+    ctx.accounts.wsol_mint.key(),
+    native_mint::ID,
+    ErrorCode::WrongMint
+);
 
     let escrow = &mut ctx.accounts.escrow_account;
 
@@ -255,34 +277,52 @@ pub fn place_bid(
         .ok_or(ErrorCode::BidMustNotDecrease)?;
 
     if top_up > 0 {
-        let cpi_accounts = anchor_lang::system_program::Transfer {
-            from: ctx.accounts.bidder.to_account_info(),
-            to: escrow.to_account_info(),
-        };
-        let cpi_ctx = CpiContext::new(
-            ctx.accounts.system_program.to_account_info(),
-            cpi_accounts,
-        );
-        anchor_lang::system_program::transfer(cpi_ctx, top_up)?;
+let cpi_accounts = TransferChecked {
+    from: ctx.accounts.bidder_wsol_ata.to_account_info(),
+    mint: ctx.accounts.wsol_mint.to_account_info(),
+    to: ctx.accounts.escrow_token_account.to_account_info(),
+    authority: ctx.accounts.bidder.to_account_info(),
+};
+
+let cpi_ctx = CpiContext::new(
+    ctx.accounts.token_program.to_account_info(),
+    cpi_accounts,
+);
+
+token_interface::transfer_checked(
+    cpi_ctx,
+    top_up,
+    ctx.accounts.wsol_mint.decimals,
+)?;
     }
 
     escrow.deposited_amount = escrow_amount;
 
     ctx.accounts.sign_pda_account.bump = ctx.bumps.sign_pda_account;
 
-    let args = ArgBuilder::new()
-        .x25519_pubkey(bidder_pubkey)
-        .plaintext_u128(nonce)
-        .encrypted_u128(encrypted_bidder_lo)
-        .encrypted_u128(encrypted_bidder_hi)
-        .encrypted_u64(encrypted_amount)
-        .plaintext_u128(auction.state_nonce)
-        .account(
-            ctx.accounts.auction.key(),
-            ENCRYPTED_STATE_OFFSET,
-            ENCRYPTED_STATE_SIZE,
-        )
-        .build();
+    let encrypted_price_final = if matches!(
+            auction.auction_type,
+            AuctionType::FirstPrice | AuctionType::Vickrey
+        ) {
+            encrypted_amount // 👈 copy amount → price
+        } else {
+            encrypted_price
+        };
+
+let args = ArgBuilder::new()
+    .x25519_pubkey(bidder_pubkey)
+    .plaintext_u128(nonce)
+    .encrypted_u128(encrypted_bidder_lo)
+    .encrypted_u128(encrypted_bidder_hi)
+    .encrypted_u64(encrypted_amount)
+    .encrypted_u64(encrypted_price_final) // NEW
+    .plaintext_u128(auction.state_nonce)
+    .account(
+        ctx.accounts.auction.key(),
+        ENCRYPTED_STATE_OFFSET,
+        ENCRYPTED_STATE_SIZE,
+    )
+    .build();
 
     queue_computation(
         ctx.accounts,
@@ -574,6 +614,7 @@ pub fn submit_encrypted_bid(
     ctx: Context<SubmitEncryptedBid>,
     bidder: Pubkey,
     encrypted_amount: [u8; 32],
+    encrypted_price: [u8; 32], // NEW
     nonce: u128,
 ) -> Result<()> {
     let auction = &ctx.accounts.auction;
@@ -592,6 +633,7 @@ pub fn submit_encrypted_bid(
     temp.bidder = bidder;
     temp.nonce = nonce;
     temp.encrypted_amount = encrypted_amount;
+    temp.encrypted_price = encrypted_price;
     temp.consumed = false;
 
     Ok(())
@@ -923,7 +965,7 @@ pub struct Auction {
     pub end_time: i64,
     pub bid_count: u16,
     pub state_nonce: u128,
-    pub encrypted_state: [[u8; 32]; 10],
+    pub encrypted_state: [[u8; 32]; 13],
 
     pub asset_kind: AssetKind,
     #[max_len(200)]
@@ -940,6 +982,8 @@ pub prize_decimals: u8,
     pub winner: Pubkey,
     pub payment_amount: u64,
     pub winner_paid: bool,
+
+    pub winner_prices: [u64; 3],
 
     pub winners: [Pubkey; 3],
     pub winner_bids: [u64; 3],
@@ -965,7 +1009,7 @@ pub struct InitAuctionStateCallback<'info> {
     /// CHECK: instructions_sysvar, checked by the account constraint
     pub instructions_sysvar: AccountInfo<'info>,
     #[account(mut)]
-    pub auction: Account<'info, Auction>,
+    pub auction: Box<Account<'info, Auction>>,
 }
 
 #[queue_computation_accounts("place_bid", bidder)]
@@ -986,6 +1030,24 @@ pub struct PlaceBid<'info> {
         bump,
     )]
     pub escrow_account: Box<Account<'info, EscrowAccount>>,
+#[account(
+    mut,
+    constraint = bidder_wsol_ata.owner == bidder.key(),
+    constraint = bidder_wsol_ata.mint == wsol_mint.key()
+)]
+pub bidder_wsol_ata: Box<InterfaceAccount<'info, TokenAccount>>,
+
+pub wsol_mint: Box<InterfaceAccount<'info, Mint>>,
+pub token_program: Interface<'info, TokenInterface>,
+
+#[account(
+    init_if_needed,
+    payer = bidder,
+    associated_token::mint = wsol_mint,
+    associated_token::authority = escrow_account,
+)]
+pub escrow_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+pub associated_token_program: Program<'info, AssociatedToken>,
 
     #[account(
         init_if_needed,
@@ -1129,7 +1191,7 @@ pub struct PlaceBidCallback<'info> {
     /// CHECK: instructions_sysvar, checked by the account constraint
     pub instructions_sysvar: AccountInfo<'info>,
     #[account(mut)]
-    pub auction: Account<'info, Auction>,
+    pub auction: Box<Account<'info, Auction>>,
 }
 
 #[callback_accounts("place_encrypted_bid")]
@@ -1148,7 +1210,7 @@ pub struct PlaceEncryptedBidCallback<'info> {
     /// CHECK: instructions_sysvar, checked by the account constraint.
     pub instructions_sysvar: AccountInfo<'info>,
     #[account(mut)]
-    pub auction: Account<'info, Auction>,
+    pub auction: Box<Account<'info, Auction>>,
 }
 
 #[derive(Accounts)]
@@ -1159,7 +1221,7 @@ pub struct CloseAuction<'info> {
         mut,
         has_one = authority @ ErrorCode::Unauthorized,
     )]
-    pub auction: Account<'info, Auction>,
+    pub auction: Box<Account<'info, Auction>>,
 }
 
 #[queue_computation_accounts("determine_winner_first_price", settler)]
@@ -1232,7 +1294,7 @@ pub struct DetermineWinnerFirstPriceCallback<'info> {
     /// CHECK: instructions_sysvar, checked by the account constraint
     pub instructions_sysvar: AccountInfo<'info>,
     #[account(mut)]
-    pub auction: Account<'info, Auction>,
+    pub auction: Box<Account<'info, Auction>>,
 }
 
 #[queue_computation_accounts("determine_winner_vickrey", settler)]
@@ -1305,7 +1367,7 @@ pub struct DetermineWinnerVickreyCallback<'info> {
     /// CHECK: instructions_sysvar, checked by the account constraint
     pub instructions_sysvar: AccountInfo<'info>,
     #[account(mut)]
-    pub auction: Account<'info, Auction>,
+    pub auction: Box<Account<'info, Auction>>,
 }
 
 #[init_computation_definition_accounts("init_auction_state", payer)]
@@ -1630,9 +1692,22 @@ pub fn finalize_token_winner_payout(ctx: Context<FinalizeTokenWinnerPayout>) -> 
         Clock::get()?.unix_timestamp >= auction.end_time,
         ErrorCode::AuctionNotEnded
     );
+  
+    use anchor_spl::token::spl_token::native_mint;
+
+require_keys_eq!(
+    ctx.accounts.wsol_mint.key(),
+    native_mint::ID,
+    ErrorCode::WrongMint
+);
 
     let winner_wallet_key = ctx.accounts.winner_wallet.key();
     let escrow = &ctx.accounts.winner_escrow;
+
+require!(
+    ctx.accounts.escrow_token_account.amount >= escrow.deposited_amount,
+    ErrorCode::EscrowInsufficient
+);
 
     require_keys_eq!(escrow.auction, auction.key(), ErrorCode::EscrowMismatch);
     require_keys_eq!(escrow.bidder, winner_wallet_key, ErrorCode::EscrowOwnerMismatch);
@@ -1649,13 +1724,29 @@ pub fn finalize_token_winner_payout(ctx: Context<FinalizeTokenWinnerPayout>) -> 
             let payment_amount = auction.payment_amount;
             let sale_amount = auction.sale_amount;
 
-            settle_sol_escrow(
-                &ctx.accounts.winner_escrow.to_account_info(),
-                &ctx.accounts.creator.to_account_info(),
-                &ctx.accounts.winner_wallet.to_account_info(),
-                escrow.deposited_amount,
-                payment_amount,
-            )?;
+let auction_key = auction.key(); // 👈 store it
+
+let seeds = &[
+    b"escrow",
+    auction_key.as_ref(),
+    winner_wallet_key.as_ref(),
+    &[escrow.bump],
+];
+
+let signer_seeds: &[&[&[u8]]] = &[seeds];
+
+settle_token_escrow(
+    &ctx.accounts.escrow_token_account.to_account_info(),
+    &ctx.accounts.creator_wsol_ata.to_account_info(),
+    &ctx.accounts.winner_wsol_ata.to_account_info(),
+    &ctx.accounts.winner_escrow.to_account_info(),
+    &ctx.accounts.token_program.to_account_info(),
+    signer_seeds,
+    escrow.deposited_amount,
+    payment_amount,
+    &ctx.accounts.wsol_mint.to_account_info(),
+    ctx.accounts.wsol_mint.decimals,
+)?;
 
             let auction_key = auction.key();
             let signer_seeds: &[&[&[u8]]] = &[&[
@@ -1689,13 +1780,29 @@ pub fn finalize_token_winner_payout(ctx: Context<FinalizeTokenWinnerPayout>) -> 
             let payment_amount = auction.payment_amount;
             let sale_amount = auction.sale_amount;
 
-            settle_sol_escrow(
-                &ctx.accounts.winner_escrow.to_account_info(),
-                &ctx.accounts.creator.to_account_info(),
-                &ctx.accounts.winner_wallet.to_account_info(),
-                escrow.deposited_amount,
-                payment_amount,
-            )?;
+let auction_key = auction.key(); // 👈 store it
+
+let seeds = &[
+    b"escrow",
+    auction_key.as_ref(),
+    winner_wallet_key.as_ref(),
+    &[escrow.bump],
+];
+
+let signer_seeds: &[&[&[u8]]] = &[seeds];
+
+settle_token_escrow(
+    &ctx.accounts.escrow_token_account.to_account_info(),
+    &ctx.accounts.creator_wsol_ata.to_account_info(),
+    &ctx.accounts.winner_wsol_ata.to_account_info(),
+    &ctx.accounts.winner_escrow.to_account_info(),
+    &ctx.accounts.token_program.to_account_info(),
+    signer_seeds,
+    escrow.deposited_amount,
+    payment_amount,
+    &ctx.accounts.wsol_mint.to_account_info(),
+    ctx.accounts.wsol_mint.decimals,
+)?;
 
             let auction_key = auction.key();
             let signer_seeds: &[&[&[u8]]] = &[&[
@@ -1739,22 +1846,83 @@ pub fn finalize_token_winner_payout(ctx: Context<FinalizeTokenWinnerPayout>) -> 
                 ErrorCode::AuctionAlreadySettled
             );
 
-            let payment_amount = auction.clearing_price;
-            let base_share = auction.sale_amount / 3;
-            let remainder = auction.sale_amount - (base_share * 3);
-            let payout_amount = if winner_index == 0 {
-                base_share + remainder
-            } else {
-                base_share
-            };
+let clearing_price = auction.clearing_price;
+let amounts = auction.winner_bids;
+let prices = auction.winner_prices;
 
-            settle_sol_escrow(
-                &ctx.accounts.winner_escrow.to_account_info(),
-                &ctx.accounts.creator.to_account_info(),
-                &ctx.accounts.winner_wallet.to_account_info(),
-                escrow.deposited_amount,
-                payment_amount,
-            )?;
+// ---------- per-user ----------
+let user_amount = amounts[winner_index];
+let user_price = prices[winner_index];
+
+require!(
+    user_amount >= user_price,
+    ErrorCode::BidTooSmall
+);
+
+// quantity = escrow / bid_price
+let user_quantity = (user_amount as u128)
+    .checked_div(user_price as u128)
+    .ok_or(ErrorCode::LamportOverflow)?;
+
+// payment = quantity * clearing_price
+let payment_amount = user_quantity
+    .checked_mul(clearing_price as u128)
+    .ok_or(ErrorCode::LamportOverflow)? as u64;
+
+// ---------- total value ----------
+let mut total_value: u128 = 0;
+
+
+
+for i in 0..3 {
+    let q = (amounts[i] as u128)
+        .checked_div(prices[i] as u128)
+        .ok_or(ErrorCode::LamportOverflow)?;
+
+    let v = q
+        .checked_mul(clearing_price as u128)
+        .ok_or(ErrorCode::LamportOverflow)?;
+
+    total_value = total_value
+        .checked_add(v)
+        .ok_or(ErrorCode::LamportOverflow)?;
+}
+
+// ---------- user value ----------
+let user_value = user_quantity
+    .checked_mul(clearing_price as u128)
+    .ok_or(ErrorCode::LamportOverflow)?;
+
+// ---------- token allocation ----------
+let payout_amount = ((auction.sale_amount as u128)
+    .checked_mul(user_value)
+    .ok_or(ErrorCode::LamportOverflow)?)
+    .checked_div(total_value)
+    .ok_or(ErrorCode::LamportOverflow)? as u64;
+
+let auction_key = auction.key(); // 👈 store it
+
+let seeds = &[
+    b"escrow",
+    auction_key.as_ref(),
+    winner_wallet_key.as_ref(),
+    &[escrow.bump],
+];
+
+let signer_seeds: &[&[&[u8]]] = &[seeds];
+
+settle_token_escrow(
+    &ctx.accounts.escrow_token_account.to_account_info(),
+    &ctx.accounts.creator_wsol_ata.to_account_info(),
+    &ctx.accounts.winner_wsol_ata.to_account_info(),
+    &ctx.accounts.winner_escrow.to_account_info(),
+    &ctx.accounts.token_program.to_account_info(),
+    signer_seeds,
+    escrow.deposited_amount,
+    payment_amount,
+    &ctx.accounts.wsol_mint.to_account_info(),
+    ctx.accounts.wsol_mint.decimals,
+)?;
 
             let auction_key = auction.key();
             let signer_seeds: &[&[&[u8]]] = &[&[
@@ -1817,13 +1985,29 @@ pub fn finalize_token_winner_payout(ctx: Context<FinalizeTokenWinnerPayout>) -> 
                 _ => unreachable!(),
             };
 
-            settle_sol_escrow(
-                &ctx.accounts.winner_escrow.to_account_info(),
-                &ctx.accounts.creator.to_account_info(),
-                &ctx.accounts.winner_wallet.to_account_info(),
-                escrow.deposited_amount,
-                payment_amount,
-            )?;
+let auction_key = auction.key(); // 👈 store it
+
+let seeds = &[
+    b"escrow",
+    auction_key.as_ref(),
+    winner_wallet_key.as_ref(),
+    &[escrow.bump],
+];
+
+let signer_seeds: &[&[&[u8]]] = &[seeds];
+
+settle_token_escrow(
+    &ctx.accounts.escrow_token_account.to_account_info(),
+    &ctx.accounts.creator_wsol_ata.to_account_info(),
+    &ctx.accounts.winner_wsol_ata.to_account_info(),
+    &ctx.accounts.winner_escrow.to_account_info(),
+    &ctx.accounts.token_program.to_account_info(),
+    signer_seeds,
+    escrow.deposited_amount,
+    payment_amount,
+    &ctx.accounts.wsol_mint.to_account_info(),
+    ctx.accounts.wsol_mint.decimals,
+)?;
 
             let auction_key = auction.key();
             let signer_seeds: &[&[&[u8]]] = &[&[
@@ -1869,11 +2053,24 @@ pub fn finalize_metadata_winner_payout(
         ErrorCode::AuctionNotEnded
     );
 
+    use anchor_spl::token::spl_token::native_mint;
+
+    require_keys_eq!(
+        ctx.accounts.wsol_mint.key(),
+        native_mint::ID,
+        ErrorCode::WrongMint
+    );
+
     let winner_wallet_key = ctx.accounts.winner_wallet.key();
     let escrow = &ctx.accounts.winner_escrow;
 
     require_keys_eq!(escrow.auction, auction.key(), ErrorCode::EscrowMismatch);
     require_keys_eq!(escrow.bidder, winner_wallet_key, ErrorCode::EscrowOwnerMismatch);
+
+    require!(
+        ctx.accounts.escrow_token_account.amount >= escrow.deposited_amount,
+        ErrorCode::EscrowInsufficient
+    );
 
     match auction.auction_type {
         AuctionType::FirstPrice | AuctionType::Vickrey => {
@@ -1885,420 +2082,56 @@ pub fn finalize_metadata_winner_payout(
             require!(!auction.winner_paid, ErrorCode::AuctionAlreadySettled);
 
             let payment_amount = auction.payment_amount;
+let auction_key = auction.key(); // 👈 store it
 
-            settle_sol_escrow(
+let seeds = &[
+    b"escrow",
+    auction_key.as_ref(),
+    winner_wallet_key.as_ref(),
+    &[escrow.bump],
+];
+
+let signer_seeds: &[&[&[u8]]] = &[seeds];
+
+            // ✅ THIS is the important part
+            settle_token_escrow(
+                &ctx.accounts.escrow_token_account.to_account_info(),
+                &ctx.accounts.creator_wsol_ata.to_account_info(),
+                &ctx.accounts.winner_wsol_ata.to_account_info(),
                 &ctx.accounts.winner_escrow.to_account_info(),
-                &ctx.accounts.creator.to_account_info(),
-                &ctx.accounts.winner_wallet.to_account_info(),
+                &ctx.accounts.token_program.to_account_info(),
+                signer_seeds,
                 escrow.deposited_amount,
                 payment_amount,
+                &ctx.accounts.wsol_mint.to_account_info(),
+                ctx.accounts.wsol_mint.decimals,
             )?;
 
             auction.winner_paid = true;
         }
 
-        _ => {
-            return err!(ErrorCode::WrongAuctionType);
-        }
+        _ => return err!(ErrorCode::WrongAuctionType),
     }
 
     Ok(())
 }
 
-pub fn finalize_winner_payout(ctx: Context<FinalizeWinnerPayout>) -> Result<()> {
-    let auction = &mut ctx.accounts.auction;
 
-    require!(
-        auction.status == AuctionStatus::Resolved,
-        ErrorCode::AuctionNotResolved
-    );
-    require!(
-        Clock::get()?.unix_timestamp >= auction.end_time,
-        ErrorCode::AuctionNotEnded
-    );
 
-    let winner_wallet_key = ctx.accounts.winner_wallet.key();
-    let escrow = &ctx.accounts.winner_escrow;
 
-    require_keys_eq!(escrow.auction, auction.key(), ErrorCode::EscrowMismatch);
-    require_keys_eq!(escrow.bidder, winner_wallet_key, ErrorCode::EscrowOwnerMismatch);
-
-    match auction.asset_kind {
-        AssetKind::MetadataOnly => {
-            require!(
-                matches!(auction.auction_type, AuctionType::FirstPrice | AuctionType::Vickrey),
-                ErrorCode::MetadataOnlyDoesNotSupportMultiWinnerModes
-            );
-
-            require_keys_eq!(
-                winner_wallet_key,
-                auction.winner,
-                ErrorCode::InvalidSettlementWinner
-            );
-            require!(!auction.winner_paid, ErrorCode::AuctionAlreadySettled);
-
-            let payment_amount = auction.payment_amount;
-            require!(
-                escrow.deposited_amount >= payment_amount,
-                ErrorCode::EscrowInsufficient
-            );
-
-            transfer_sol(
-                &ctx.accounts.winner_escrow.to_account_info(),
-                &ctx.accounts.creator.to_account_info(),
-                payment_amount,
-            )?;
-
-            let refund = escrow
-                .deposited_amount
-                .checked_sub(payment_amount)
-                .ok_or(ErrorCode::EscrowInsufficient)?;
-
-            if refund > 0 {
-                transfer_sol(
-                    &ctx.accounts.winner_escrow.to_account_info(),
-                    &ctx.accounts.winner_wallet.to_account_info(),
-                    refund,
-                )?;
-            }
-
-            auction.winner_paid = true;
-        }
-
-        AssetKind::Nft | AssetKind::Fungible => {
-
-
-            match auction.auction_type {
-                AuctionType::FirstPrice => {
-                    require_keys_eq!(
-                        winner_wallet_key,
-                        auction.winner,
-                        ErrorCode::InvalidSettlementWinner
-                    );
-                    require!(!auction.winner_paid, ErrorCode::AuctionAlreadySettled);
-
-                    let payment_amount = auction.payment_amount;
-                    let sale_amount = auction.sale_amount;
-
-                    require!(
-                        escrow.deposited_amount >= payment_amount,
-                        ErrorCode::EscrowInsufficient
-                    );
-
-                    transfer_sol(
-                        &ctx.accounts.winner_escrow.to_account_info(),
-                        &ctx.accounts.creator.to_account_info(),
-                        payment_amount,
-                    )?;
-
-                    let auction_key = auction.key();
-                    let signer_seeds: &[&[&[u8]]] = &[&[
-                        b"vault-authority",
-                        auction_key.as_ref(),
-                        &[auction.vault_authority_bump],
-                    ]];
-
-pay_winner(
-    ctx.accounts.token_program.to_account_info(),
-    ctx.accounts.prize_mint.to_account_info(),
-    ctx.accounts.prize_vault.to_account_info(),
-    ctx.accounts.vault_authority.to_account_info(),
-    ctx.accounts.winner_ata.to_account_info(),
-    sale_amount,
-    auction.prize_decimals,
-    signer_seeds,
-)?;
-
-                    let refund = escrow
-                        .deposited_amount
-                        .checked_sub(payment_amount)
-                        .ok_or(ErrorCode::EscrowInsufficient)?;
-
-                    if refund > 0 {
-                        transfer_sol(
-                            &ctx.accounts.winner_escrow.to_account_info(),
-                            &ctx.accounts.winner_wallet.to_account_info(),
-                            refund,
-                        )?;
-                    }
-
-                    auction.winner_paid = true;
-                }
-
-                AuctionType::Vickrey => {
-                    require_keys_eq!(
-                        winner_wallet_key,
-                        auction.winner,
-                        ErrorCode::InvalidSettlementWinner
-                    );
-                    require!(!auction.winner_paid, ErrorCode::AuctionAlreadySettled);
-
-                    let payment_amount = auction.payment_amount;
-                    let sale_amount = auction.sale_amount;
-
-                    require!(
-                        escrow.deposited_amount >= payment_amount,
-                        ErrorCode::EscrowInsufficient
-                    );
-
-                    transfer_sol(
-                        &ctx.accounts.winner_escrow.to_account_info(),
-                        &ctx.accounts.creator.to_account_info(),
-                        payment_amount,
-                    )?;
-
-                    let auction_key = auction.key();
-                    let signer_seeds: &[&[&[u8]]] = &[&[
-                        b"vault-authority",
-                        auction_key.as_ref(),
-                        &[auction.vault_authority_bump],
-                    ]];
-pay_winner(
-    ctx.accounts.token_program.to_account_info(),
-    ctx.accounts.prize_mint.to_account_info(),
-    ctx.accounts.prize_vault.to_account_info(),
-    ctx.accounts.vault_authority.to_account_info(),
-    ctx.accounts.winner_ata.to_account_info(),
-    sale_amount,
-    auction.prize_decimals,
-    signer_seeds,
-)?;
-
-                    let refund = escrow
-                        .deposited_amount
-                        .checked_sub(payment_amount)
-                        .ok_or(ErrorCode::EscrowInsufficient)?;
-
-                    if refund > 0 {
-                        transfer_sol(
-                            &ctx.accounts.winner_escrow.to_account_info(),
-                            &ctx.accounts.winner_wallet.to_account_info(),
-                            refund,
-                        )?;
-                    }
-
-                    auction.winner_paid = true;
-                }
-
-                AuctionType::Uniform => {
-                    require!(
-                        auction.bid_count >= 3,
-                        ErrorCode::NotEnoughBidsForSettlement
-                    );
-
-                    let winner_index = if winner_wallet_key == auction.winners[0] {
-                        0
-                    } else if winner_wallet_key == auction.winners[1] {
-                        1
-                    } else if winner_wallet_key == auction.winners[2] {
-                        2
-                    } else {
-                        return err!(ErrorCode::InvalidSettlementWinner);
-                    };
-
-                    require!(
-                        !auction.winner_paid_multi[winner_index],
-                        ErrorCode::AuctionAlreadySettled
-                    );
-
-                    let payment_amount = auction.clearing_price;
-                    let base_share = auction.sale_amount / 3;
-                    let remainder = auction.sale_amount - (base_share * 3);
-                    let payout_amount = if winner_index == 0 {
-                        base_share + remainder
-                    } else {
-                        base_share
-                    };
-
-                    require!(
-                        escrow.deposited_amount >= payment_amount,
-                        ErrorCode::EscrowInsufficient
-                    );
-
-                    transfer_sol(
-                        &ctx.accounts.winner_escrow.to_account_info(),
-                        &ctx.accounts.creator.to_account_info(),
-                        payment_amount,
-                    )?;
-
-                    let auction_key = auction.key();
-                    let signer_seeds: &[&[&[u8]]] = &[&[
-                        b"vault-authority",
-                        auction_key.as_ref(),
-                        &[auction.vault_authority_bump],
-                    ]];
-
-pay_winner(
-    ctx.accounts.token_program.to_account_info(),
-    ctx.accounts.prize_mint.to_account_info(),
-    ctx.accounts.prize_vault.to_account_info(),
-    ctx.accounts.vault_authority.to_account_info(),
-    ctx.accounts.winner_ata.to_account_info(),
-    payout_amount,
-    auction.prize_decimals,
-    signer_seeds,
-)?;
-
-                    let refund = escrow
-                        .deposited_amount
-                        .checked_sub(payment_amount)
-                        .ok_or(ErrorCode::EscrowInsufficient)?;
-
-                    if refund > 0 {
-                        transfer_sol(
-                            &ctx.accounts.winner_escrow.to_account_info(),
-                            &ctx.accounts.winner_wallet.to_account_info(),
-                            refund,
-                        )?;
-                    }
-
-                    auction.winner_paid_multi[winner_index] = true;
-                }
-
-                AuctionType::ProRata => {
-                    require!(
-                        auction.bid_count >= 3,
-                        ErrorCode::NotEnoughBidsForSettlement
-                    );
-                    require!(auction.total_bid > 0, ErrorCode::NoBids);
-
-                    let winner_index = if winner_wallet_key == auction.winners[0] {
-                        0
-                    } else if winner_wallet_key == auction.winners[1] {
-                        1
-                    } else if winner_wallet_key == auction.winners[2] {
-                        2
-                    } else {
-                        return err!(ErrorCode::InvalidSettlementWinner);
-                    };
-
-                    require!(
-                        !auction.winner_paid_multi[winner_index],
-                        ErrorCode::AuctionAlreadySettled
-                    );
-
-                    let payment_amount = auction.winner_bids[winner_index];
-
-                    require!(
-                        escrow.deposited_amount >= payment_amount,
-                        ErrorCode::EscrowInsufficient
-                    );
-
-                    let total_bid = auction.total_bid as u128;
-                    let sale_amount = auction.sale_amount as u128;
-
-                    let share0 = ((sale_amount * auction.winner_bids[0] as u128) / total_bid) as u64;
-                    let share1 = ((sale_amount * auction.winner_bids[1] as u128) / total_bid) as u64;
-                    let share2 = ((sale_amount * auction.winner_bids[2] as u128) / total_bid) as u64;
-
-                    let remainder = auction.sale_amount - (share0 + share1 + share2);
-
-                    let payout_amount = match winner_index {
-                        0 => share0 + remainder,
-                        1 => share1,
-                        2 => share2,
-                        _ => unreachable!(),
-                    };
-
-                    transfer_sol(
-                        &ctx.accounts.winner_escrow.to_account_info(),
-                        &ctx.accounts.creator.to_account_info(),
-                        payment_amount,
-                    )?;
-
-                    let auction_key = auction.key();
-                    let signer_seeds: &[&[&[u8]]] = &[&[
-                        b"vault-authority",
-                        auction_key.as_ref(),
-                        &[auction.vault_authority_bump],
-                    ]];
-
-pay_winner(
-    ctx.accounts.token_program.to_account_info(),
-    ctx.accounts.prize_mint.to_account_info(),
-    ctx.accounts.prize_vault.to_account_info(),
-    ctx.accounts.vault_authority.to_account_info(),
-    ctx.accounts.winner_ata.to_account_info(),
-    payout_amount,
-    auction.prize_decimals,
-    signer_seeds,
-)?;
-
-                    let refund = escrow
-                        .deposited_amount
-                        .checked_sub(payment_amount)
-                        .ok_or(ErrorCode::EscrowInsufficient)?;
-
-                    if refund > 0 {
-                        transfer_sol(
-                            &ctx.accounts.winner_escrow.to_account_info(),
-                            &ctx.accounts.winner_wallet.to_account_info(),
-                            refund,
-                        )?;
-                    }
-
-                    auction.winner_paid_multi[winner_index] = true;
-                }
-            }
-        }
-    }
-
-    Ok(())
-}
-
-#[derive(Accounts)]
-pub struct FinalizeWinnerPayout<'info> {
-    #[account(mut)]
-    pub payer: Signer<'info>,
-
-    #[account(mut)]
-    pub auction: Account<'info, Auction>,
-
-    #[account(mut, address = auction.authority)]
-    pub creator: SystemAccount<'info>,
-
-    #[account(mut)]
-    pub winner_wallet: SystemAccount<'info>,
-
-    #[account(
-        mut,
-        seeds = [b"escrow", auction.key().as_ref(), winner_wallet.key().as_ref()],
-        bump,
-        close = winner_wallet,
-    )]
-    pub winner_escrow: Account<'info, EscrowAccount>,
-
-    pub system_program: Program<'info, System>,
-
-    pub prize_mint: InterfaceAccount<'info, Mint>,
-
-    #[account(mut)]
-    pub prize_vault: InterfaceAccount<'info, TokenAccount>,
-
-    #[account(
-        seeds = [b"vault-authority", auction.key().as_ref()],
-        bump = auction.vault_authority_bump
-    )]
-    /// CHECK
-    pub vault_authority: UncheckedAccount<'info>,
-
-    #[account(
-        init_if_needed,
-        payer = payer,
-        associated_token::mint = prize_mint,
-        associated_token::authority = winner_wallet,
-    )]
-    pub winner_ata: InterfaceAccount<'info, TokenAccount>,
-
-    pub token_program: Interface<'info, TokenInterface>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
-}
 
 pub fn claim_refund(ctx: Context<ClaimRefund>) -> Result<()> {
     let auction = &ctx.accounts.auction;
 
     require!(auction.status != AuctionStatus::Open, ErrorCode::AuctionNotClosed);
     require!(Clock::get()?.unix_timestamp >= auction.end_time, ErrorCode::AuctionNotEnded);
+    use anchor_spl::token::spl_token::native_mint;
+
+require_keys_eq!(
+    ctx.accounts.wsol_mint.key(),
+    native_mint::ID,
+    ErrorCode::WrongMint
+);
 
     let bidder_key = ctx.accounts.bidder.key();
 
@@ -2312,19 +2145,45 @@ pub fn claim_refund(ctx: Context<ClaimRefund>) -> Result<()> {
             require_keys_neq!(bidder_key, auction.winners[2], ErrorCode::WinnerCannotClaimRefund);
         }
     }
-
     let escrow = &ctx.accounts.escrow_account;
-    require_keys_eq!(escrow.auction, auction.key(), ErrorCode::EscrowMismatch);
-    require_keys_eq!(escrow.bidder, bidder_key, ErrorCode::EscrowOwnerMismatch);
 
-    let amount = escrow.deposited_amount;
-    require!(amount > 0, ErrorCode::NoFundsInEscrow);
+require_keys_eq!(escrow.auction, auction.key(), ErrorCode::EscrowMismatch);
+require_keys_eq!(escrow.bidder, bidder_key, ErrorCode::EscrowOwnerMismatch);
 
-    transfer_sol(
-        &ctx.accounts.escrow_account.to_account_info(),
-        &ctx.accounts.bidder.to_account_info(),
-        amount,
-    )?;
+let amount = escrow.deposited_amount;
+require!(
+    ctx.accounts.escrow_token_account.amount >= amount,
+    ErrorCode::EscrowInsufficient
+);
+require!(amount > 0, ErrorCode::NoFundsInEscrow);
+
+let auction_key = auction.key(); // 👈 store it
+
+let seeds = &[
+    b"escrow",
+    auction_key.as_ref(),
+    bidder_key.as_ref(),
+    &[escrow.bump],
+];
+
+let signer_seeds: &[&[&[u8]]] = &[seeds];
+
+let cpi_ctx = CpiContext::new_with_signer(
+    ctx.accounts.token_program.to_account_info(),
+    TransferChecked {
+        from: ctx.accounts.escrow_token_account.to_account_info(),
+        mint: ctx.accounts.wsol_mint.to_account_info(),
+        to: ctx.accounts.bidder_wsol_ata.to_account_info(),
+        authority: ctx.accounts.escrow_account.to_account_info(),
+    },
+    signer_seeds,
+);
+
+token_interface::transfer_checked(
+    cpi_ctx,
+    amount,
+    ctx.accounts.wsol_mint.decimals,
+)?;
 
     Ok(())
 }
@@ -2337,7 +2196,7 @@ pub struct ClaimRefund<'info> {
     pub bidder: Signer<'info>,
 
     #[account(mut)]
-    pub auction: Account<'info, Auction>,
+    pub auction: Box<Account<'info, Auction>>,
 
     #[account(
         mut,
@@ -2346,6 +2205,22 @@ pub struct ClaimRefund<'info> {
         close = bidder,
     )]
     pub escrow_account: Account<'info, EscrowAccount>,
+   #[account(
+    mut,
+    constraint = bidder_wsol_ata.owner == bidder.key(),
+    constraint = bidder_wsol_ata.mint == wsol_mint.key()
+)]
+pub bidder_wsol_ata: InterfaceAccount<'info, TokenAccount>,
+
+#[account(
+    mut,
+    associated_token::mint = wsol_mint,
+    associated_token::authority = escrow_account,
+)]
+pub escrow_token_account: InterfaceAccount<'info, TokenAccount>,
+
+pub wsol_mint: InterfaceAccount<'info, Mint>,
+pub token_program: Interface<'info, TokenInterface>,
 }
 // =======================
 // 1) NEW COMP-DEF INIT FUNCTIONS
@@ -2467,7 +2342,7 @@ pub struct DetermineWinnerUniformCallback<'info> {
     /// CHECK: instructions_sysvar, checked by the account constraint
     pub instructions_sysvar: AccountInfo<'info>,
     #[account(mut)]
-    pub auction: Account<'info, Auction>,
+    pub auction: Box<Account<'info, Auction>>,
 }
 
 #[queue_computation_accounts("determine_winner_pro_rata", settler)]
@@ -2540,7 +2415,7 @@ pub struct DetermineWinnerProRataCallback<'info> {
     /// CHECK: instructions_sysvar, checked by the account constraint
     pub instructions_sysvar: AccountInfo<'info>,
     #[account(mut)]
-    pub auction: Account<'info, Auction>,
+    pub auction: Box<Account<'info, Auction>>,
 }
 
 #[arcium_callback(encrypted_ix = "determine_winner_uniform")]
@@ -2586,13 +2461,20 @@ pub fn determine_winner_uniform_callback(
     require_not_resolved(auction)?;
     require!(auction.auction_type == AuctionType::Uniform, ErrorCode::WrongAuctionType);
 
+    
+
     auction.status = AuctionStatus::Resolved;
     auction.winners = [winner1_pk, winner2_pk, winner3_pk];
-    auction.winner_bids = [
-        winner1_bid.field_1,
-        winner2_bid.field_1,
-        winner3_bid.field_1,
-    ];
+auction.winner_bids = [
+    winner1_bid.field_1, // amount ✅
+    winner2_bid.field_1,
+    winner3_bid.field_1,
+];
+auction.winner_prices = [
+    winner1_bid.field_2,
+    winner2_bid.field_2,
+    winner3_bid.field_2,
+];
     auction.clearing_price = clearing_price;
     auction.total_bid = winner1_bid
         .field_1
@@ -2605,14 +2487,23 @@ pub fn determine_winner_uniform_callback(
     auction.payment_amount = 0;
     auction.winner_paid = false;
 
-    emit!(MultiWinnerAuctionResolvedEvent {
-        auction: auction_key,
-        auction_type,
-        winners: [winner1, winner2, winner3],
-        winner_bids: [winner1_bid.field_1, winner2_bid.field_1, winner3_bid.field_1],
-        clearing_price,
-        total_bid: auction.total_bid,
-    });
+emit!(MultiWinnerAuctionResolvedEvent {
+    auction: auction_key,
+    auction_type,
+    winners: [winner1, winner2, winner3],
+    winner_bids: [
+        winner1_bid.field_1,
+        winner2_bid.field_1,
+        winner3_bid.field_1
+    ],
+    winner_prices: [
+        winner1_bid.field_2,
+        winner2_bid.field_2,
+        winner3_bid.field_2
+    ],
+    clearing_price,
+    total_bid: auction.total_bid,
+});
 
     Ok(())
 }
@@ -2675,14 +2566,23 @@ pub fn determine_winner_pro_rata_callback(
     auction.payment_amount = 0;
     auction.winner_paid = false;
 
-    emit!(MultiWinnerAuctionResolvedEvent {
-        auction: auction_key,
-        auction_type,
-        winners: [winner1, winner2, winner3],
-        winner_bids: [winner1_bid.field_1, winner2_bid.field_1, winner3_bid.field_1],
-        clearing_price: 0,
-        total_bid,
-    });
+emit!(MultiWinnerAuctionResolvedEvent {
+    auction: auction_key,
+    auction_type,
+    winners: [winner1, winner2, winner3],
+    winner_bids: [
+        winner1_bid.field_1,
+        winner2_bid.field_1,
+        winner3_bid.field_1
+    ],
+    winner_prices: [
+        winner1_bid.field_2,
+        winner2_bid.field_2,
+        winner3_bid.field_2
+    ],
+    clearing_price: 0,
+    total_bid,
+});
 
     Ok(())
 }
@@ -2768,7 +2668,7 @@ pub struct ReclaimUnsoldTokenItem<'info> {
     pub creator: Signer<'info>,
 
     #[account(mut)]
-    pub auction: Account<'info, Auction>,
+    pub auction: Box<Account<'info, Auction>>,
 
     pub prize_mint: InterfaceAccount<'info, Mint>,
 
@@ -2836,20 +2736,20 @@ pub struct ReclaimUnsoldMetadataItem<'info> {
     pub creator: Signer<'info>,
 
     #[account(mut)]
-    pub auction: Account<'info, Auction>,
+    pub auction: Box<Account<'info, Auction>>,
 }
 
 #[derive(Accounts)]
 pub struct FinalizeMetadataWinnerPayout<'info> {
     #[account(mut)]
-    pub auction: Account<'info, Auction>,
+    pub auction: Box<Account<'info, Auction>>,
 
     #[account(mut, address = auction.authority)]
     pub creator: SystemAccount<'info>,
 
     #[account(mut)]
     pub winner_wallet: SystemAccount<'info>,
-
+pub associated_token_program: Program<'info, AssociatedToken>,
     #[account(
         mut,
         seeds = [b"escrow", auction.key().as_ref(), winner_wallet.key().as_ref()],
@@ -2859,6 +2759,29 @@ pub struct FinalizeMetadataWinnerPayout<'info> {
     pub winner_escrow: Account<'info, EscrowAccount>,
 
     pub system_program: Program<'info, System>,
+    #[account(
+    mut,
+    associated_token::mint = wsol_mint,
+    associated_token::authority = winner_escrow,
+)]
+pub escrow_token_account: InterfaceAccount<'info, TokenAccount>,
+
+#[account(
+    mut,
+    constraint = creator_wsol_ata.owner == creator.key(),
+    constraint = creator_wsol_ata.mint == wsol_mint.key()
+)]
+pub creator_wsol_ata: InterfaceAccount<'info, TokenAccount>,
+
+#[account(
+    mut,
+    constraint = winner_wsol_ata.owner == winner_wallet.key(),
+    constraint = winner_wsol_ata.mint == wsol_mint.key()
+)]
+pub winner_wsol_ata: InterfaceAccount<'info, TokenAccount>,
+
+pub wsol_mint: InterfaceAccount<'info, Mint>,
+pub token_program: Interface<'info, TokenInterface>,
 }
 
 #[derive(Accounts)]
@@ -2867,7 +2790,7 @@ pub struct FinalizeTokenWinnerPayout<'info> {
     pub payer: Signer<'info>,
 
     #[account(mut)]
-    pub auction: Account<'info, Auction>,
+    pub auction: Box<Account<'info, Auction>>,
 
     #[account(mut, address = auction.authority)]
     pub creator: SystemAccount<'info>,
@@ -2881,16 +2804,40 @@ pub struct FinalizeTokenWinnerPayout<'info> {
         bump,
         close = winner_wallet,
     )]
-    pub winner_escrow: Account<'info, EscrowAccount>,
+    pub winner_escrow: Box<Account<'info, EscrowAccount>>,
 
-    pub prize_mint: InterfaceAccount<'info, Mint>,
+    // 🔥 HEAVY → BOX
+    pub prize_mint: Box<InterfaceAccount<'info, Mint>>,
+
+    #[account(
+        mut,
+        associated_token::mint = wsol_mint,
+        associated_token::authority = winner_escrow,
+    )]
+    pub escrow_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        constraint = creator_wsol_ata.owner == creator.key(),
+        constraint = creator_wsol_ata.mint == wsol_mint.key()
+    )]
+    pub creator_wsol_ata: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        constraint = winner_wsol_ata.owner == winner_wallet.key(),
+        constraint = winner_wsol_ata.mint == wsol_mint.key()
+    )]
+    pub winner_wsol_ata: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    pub wsol_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         mut,
         seeds = [b"vault-authority", auction.key().as_ref()],
         bump = auction.vault_authority_bump
     )]
-    /// CHECK: PDA used only as signer for token transfers.
+    /// CHECK: PDA used only as signer
     pub vault_authority: UncheckedAccount<'info>,
 
     #[account(
@@ -2899,10 +2846,10 @@ pub struct FinalizeTokenWinnerPayout<'info> {
         associated_token::mint = prize_mint,
         associated_token::authority = winner_wallet,
     )]
-    pub winner_ata: InterfaceAccount<'info, TokenAccount>,
+    pub winner_ata: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(mut)]
-    pub prize_vault: InterfaceAccount<'info, TokenAccount>,
+    pub prize_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -2967,7 +2914,8 @@ pub struct MultiWinnerAuctionResolvedEvent {
     pub auction: Pubkey,
     pub auction_type: AuctionType,
     pub winners: [[u8; 32]; 3],
-    pub winner_bids: [u64; 3],
+    pub winner_bids: [u64; 3],   // amounts
+    pub winner_prices: [u64; 3], // ✅ ADD THIS
     pub clearing_price: u64,
     pub total_bid: u64,
 }
@@ -3047,6 +2995,8 @@ pub enum ErrorCode {
     InvalidSharedVault,
     #[msg("Pending encrypted bid already consumed")]
     TempBidAlreadyConsumed,
+    #[msg("Escrow must be >= price")]
+BidTooSmall,
 }
 
 fn require_not_resolved(auction: &Auction) -> Result<()> {
@@ -3070,16 +3020,51 @@ fn require_settlement_allowed(auction: &Auction) -> Result<()> {
     Ok(())
 }
 
-fn transfer_sol(source: &AccountInfo, destination: &AccountInfo, amount: u64) -> Result<()> {
-    **source.try_borrow_mut_lamports()? = source
-        .lamports()
-        .checked_sub(amount)
-        .ok_or(ErrorCode::EscrowInsufficient)?;
+fn settle_token_escrow<'info>(
+    escrow_token: &AccountInfo<'info>,
+    creator_token: &AccountInfo<'info>,
+    winner_token: &AccountInfo<'info>,
+    escrow_authority: &AccountInfo<'info>,
+    token_program: &AccountInfo<'info>,
+    signer_seeds: &[&[&[u8]]],
+    deposited_amount: u64,
+    payment_amount: u64,
+    mint: &AccountInfo<'info>,
+    decimals: u8,
+) -> Result<()> {
+    require!(deposited_amount >= payment_amount, ErrorCode::EscrowInsufficient);
 
-    **destination.try_borrow_mut_lamports()? = destination
-        .lamports()
-        .checked_add(amount)
-        .ok_or(ErrorCode::LamportOverflow)?;
+    // pay creator
+    let pay_ctx = CpiContext::new_with_signer(
+        token_program.clone(),
+        TransferChecked {
+            from: escrow_token.clone(),
+            mint: mint.clone(),
+            to: creator_token.clone(),
+            authority: escrow_authority.clone(),
+        },
+        signer_seeds,
+    );
+
+    token_interface::transfer_checked(pay_ctx, payment_amount, decimals)?;
+
+    // refund winner
+    let refund = deposited_amount - payment_amount;
+
+    if refund > 0 {
+        let refund_ctx = CpiContext::new_with_signer(
+            token_program.clone(),
+            TransferChecked {
+                from: escrow_token.clone(),
+                mint: mint.clone(),
+                to: winner_token.clone(),
+                authority: escrow_authority.clone(),
+            },
+            signer_seeds,
+        );
+
+        token_interface::transfer_checked(refund_ctx, refund, decimals)?;
+    }
 
     Ok(())
 }
@@ -3138,7 +3123,7 @@ fn init_auction_common(
     auction.end_time = end_time;
     auction.bid_count = 0;
     auction.state_nonce = 0;
-    auction.encrypted_state = [[0u8; 32]; 10];
+    auction.encrypted_state = [[0u8; 32]; 13];
 
     auction.token_mint = token_mint;
     auction.sale_amount = sale_amount;
@@ -3160,30 +3145,7 @@ fn init_auction_common(
     Ok(())
 }
 
-fn settle_sol_escrow(
-    winner_escrow: &AccountInfo,
-    creator: &AccountInfo,
-    winner_wallet: &AccountInfo,
-    deposited_amount: u64,
-    payment_amount: u64,
-) -> Result<()> {
-    require!(
-        deposited_amount >= payment_amount,
-        ErrorCode::EscrowInsufficient
-    );
 
-    transfer_sol(winner_escrow, creator, payment_amount)?;
-
-    let refund = deposited_amount
-        .checked_sub(payment_amount)
-        .ok_or(ErrorCode::EscrowInsufficient)?;
-
-    if refund > 0 {
-        transfer_sol(winner_escrow, winner_wallet, refund)?;
-    }
-
-    Ok(())
-}
 
 #[account]
 #[derive(InitSpace)]
@@ -3203,4 +3165,5 @@ pub struct PendingEncryptedBid {
     pub nonce: u128,
     pub encrypted_amount: [u8; 32],
     pub consumed: bool,
+    pub encrypted_price: [u8; 32], // NEW
 }
