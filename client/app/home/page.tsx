@@ -72,14 +72,18 @@ const flowSteps = [
       "UMBRA submits your bid as encrypted ciphertext to the ARCRYPT program, which is processed through Arcium's MPC network. We compare every bid inside a mixed execution environment using thousands of Arcium nodes, so no individual can piece together any bids or computation.",
     stat: "Encrypted MPC",
   },
-  {
-    id: "win",
-    title: "Win!",
-    eyebrow: "4 · Settle",
-    description:
-      "When the auction ends, the winner is revealed publicly (or not - configurable) and can claim the reward. The winning bid amount stays hidden and is never shared (unless you choose to share it).",
-    stat: "Winner public, amount private",
-  },
+{
+    id: "settle",
+  title: "Settle",
+  eyebrow: "4 · Settle",
+  description: (
+    <>
+      When the auction ends, the winner is revealed publicly and can claim the reward.{" "}
+      <strong>The token can be automatically launched to Raydium once the seller claims (configurable).</strong>
+    </>
+  ),
+  stat: "Winner public, amount private",
+},
   {
     id: "create",
     title: "Make an auction",
@@ -546,7 +550,7 @@ const scrollTo =
                       Privacy
                     </div>
                     <div className="mt-1 text-sm text-[var(--foreground)]">
-                      Funds and bids stay shielded.
+                      Bid commitments stay fully shielded and locked.
                     </div>
                   </div>
                   <div className="card p-3">
@@ -562,7 +566,7 @@ const scrollTo =
                       Outcome
                     </div>
                     <div className="mt-1 text-sm text-[var(--foreground)]">
-                      Winner visible, amount hidden.
+                      Token launches move to Raydium DEX.
                     </div>
                   </div>
                 </div>
