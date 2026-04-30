@@ -568,79 +568,52 @@ async function handleMakeAuction(
 }
 
   return (
-<main style={{ padding: 20 }}>
-  <h1>Sealed-bid Auction</h1>
+<main className="px-6 py-10">
 
-  <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-    <div
-      style={{
-        display: "inline-flex",
-        position: "relative",
-        padding: 4,
-        borderRadius: 999,
-        background:
-          "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))",
-        border: "1px solid rgba(255,255,255,0.10)",
-        boxShadow: "0 12px 40px rgba(0,0,0,0.35)",
-        minWidth: 280,
-        backdropFilter: "blur(18px)",
-      }}
-    >
-      <div
-        style={{
-          position: "absolute",
-          top: 4,
-          bottom: 4,
-          left: mode === "auction" ? 4 : "calc(50% + 2px)",
-          width: "calc(50% - 6px)",
-          borderRadius: 999,
-          background:
-            mode === "auction"
-              ? "linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.08))"
-              : "linear-gradient(135deg, rgba(217,70,239,0.28), rgba(34,211,238,0.22))",
-          boxShadow:
-            mode === "proposal"
-              ? "0 0 0 1px rgba(255,255,255,0.10), 0 10px 30px rgba(217,70,239,0.20)"
-              : "0 0 0 1px rgba(255,255,255,0.08)",
-          transition: "all 220ms cubic-bezier(0.22, 1, 0.36, 1)",
-        }}
-      />
-      <button
-        onClick={() => setMode("auction")}
-        style={{
-          position: "relative",
-          zIndex: 1,
-          flex: 1,
-          color: mode === "auction" ? "#fff" : "rgba(255,255,255,0.68)",
-          background: "transparent",
-          border: 0,
-          padding: "11px 16px",
-          borderRadius: 999,
-          fontWeight: 600,
-          cursor: "pointer",
-        }}
-      >
-        Auction
-      </button>
-      <button
-        onClick={() => setMode("proposal")}
-        style={{
-          position: "relative",
-          zIndex: 1,
-          flex: 1,
-          color: mode === "proposal" ? "#fff" : "rgba(255,255,255,0.68)",
-          background: "transparent",
-          border: 0,
-          padding: "11px 16px",
-          borderRadius: 999,
-          fontWeight: 600,
-          cursor: "pointer",
-        }}
-      >
-        Governance
-      </button>
+  {/* 🔥 FIXED POSITIONED / FULL WIDTH WRAPPER */}
+  <div className="mb-10 flex justify-center">
+    <div className="w-full max-w-[400px]">
+      
+      {/* TOGGLE */}
+      <div className="inline-flex relative w-full p-1 rounded-full border border-white/10 bg-white/[0.03] backdrop-blur-xl">
+        
+        <div
+          className={`
+            absolute top-1 bottom-1 w-1/2 rounded-full transition-all
+            ${mode === "auction" ? "left-1" : "left-[calc(50%+2px)]"}
+            bg-white/10
+          `}
+        />
+
+        <button
+          onClick={() => setMode("auction")}
+          className={`flex-1 z-10 py-2 text-sm font-semibold ${
+            mode === "auction" ? "text-white" : "text-white/50"
+          }`}
+        >
+          Auction
+        </button>
+
+        <button
+          onClick={() => setMode("proposal")}
+          className={`flex-1 z-10 py-2 text-sm font-semibold ${
+            mode === "proposal" ? "text-white" : "text-white/50"
+          }`}
+        >
+          Governance
+        </button>
+
+      </div>
     </div>
   </div>
+
+  {/* 👇 NOW your content container */}
+  <div
+    className={`
+      w-full mx-auto
+       ${mode === "auction" ? "max-w-4xl" : "max-w-none"}
+    `}
+  >
 
   {mode === "proposal" ? (
     <section className="relative overflow-hidden rounded-[32px] border border-white/10 bg-gradient-to-br from-fuchsia-500/10 via-white/[0.03] to-cyan-400/5 p-5 shadow-[0_30px_100px_rgba(0,0,0,0.45)] backdrop-blur-xl md:p-8">
@@ -742,10 +715,10 @@ async function handleMakeAuction(
   onTokenMintChange={setTokenMint}
   onDurationSecsChange={setDurationSecs}
   onAuctionTypeChange={setAuctionType}
-onSubmit={(metadataUri, tokenOverride) =>
+onSubmit={(metadataUri) =>
   handleCreateGovernanceProposal(
     metadataUri,
-    tokenOverride?.mint
+    tokenMint
   )
 }
 />
@@ -851,6 +824,7 @@ onSubmit={(metadataUri, tokenOverride) =>
 
   <div style={{ marginTop: 12, color: "#333" }}>
     <strong>Status:</strong> {status}
+  </div>
   </div>
 </main>
   );

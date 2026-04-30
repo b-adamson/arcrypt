@@ -234,3 +234,12 @@ section::before {
 .pulse-accent {
   animation: pulse-accent 0.7s ease-out;
 }
+
+select {
+  color-scheme: dark;
+}
+
+select option {
+  background-color: #000;
+  color: #fff;
+}

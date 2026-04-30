@@ -150,7 +150,7 @@ onSubmit: (
     mint: string;
     sourceAta?: string;
   }
-) => void;
+) => Promise<void>; // 👈 IMPORTANT
 };
 
 function Field({
@@ -164,20 +164,21 @@ function Field({
 }) {
   return (
     <div className="space-y-2">
-      <label className="block text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+      <label className="block text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70">
         {label}
       </label>
       {children}
-      {hint ? <p className="text-xs text-[var(--muted)]/80">{hint}</p> : null}
+      {hint ? <p className="text-xs text-white/70/80">{hint}</p> : null}
     </div>
   );
 }
 
 const inputClass =
-  "h-12 w-full border border-[var(--line)] bg-[var(--surface)] px-4 text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--muted)] transition " +
-  "focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]/40";
+  "h-12 w-full border border-white/20 bg-white/[0.06] px-4 text-sm text-white outline-none placeholder:text-white/40 transition " +
+  "focus:border-white/40 focus:ring-1 focus:ring-white/20";
 
-const selectClass = `${inputClass} appearance-none pr-10`;
+const selectClass =
+  `${inputClass} appearance-none pr-10 bg-[var(--surface)] text-white`;
 
 const MAX_METADATA_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
 
@@ -228,7 +229,7 @@ const umi = useMemo(() => {
   const [showTokenDropdown, setShowTokenDropdown] = useState(false);
 
   const [mintMode, setMintMode] = useState<"Existing" | "CreateNew">("CreateNew");
-  const [isMinting, setIsMinting] = useState(false);
+const [isProcessing, setIsProcessing] = useState(false);
 
   const loadedKeyRef = useRef<string>("");
   const debounceRef = useRef<number | null>(null);
@@ -240,31 +241,28 @@ const umi = useMemo(() => {
 
   const [tokenMintMode, setTokenMintMode] = useState<"Existing" | "CreateNew">("CreateNew");
 
-const [totalSupply, setTotalSupply] = useState("");
+  
+
+const [totalSupply, setTotalSupply] = useState("1000000");
 const [keepAmount, setKeepAmount] = useState("");
+const [keepPercent, setKeepPercent] = useState("10");
+
 const split = useMemo(() => {
   const total = Number(totalSupply || 0);
-  const userReserve = Number(keepAmount || 0);
+  const pct = Number(keepPercent || 0);
 
-  if (total <= 0 || userReserve < 0 || userReserve > total) {
-    return {
-      auction: 0,
-      raydium: 0,
-      user: userReserve,
-    };
+  if (total <= 0 || pct < 0 || pct > 100) {
+    return { user: 0, auction: 0 };
   }
 
-  const remaining = total - userReserve;
-
-  const raydiumReserve = Math.floor(remaining * 0.2);
-  const auctionSupply = remaining - raydiumReserve;
+  const user = Math.floor((pct / 100) * total);
+  const remaining = total - user;
 
   return {
-    auction: auctionSupply,
-    raydium: raydiumReserve,
-    user: userReserve,
+    user,
+    auction: remaining,
   };
-}, [totalSupply, keepAmount]);
+}, [totalSupply, keepPercent]);
 
   useEffect(() => {
   if (assetKind === "Nft") {
@@ -408,6 +406,14 @@ options.slice(0, 8).map((opt) =>
     setShowTokenDropdown(false);
   }
 
+  useEffect(() => {
+  if (lockTokenMint) {
+    setTokenMintMode("Existing");
+  }
+}, [lockTokenMint]);
+
+
+
 async function handleSubmit() {
   if (isDisabled) return;
 
@@ -435,9 +441,8 @@ async function handleSubmit() {
     }
 
    const auctionAmountUi = split.auction;
-const raydiumReserve = split.raydium;
+
 const userReserve = split.user;
-localStorage.setItem("raydiumReserve", String(raydiumReserve));
 localStorage.setItem("totalSupply", String(total));
 localStorage.setItem("userReserve", String(userReserve));
 
@@ -449,7 +454,7 @@ localStorage.setItem("userReserve", String(userReserve));
       throw new Error("Uniform auctions require at least 3 tokens");
     }
 
-    setIsMinting(true);
+    setIsProcessing(true);
 
     // ✅ Upload metadata FIRST (same as NFT)
     const formData = new FormData();
@@ -471,7 +476,7 @@ localStorage.setItem("userReserve", String(userReserve));
       throw new Error(json?.error || "Metadata upload failed");
     }
 
-    const metadataUri = json.metadataUri;
+    metadataUri = json.metadataUri;
 
     // ✅ Mint token
 const { mint, ownerAta } = await mintToken(
@@ -483,11 +488,13 @@ const { mint, ownerAta } = await mintToken(
 
 mintAddress = mint.toBase58();
 
+
+
 onTokenMintChange(mintAddress);
 onSaleAmountTokenChange(String(auctionAmountUi));
 
 // ✅ CORRECT
-onSubmit(metadataUri, {
+await onSubmit(metadataUri, {
   mint: mintAddress,
   sourceAta: ownerAta.toBase58(),
 });
@@ -496,7 +503,7 @@ onSubmit(metadataUri, {
     console.error(err);
     alert(err?.message || "Failed to mint token");
   } finally {
-    setIsMinting(false);
+    setIsProcessing(false);
   }
 
   return;
@@ -515,7 +522,7 @@ onSubmit(metadataUri, {
         throw new Error("Wallet not ready");
       }
 
-      setIsMinting(true);
+      setIsProcessing(false);
 
       // Upload metadata
       const formData = new FormData();
@@ -551,14 +558,14 @@ mintAddress = await mintNft(
     }
 
     // continue
-    onSubmit(metadataUri, {
+await onSubmit(metadataUri, {
   mint: mintAddress,
 });
   } catch (err: any) {
     console.error(err);
     alert(err?.message || "Failed to create NFT");
   } finally {
-    setIsMinting(false);
+    setIsProcessing(false);
   }
 }
 
@@ -569,19 +576,19 @@ mintAddress = await mintNft(
       <div className="relative">
         <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <div className="mb-2 inline-flex border border-[var(--line)] bg-[var(--background)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+            <div className="mb-2 inline-flex border border-[var(--line)] bg-[var(--background)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70">
               Create auction
             </div>
             <h3 className="text-2xl font-semibold tracking-tight text-[var(--foreground)] md:text-3xl">
               Launch a sealed auction
             </h3>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
               Configure the terms, asset mode, metadata, duration, and settlement type from a single panel.
             </p>
           </div>
 
-          <div className="border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--muted)]">
-            <span className="block text-[11px] uppercase tracking-[0.22em] text-[var(--muted)]/70">
+          <div className="border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-sm text-white/70">
+            <span className="block text-[11px] uppercase tracking-[0.22em] text-white/70/70">
               Auction PDA
             </span>
             <span className="mt-1 block font-mono text-xs text-[var(--foreground)]">
@@ -590,20 +597,20 @@ mintAddress = await mintNft(
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
-          <Field label="Asset type" hint="Choose SPL token, NFT, or metadata-only mode.">
+        <div className="flex flex-col gap-6">
+          <Field label="Asset type" >
             <select
               value={assetKind}
               onChange={(e) => onAssetKindChange(e.target.value as AssetKind)}
               className={selectClass}
             >
-<option value="Fungible">SPL Token</option>
+<option className="bg-black text-white" value="Fungible">SPL Token</option>
 
 {!lockTokenMint && (
   <option value="Nft">NFT</option>
 )}
 
-<option value="MetadataOnly">Metadata Only</option>
+<option className="bg-black text-white" value="MetadataOnly">Metadata Only</option>
             </select>
           </Field>
           {assetKind === "Nft" && (
@@ -619,7 +626,7 @@ mintAddress = await mintNft(
   </Field>
 )}
 
-          <Field label="Name" hint="Optional. Saved into JSON metadata if provided.">
+          <Field label="Name" >
             <input
               value={metadataName}
               onChange={(e) => onMetadataNameChange(e.target.value)}
@@ -628,7 +635,7 @@ mintAddress = await mintNft(
             />
           </Field>
 
-          <Field label="Description" hint="Optional. Saved into JSON metadata if provided.">
+          <Field label="Description" hint="Optional">
             <input
               value={metadataDescription}
               onChange={(e) => onMetadataDescriptionChange(e.target.value)}
@@ -637,7 +644,7 @@ mintAddress = await mintNft(
             />
           </Field>
 
-          <Field label="Image" hint="Optional. Uploaded first, then referenced from the JSON metadata.">
+          <Field label="Image" hint="Optional">
             <input
               type="file"
               accept="image/*"
@@ -671,7 +678,7 @@ mintAddress = await mintNft(
                 {previewUrl ? (
                   <img src={previewUrl} alt={metadataImageFile.name} className="h-44 w-full object-cover" />
                 ) : null}
-                <div className="border-t border-[var(--line)] px-4 py-3 text-sm text-[var(--muted)]">
+                <div className="border-t border-[var(--line)] px-4 py-3 text-sm text-white/70">
                   {metadataImageFile.name}
                 </div>
               </div>
@@ -704,20 +711,23 @@ mintAddress = await mintNft(
   </Field>
 ) : assetKind === "Nft" ? (
   <Field label="Prize amount" hint="NFT mode is fixed to exactly 1.">
-    <input type="text" value="1" disabled className={`${inputClass} cursor-not-allowed opacity-60`} />
+    <input type="text" value="1" disabled className={`${inputClass} cursor-not-allowed opacity-80 text-white/80`} />
   </Field>
 ) : null}
-          {assetKind === "Fungible" && (
-  <Field label="Token source">
-    <select
-      value={tokenMintMode}
-      onChange={(e) => setTokenMintMode(e.target.value as any)}
-      className={selectClass}
-    >
-      <option value="CreateNew">Create new token</option>
-      <option value="Existing">Use existing token</option>
-    </select>
-  </Field>
+{assetKind === "Fungible" && !lockTokenMint && (
+  <div className="flex items-center gap-2 mt-2">
+    <input
+      type="checkbox"
+      checked={tokenMintMode === "CreateNew"}
+      onChange={(e) =>
+        setTokenMintMode(e.target.checked ? "CreateNew" : "Existing")
+      }
+      className="accent-[var(--accent)]"
+    />
+    <span className="text-sm text-white/70">
+      Create new token
+    </span>
+  </div>
 )}
 
 {assetKind !== "MetadataOnly" &&
@@ -741,13 +751,13 @@ mintAddress = await mintNft(
                     window.setTimeout(() => setShowTokenDropdown(false), 150);
                   }}
                   disabled={lockTokenMint}
-                  className={`${inputClass} ${lockTokenMint ? "cursor-not-allowed opacity-60" : ""}`}
+                  className={`${inputClass} ${lockTokenMint ? "cursor-not-allowed opacity-80 text-white/80" : ""}`}
                   placeholder="Mint address"
                 />
 
                 {showTokenDropdown && !lockTokenMint ? (
                   <div className="absolute z-20 mt-2 max-h-80 w-full overflow-auto border border-[var(--line)] bg-[var(--background)] shadow-none">
-                    <div className="border-b border-[var(--line)] px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-[var(--muted)]/70">
+                    <div className="border-b border-[var(--line)] px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-white/70/70">
                       Wallet suggestions
                     </div>
 
@@ -768,7 +778,7 @@ mintAddress = await mintNft(
                               {token.image ? (
                                 <img src={token.image} alt={token.name ?? token.mint} className="h-full w-full object-cover" />
                               ) : (
-                                <span className="text-[10px] text-[var(--muted)]">TOK</span>
+                                <span className="text-[10px] text-white/70">TOK</span>
                               )}
                             </div>
 
@@ -776,19 +786,19 @@ mintAddress = await mintNft(
                               <div className="truncate text-sm font-medium text-[var(--foreground)]">
                                 {token.name ?? token.symbol ?? "Unknown token"}
                               </div>
-                              <div className="mt-0.5 truncate text-xs text-[var(--muted)]">
+                              <div className="mt-0.5 truncate text-xs text-white/70">
                                 {shorten(token.mint, 8, 6)} · ATA {shorten(token.ata, 8, 6)}
                               </div>
                             </div>
 
-                            <div className="shrink-0 text-right text-xs text-[var(--muted)]">
+                            <div className="shrink-0 text-right text-xs text-white/70">
                               <div>{token.balance}</div>
                             </div>
                           </button>
                         );
                       })
                     ) : (
-                      <div className="px-4 py-4 text-sm text-[var(--muted)]">No wallet tokens matched.</div>
+                      <div className="px-4 py-4 text-sm text-white/70">No wallet tokens matched.</div>
                     )}
                   </div>
                 ) : null}
@@ -805,14 +815,14 @@ mintAddress = await mintNft(
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        <span className="text-[10px] text-[var(--muted)]">TOK</span>
+                        <span className="text-[10px] text-white/70">TOK</span>
                       )}
                     </div>
                     <div className="min-w-0">
                       <div className="truncate text-sm font-medium text-[var(--foreground)]">
                         {selectedToken.name ?? selectedToken.symbol ?? "Selected token"}
                       </div>
-                      <div className="truncate text-xs text-[var(--muted)]">
+                      <div className="truncate text-xs text-white/70">
                         Mint {shorten(selectedToken.mint, 8, 6)} · ATA {shorten(selectedToken.ata, 8, 6)}
                       </div>
                     </div>
@@ -835,31 +845,26 @@ mintAddress = await mintNft(
       />
     </Field>
 
-    <Field label="Amount to keep">
-      <input
-        type="number"
-        min={0}
-        value={keepAmount}
-        onChange={(e) => setKeepAmount(e.target.value)}
-        className={inputClass}
-        placeholder="200"
-      />
-    </Field>
-
-    <Field label="Auction amount">
-      <div className="text-sm text-[var(--foreground)]">
-        {split.auction}
-      </div>
-    </Field>
-    <Field label="Raydium reserve">
-  <div className="text-sm text-[var(--foreground)]">
-    {split.raydium}
-  </div>
+   <Field label="You keep (%)" hint="Percentage of supply you keep">
+  <input
+    type="number"
+    min={0}
+    max={100}
+    value={keepPercent}
+    onChange={(e) => setKeepPercent(e.target.value)}
+    className={inputClass}
+    placeholder="10"
+  />
 </Field>
+
+{/* subtle display only */}
+<div className="text-[10px] text-white/70 mt-1">
+  You keep: {split.user} • Auction: {split.auction}
+</div>
   </>
 )}
 
-          <Field label="Duration" hint="Set auction length (days, hours, minutes, seconds).">
+          <Field label="Duration" >
             <div className="flex w-full gap-3">
               {[
                 { label: "d", value: Math.floor(durationSecs / 86400), max: undefined },
@@ -894,7 +899,7 @@ mintAddress = await mintNft(
                     }}
                     className={`${inputClass} w-full bg-[var(--surface)]`}
                   />
-                  <span className="shrink-0 text-sm text-[var(--muted)]">{unit.label}</span>
+                  <span className="shrink-0 text-sm text-white/70">{unit.label}</span>
                 </div>
               ))}
             </div>
@@ -911,25 +916,27 @@ mintAddress = await mintNft(
               >
                 i
               </Link>
-              <label className="block text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+              <label className="block text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70">
                 Auction type
               </label>
             </div>
-            <p className="text-xs text-[var(--muted)]/80">Uniform and Pro Rata are hidden for NFT / metadata-only.</p>
-            <select
-              value={auctionType}
-              onChange={(e) => onAuctionTypeChange(e.target.value as AuctionType)}
-              className={selectClass}
-            >
-              {allowedTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-              <option value="__fdv_token_launch__" disabled>
-                FDV Token Launch (coming soon)
-              </option>
-            </select>
+            <p className="text-xs text-white/70/80">Uniform is hidden for NFT / metadata-only.</p>
+          <select
+  value={auctionType}
+  onChange={(e) => onAuctionTypeChange(e.target.value as AuctionType)}
+  className={selectClass}
+>
+  {allowedTypes.map((type) => {
+    const isToken = assetKind === "Fungible";
+    const warn = isToken && (type === "FirstPrice" || type === "Vickrey");
+
+    return (
+      <option key={type} value={type}>
+        {type} {warn ? "(not recommended)" : ""}
+      </option>
+    );
+  })}
+</select>
           </div>
 
           <div className="border border-[var(--line)] bg-[var(--background)] px-4 py-3">
@@ -941,14 +948,14 @@ mintAddress = await mintNft(
 
 <button
   onClick={handleSubmit}
-  disabled={isDisabled || isMinting}
+  disabled={isDisabled || isProcessing}
   className="btn btn-primary h-12 px-5 text-sm font-semibold"
 >
-  {isMinting
-  ? assetKind === "Fungible"
-    ? "Minting Token..."
-    : "Minting NFT..."
-  : "Make Auction"}
+  {isProcessing
+    ? assetKind === "Fungible"
+      ? "Processing Token & Auction..."
+      : "Processing NFT & Auction..."
+    : "Make Auction"}
 </button>
         </div>
 
