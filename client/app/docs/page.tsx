@@ -407,16 +407,16 @@ async function main() {
   });
 
   // 2. Place bid
-const bid = await createPlaceBid({
-  programClient,
-  programId,
-  publicKey: wallet,
+  const bid = await createPlaceBid({
+    programClient,
+    programId,
+    publicKey: wallet,
 
-  auctionPk: auction.auctionPda,
+    auctionPk: auction.auctionPda,
 
-  bidAmountSol: "10",     // total size
-  bidPriceSol: "2.5",     // price per unit (only for uniform)
-});
+    bidAmountSol: "10",     // total size
+    bidPriceSol: "2.5",     // price per unit (only for uniform)
+  });
 
   console.log("Auction TX:", auction.transaction);
   console.log("Bid TX:", bid.transaction);

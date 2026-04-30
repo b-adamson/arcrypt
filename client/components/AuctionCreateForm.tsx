@@ -580,10 +580,10 @@ await onSubmit(metadataUri, {
               Create auction
             </div>
             <h3 className="text-2xl font-semibold tracking-tight text-[var(--foreground)] md:text-3xl">
-              Launch a sealed auction
+              Launch your project
             </h3>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
-              Configure the terms, asset mode, metadata, duration, and settlement type from a single panel.
+              Configure the details of your sealed auction launch.
             </p>
           </div>
 
@@ -598,34 +598,87 @@ await onSubmit(metadataUri, {
         </div>
 
         <div className="flex flex-col gap-6">
-          <Field label="Asset type" >
-            <select
-              value={assetKind}
-              onChange={(e) => onAssetKindChange(e.target.value as AssetKind)}
-              className={selectClass}
-            >
-<option className="bg-black text-white" value="Fungible">SPL Token</option>
+        <Field label="Asset type">
+  <div className="flex w-full border border-[var(--line)] bg-[var(--background)] overflow-hidden">
 
-{!lockTokenMint && (
-  <option value="Nft">NFT</option>
-)}
-
-<option className="bg-black text-white" value="MetadataOnly">Metadata Only</option>
-            </select>
-          </Field>
-          {assetKind === "Nft" && (
-  <Field label="NFT source" hint="Use an existing NFT or mint a new one.">
-    <select
-      value={mintMode}
-      onChange={(e) => setMintMode(e.target.value as any)}
-      className={selectClass}
+    {/* TOKEN (bigger) */}
+    <button
+      type="button"
+      onClick={() => onAssetKindChange("Fungible")}
+      className={`flex-[2] h-14 text-sm font-semibold transition
+        ${assetKind === "Fungible"
+          ? "bg-[var(--accent)] text-black"
+          : "text-white/70 hover:bg-[var(--surface-2)]"}`}
     >
-      <option value="Existing">Use existing NFT</option>
-      <option value="CreateNew">Create new NFT</option>
-    </select>
+      TOKEN
+    </button>
+
+    {/* NFT */}
+    {!lockTokenMint && (
+      <button
+        type="button"
+        onClick={() => onAssetKindChange("Nft")}
+        className={`flex-1 h-14 text-sm font-semibold border-l border-[var(--line)] transition
+          ${assetKind === "Nft"
+            ? "bg-[var(--accent)] text-black"
+            : "text-white/70 hover:bg-[var(--surface-2)]"}`}
+      >
+        NFT
+      </button>
+    )}
+
+    {/* METADATA */}
+    <button
+      type="button"
+      onClick={() => onAssetKindChange("MetadataOnly")}
+      className={`flex-1 h-14 text-sm font-semibold border-l border-[var(--line)] transition
+        ${assetKind === "MetadataOnly"
+          ? "bg-[var(--accent)] text-black"
+          : "text-white/70 hover:bg-[var(--surface-2)]"}`}
+    >
+      METADATA
+    </button>
+
+  </div>
+</Field>
+{assetKind === "Nft" && (
+  <Field label="NFT source">
+    <div className="flex items-center gap-3">
+      <input
+        type="checkbox"
+        checked={mintMode === "CreateNew"}
+        onChange={(e) =>
+          setMintMode(e.target.checked ? "CreateNew" : "Existing")
+        }
+        className="accent-[var(--accent)]"
+      />
+      <span className="text-sm text-white/70">
+        {mintMode === "CreateNew"
+          ? "Creating new NFT"
+          : "Using existing NFT"}
+      </span>
+    </div>
   </Field>
 )}
-
+{assetKind === "Fungible" && !lockTokenMint && (
+  <Field label="Token source">
+    <div className="flex items-center gap-3">
+      <input
+        type="checkbox"
+        checked={tokenMintMode === "CreateNew"}
+        onChange={(e) =>
+          setTokenMintMode(e.target.checked ? "CreateNew" : "Existing")
+        }
+        className="accent-[var(--accent)]"
+      />
+      <span className="text-sm text-white/70">
+        {tokenMintMode === "CreateNew"
+          ? "Creating new token"
+          : "Using existing token"}
+      </span>
+    </div>
+  </Field>
+)}
           <Field label="Name" >
             <input
               value={metadataName}
@@ -714,21 +767,7 @@ await onSubmit(metadataUri, {
     <input type="text" value="1" disabled className={`${inputClass} cursor-not-allowed opacity-80 text-white/80`} />
   </Field>
 ) : null}
-{assetKind === "Fungible" && !lockTokenMint && (
-  <div className="flex items-center gap-2 mt-2">
-    <input
-      type="checkbox"
-      checked={tokenMintMode === "CreateNew"}
-      onChange={(e) =>
-        setTokenMintMode(e.target.checked ? "CreateNew" : "Existing")
-      }
-      className="accent-[var(--accent)]"
-    />
-    <span className="text-sm text-white/70">
-      Create new token
-    </span>
-  </div>
-)}
+
 
 {assetKind !== "MetadataOnly" &&
  !(assetKind === "Nft" && mintMode === "CreateNew") &&

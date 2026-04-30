@@ -2,7 +2,7 @@
 
 Join us at [arcrypt.bid](https://arcrypt.bid)
 
-ARCRYPT is a sealed-bid auction platform on Solana. It lets sellers auction tokens, NFTs, or metadata-only assets without exposing competing bids on-chain, helping prevent front-running, MEV, and other forms of bid leakage. Bid amounts are processed privately through Arcium MPC, while settlement still happens transparently on Solana. For the first time ever we leverage UMBRA to conceal committed bid escrows on chain, as well as hiding the same bid amount transmitted to Arcium MXE. 
+ARCRYPT is an upcoming sealed-bid auction platform on Solana. It lets sellers auction tokens, NFTs, or metadata-only assets without exposing competing bids on-chain, helping prevent front-running, MEV, and other forms of bid leakage. Bid amounts are processed privately through Arcium MPC, while settlement still happens transparently on Solana. For the first time ever we leverage UMBRA to conceal committed bid escrows on chain, as well as hiding the same bid amount transmitted to Arcium MXE. 
 
 Telegram: https://t.me/+NGbdEEbM-AYyNDZk
 Twitter (X): https://x.com/arcrypt_bid
@@ -16,12 +16,12 @@ Traditional public auctions reveal bids as they arrive, which can distort outcom
 It supports:
 
 * Sealed-bid auctions on Solana
-* Total encryption of escrowed bid balances using UMBRA
+**Total encryption of escrowed bid balances using UMBRA**
 * First-price auctions
 * Vickrey (second-price) auctions
 * Uniform-price auctions for multi-winner sales (up to 3 winners)
-* Pro-rata auctions for multi-winner sales (up to 3 winners)
-* Token, NFT, and metadata-only auctions
+**Launching a token to Raydium once the auction ends for instant swaps**
+* Launching an NFT
 * DAO treasury auctions through proposal instructions
 
 ## How it works
@@ -32,13 +32,24 @@ ARCRYPT combines three pieces:
 * **Arcium confidential compute**: evaluates encrypted bids without exposing them
 * **Client app + SDK**: creates auctions, places bids, securely escrows funds, and settles winners
 
-The flow is:
+Broadly speaking,
 
 1. A seller creates an auction.
 2. Bidders place encrypted bids.
-3. Funds are escrowed securely.
+3. Funds are escrowed securely within the UMBRA shielded pool.
 4. Arcium computes the winner privately.
 5. The program settles the auction on-chain.
+
+Under the hood, when submitting a bid:
+
+1. The client generates an encrypted token account and funds it with wSOL.
+2. The bidder encrypts their bid using Umbra’s MXE and submits it to Arcrypt.
+3. Arcrypt performs a CPI into Umbra, passing the encrypted token account and bid amount.
+4. Umbra decrypts the bid inside its own Arcium MXE and allocates the corresponding funds into its shielded pool.
+5. Umbra re-encrypts the bid for Arcrypt’s MXE and returns the ciphertext.
+6. Arcrypt stores the encrypted bid in a temporary on-chain account.
+7. A crank calls `place_encrypted_bid`, feeding the ciphertext into Arcium MPC to update the encrypted auction state.
+8. At all times, funds remain encrypted and program-controlled, ensuring fully confidential escrow with no plaintext balances on-chain.
 
 ## Repository structure
 
@@ -158,8 +169,7 @@ ARCRYPT supports multiple auction styles:
 
 * **First-price**: highest bidder wins and pays their bid
 * **Vickrey**: highest bidder wins and pays the second-highest bid
-* **Uniform-price**: all winning bidders pay the same clearing price
-* **Pro-rata**: winners receive a proportional share of the asset based on bid size
+* **Uniform-price**: submit a price and an amount. winners ordered by price and they pay their amount (price * amount = FDV)
 
 ## Asset types
 
@@ -224,7 +234,7 @@ main().catch(console.error);
 ## Program ID
 
 On devnet we are deployed at
-* `8icpcRrJNtQ4RBaTtttGoy2qzDDY8bQcxQaYm2dRvFRC`
+* `JEJdjPBaWAteXajrhpEJCWcgUci3QUCJbCvEJxwM9ZYq`
 
 ## Troubleshooting
 
@@ -238,9 +248,10 @@ On devnet we are deployed at
 Planned and in-progress areas include:
 
 * Rust SDK support
-* DAO Launchpad
+* On-chain validation of Raydium pool
 * Mainnet Launch
 * Complete UMBRA integration
+* Better auto-crons for settlement at the end
 * UX Changes
 
 ## License

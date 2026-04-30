@@ -105,15 +105,27 @@ export async function mintToken(
 }
 
 const signed = await wallet.signTransaction(tx);
-
-  const sig = await connection.sendRawTransaction(
-    signed.serialize()
-  );
-
+try {
+  const sig = await connection.sendRawTransaction(signed.serialize());
   await connection.confirmTransaction(sig);
 
   return {
     mint: mint.publicKey,
     ownerAta: ata,
   };
+
+} catch (e: any) {
+  const msg = String(e?.message || "");
+
+  if (msg.includes("already been processed")) {
+    console.warn("Mint tx already processed");
+
+    return {
+      mint: mint.publicKey,
+      ownerAta: ata,
+    };
+  }
+
+  throw e;
+}
 }

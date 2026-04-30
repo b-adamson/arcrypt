@@ -15,6 +15,17 @@ export type Arcrypt = {
   "instructions": [
     {
       "name": "claimRefund",
+      "docs": [
+        "Allows losing bidders to reclaim escrowed funds.",
+        "",
+        "# Requirements",
+        "- Auction must be ended",
+        "- Caller must NOT be a winner",
+        "",
+        "# Effects",
+        "- Transfers WSOL back to bidder",
+        "- Closes escrow account"
+      ],
       "discriminator": [
         15,
         16,
@@ -167,6 +178,16 @@ export type Arcrypt = {
     },
     {
       "name": "closeAuction",
+      "docs": [
+        "Closes an auction manually.",
+        "",
+        "# Requirements",
+        "- Only authority",
+        "- Auction must be open",
+        "",
+        "# Effects",
+        "- Sets status = Closed"
+      ],
       "discriminator": [
         225,
         129,
@@ -195,6 +216,18 @@ export type Arcrypt = {
     },
     {
       "name": "createMetadataAuction",
+      "docs": [
+        "Creates a metadata-only auction (no token escrow).",
+        "",
+        "Used for auctions where only metadata is sold (e.g. rights, off-chain assets).",
+        "",
+        "# Constraints",
+        "- Only supports single-winner auctions (FirstPrice, Vickrey)",
+        "",
+        "# Effects",
+        "- Initializes auction without token vault",
+        "- Queues encrypted state initialization"
+      ],
       "discriminator": [
         45,
         5,
@@ -379,6 +412,30 @@ export type Arcrypt = {
     },
     {
       "name": "createTokenAuction",
+      "docs": [
+        "Creates a token-backed auction (SPL or NFT).",
+        "",
+        "Transfers the prize tokens from the creator into a vault owned by the program,",
+        "initializes the `Auction` account, and queues the encrypted state initialization",
+        "via Arcium.",
+        "",
+        "# Arguments",
+        "- `auction_type`: Pricing mechanism (FirstPrice, Vickrey, Uniform, ProRata)",
+        "- `asset_kind`: Fungible or NFT",
+        "- `min_bid`: Minimum bid in lamports",
+        "- `end_time`: Unix timestamp when auction ends",
+        "- `sale_amount`: Total tokens being auctioned",
+        "- `auction_metadata_uri`: Off-chain metadata (IPFS / HTTPS)",
+        "",
+        "# Constraints",
+        "- NFT must have `decimals == 0` and `sale_amount == 1`",
+        "- Multi-winner auctions require `sale_amount >= 3`",
+        "",
+        "# Effects",
+        "- Moves tokens into `prize_vault`",
+        "- Initializes auction state",
+        "- Queues encrypted computation"
+      ],
       "discriminator": [
         141,
         177,
@@ -677,6 +734,16 @@ export type Arcrypt = {
     },
     {
       "name": "determineWinnerFirstPrice",
+      "docs": [
+        "Triggers winner computation for a First Price auction.",
+        "",
+        "# Requirements",
+        "- Auction must be ended",
+        "- Auction must not be resolved",
+        "",
+        "# Effects",
+        "- Queues encrypted computation"
+      ],
       "discriminator": [
         41,
         137,
@@ -999,6 +1066,16 @@ export type Arcrypt = {
     },
     {
       "name": "determineWinnerUniform",
+      "docs": [
+        "Triggers winner computation for a Uniform auction.",
+        "",
+        "Produces:",
+        "- Top 3 winners",
+        "- Clearing price",
+        "",
+        "# Effects",
+        "- Queues encrypted computation"
+      ],
       "discriminator": [
         103,
         73,
@@ -1160,6 +1237,14 @@ export type Arcrypt = {
     },
     {
       "name": "determineWinnerVickrey",
+      "docs": [
+        "Triggers winner computation for a Vickrey auction.",
+        "",
+        "Winner pays second-highest price.",
+        "",
+        "# Effects",
+        "- Queues encrypted computation"
+      ],
       "discriminator": [
         107,
         38,
@@ -1321,6 +1406,15 @@ export type Arcrypt = {
     },
     {
       "name": "finalizeMetadataWinnerPayout",
+      "docs": [
+        "Finalizes payout for metadata-only auctions.",
+        "",
+        "Only transfers WSOL (no token payout).",
+        "",
+        "# Effects",
+        "- Pays creator",
+        "- Refunds winner excess"
+      ],
       "discriminator": [
         30,
         179,
@@ -1488,6 +1582,25 @@ export type Arcrypt = {
     },
     {
       "name": "finalizeTokenWinnerPayout",
+      "docs": [
+        "Finalizes payout for token/NFT auctions.",
+        "",
+        "Handles:",
+        "- Paying creator from escrow",
+        "- Refunding excess to winner",
+        "- Transferring prize tokens",
+        "",
+        "# Behavior",
+        "- FirstPrice: winner pays bid",
+        "- Vickrey: winner pays second price",
+        "- Uniform: multi-winner clearing price",
+        "- ProRata: proportional distribution (Deprecated)",
+        "",
+        "# Effects",
+        "- Moves WSOL from escrow",
+        "- Transfers prize tokens",
+        "- Marks winners as paid"
+      ],
       "discriminator": [
         159,
         120,
@@ -2162,7 +2275,55 @@ export type Arcrypt = {
       "args": []
     },
     {
+      "name": "markPoolCreated",
+      "discriminator": [
+        38,
+        189,
+        191,
+        68,
+        131,
+        40,
+        61,
+        117
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "auction"
+          ]
+        },
+        {
+          "name": "auction",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "placeBid",
+      "docs": [
+        "Places an encrypted bid with escrow.",
+        "",
+        "Transfers WSOL into the bidder's escrow PDA and submits encrypted bid data",
+        "to Arcium for off-chain computation.",
+        "",
+        "# Arguments",
+        "- `escrow_amount`: Total bid amount (lamports)",
+        "- `encrypted_*`: Ciphertext components for bidder + bid",
+        "- `nonce`: Unique encryption nonce",
+        "",
+        "# Behavior",
+        "- Supports bid top-ups (cannot decrease)",
+        "- Escrow is tracked per (auction, bidder)",
+        "- For FP/Vickrey: price = amount",
+        "",
+        "# Effects",
+        "- Transfers WSOL into escrow ATA",
+        "- Queues encrypted computation"
+      ],
       "discriminator": [
         238,
         77,
@@ -2508,6 +2669,19 @@ export type Arcrypt = {
     },
     {
       "name": "placeEncryptedBid",
+      "docs": [
+        "Executes a previously submitted encrypted bid.",
+        "",
+        "Consumes a `PendingEncryptedBid` and queues the encrypted computation. Called via crank after submit_encrypted_bid",
+        "",
+        "# Requirements",
+        "- `temp_bid` must not be consumed",
+        "- Must match auction + shared vault",
+        "",
+        "# Effects",
+        "- Marks temp bid as consumed",
+        "- Queues Arcium computation"
+      ],
       "discriminator": [
         81,
         23,
@@ -2735,6 +2909,17 @@ export type Arcrypt = {
     },
     {
       "name": "reclaimUnsoldTokenItem",
+      "docs": [
+        "Allows creator to reclaim unsold tokens if no bids were placed.",
+        "",
+        "# Requirements",
+        "- Auction ended",
+        "- `bid_count == 0`",
+        "",
+        "# Effects",
+        "- Transfers tokens back to creator",
+        "- Closes auction"
+      ],
       "discriminator": [
         39,
         92,
@@ -3259,176 +3444,181 @@ export type Arcrypt = {
   "errors": [
     {
       "code": 6000,
+      "name": "poolAlreadyCreated",
+      "msg": "Pool already created"
+    },
+    {
+      "code": 6001,
       "name": "abortedComputation",
       "msg": "The computation was aborted"
     },
     {
-      "code": 6001,
+      "code": 6002,
       "name": "clusterNotSet",
       "msg": "Cluster not set"
     },
     {
-      "code": 6002,
+      "code": 6003,
       "name": "auctionNotOpen",
       "msg": "Auction is not open for bidding"
     },
     {
-      "code": 6003,
+      "code": 6004,
       "name": "auctionNotClosed",
       "msg": "Auction is not closed yet"
     },
     {
-      "code": 6004,
+      "code": 6005,
       "name": "wrongAuctionType",
       "msg": "Wrong auction type for this operation"
     },
     {
-      "code": 6005,
+      "code": 6006,
       "name": "unauthorized",
       "msg": "unauthorized"
     },
     {
-      "code": 6006,
+      "code": 6007,
       "name": "wrongMint",
       "msg": "Token mint does not match the auction's configured mint"
     },
     {
-      "code": 6007,
+      "code": 6008,
       "name": "escrowOwnerMismatch",
       "msg": "Escrow token account owner mismatch"
     },
     {
-      "code": 6008,
+      "code": 6009,
       "name": "escrowNotEmpty",
       "msg": "Escrow account not empty"
     },
     {
-      "code": 6009,
+      "code": 6010,
       "name": "noFundsInEscrow",
       "msg": "No funds in escrow"
     },
     {
-      "code": 6010,
+      "code": 6011,
       "name": "auctionNotEnded",
       "msg": "Auction has not ended yet"
     },
     {
-      "code": 6011,
+      "code": 6012,
       "name": "bidCountOverflow",
       "msg": "Bid count overflow"
     },
     {
-      "code": 6012,
+      "code": 6013,
       "name": "noBids",
       "msg": "No bids placed"
     },
     {
-      "code": 6013,
+      "code": 6014,
       "name": "auctionEnded",
       "msg": "Auction has ended"
     },
     {
-      "code": 6014,
+      "code": 6015,
       "name": "auctionAlreadyResolved",
       "msg": "Auction is already resolved"
     },
     {
-      "code": 6015,
+      "code": 6016,
       "name": "bidBelowMinimum",
       "msg": "Bid is below the auction minimum"
     },
     {
-      "code": 6016,
+      "code": 6017,
       "name": "bidMustNotDecrease",
       "msg": "New bid cannot be lower than the current escrowed amount"
     },
     {
-      "code": 6017,
+      "code": 6018,
       "name": "escrowMismatch",
       "msg": "Escrow does not match this auction"
     },
     {
-      "code": 6018,
+      "code": 6019,
       "name": "escrowInsufficient",
       "msg": "Insufficient escrow for settlement"
     },
     {
-      "code": 6019,
+      "code": 6020,
       "name": "auctionNotResolved",
       "msg": "Auction is not resolved"
     },
     {
-      "code": 6020,
+      "code": 6021,
       "name": "auctionAlreadySettled",
       "msg": "Winner payout has already been completed"
     },
     {
-      "code": 6021,
+      "code": 6022,
       "name": "winnerCannotClaimRefund",
       "msg": "Winner cannot claim a refund"
     },
     {
-      "code": 6022,
+      "code": 6023,
       "name": "lamportOverflow",
       "msg": "Lamport addition overflow"
     },
     {
-      "code": 6023,
+      "code": 6024,
       "name": "invalidSettlementWinner",
       "msg": "The provided winner is not one of the resolved winners"
     },
     {
-      "code": 6024,
+      "code": 6025,
       "name": "invalidMint",
       "msg": "Invalid mint"
     },
     {
-      "code": 6025,
+      "code": 6026,
       "name": "notEnoughBidsForSettlement",
       "msg": "At least three bids are required for this auction type"
     },
     {
-      "code": 6026,
+      "code": 6027,
       "name": "nftAuctionOnlySupportsSingleWinnerModes",
       "msg": "NFT auctions only support single-winner modes"
     },
     {
-      "code": 6027,
+      "code": 6028,
       "name": "insufficientSupplyForMultiWinnerAuction",
       "msg": "Multi-winner auctions require at least 3 units of supply"
     },
     {
-      "code": 6028,
+      "code": 6029,
       "name": "metadataOnlyDoesNotSupportMultiWinnerModes",
       "msg": "Metadata-only auctions do not support multi-winner modes"
     },
     {
-      "code": 6029,
+      "code": 6030,
       "name": "invalidMetadataUri",
       "msg": "Invalid metadata URI"
     },
     {
-      "code": 6030,
+      "code": 6031,
       "name": "wrongAssetKind",
       "msg": "Wrong asset kind for this instruction"
     },
     {
-      "code": 6031,
+      "code": 6032,
       "name": "cannotReclaimWithBids",
       "msg": "This auction already has bids and cannot be reclaimed as unsold"
     },
     {
-      "code": 6032,
+      "code": 6033,
       "name": "invalidSharedVault",
       "msg": "Invalid shared vault"
     },
     {
-      "code": 6033,
+      "code": 6034,
       "name": "tempBidAlreadyConsumed",
       "msg": "Pending encrypted bid already consumed"
     },
     {
-      "code": 6034,
+      "code": 6035,
       "name": "bidTooSmall",
       "msg": "Escrow must be >= price"
     }
@@ -3592,6 +3782,10 @@ export type Arcrypt = {
           },
           {
             "name": "winnerPaid",
+            "type": "bool"
+          },
+          {
+            "name": "raydiumPoolCreated",
             "type": "bool"
           },
           {

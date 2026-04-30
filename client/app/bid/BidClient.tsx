@@ -1,17 +1,14 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { Buffer } from "buffer";
-import { BN } from "@coral-xyz/anchor";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { LAMPORTS_PER_SOL, PublicKey, Keypair, Connection, Transaction } from "@solana/web3.js";
+import { LAMPORTS_PER_SOL, PublicKey, Connection, Transaction } from "@solana/web3.js";
 import { createAnchorProgramInBrowser, createReadOnlyProgram, assertProviderReady } from "../../lib/anchorClient";
 import AuctionBidForm from "../../components/AuctionBidForm";
 import AuctionResultCard from "../../components/AuctionResultCard";
 import AuctionWinConfetti from "../../components/AuctionWinConfetti";
 import {
-
   getMint,
 } from "@solana/spl-token";
 import { SystemProgram } from "@solana/web3.js";
@@ -114,13 +111,6 @@ function isMetadataAuction(auction: any): boolean {
   return getAssetKind(auction) === "metadataonly";
 }
 
-function isTokenAuction(auction: any): boolean {
-  const kind = getAssetKind(auction);
-  return kind === "fungible" || kind === "nft";
-}
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 export default function BidPageClient({ auctionPk }: { auctionPk: string | null }) {
   const auctionPkStr = auctionPk;
 
@@ -132,10 +122,8 @@ export default function BidPageClient({ auctionPk }: { auctionPk: string | null 
 const [bidAmountSol, setBidAmountSol] = useState("1");
 const [bidPriceSol, setBidPriceSol] = useState("1"); // NEW
   const [bidNonceHex, setBidNonceHex] = useState<string | null>(null);
-  const [auctionSeedHex, setAuctionSeedHex] = useState<string | null>(null);
   const [auctionData, setAuctionData] = useState<any | null>(null);
   const [auctionEnded, setAuctionEnded] = useState(false);
-  const [isWinner, setIsWinner] = useState(false);
   const [tokenDecimals, setTokenDecimals] = useState<number | null>(null);
   const refreshedAtZeroRef = useRef(false);
 
@@ -149,15 +137,10 @@ const [bidPriceSol, setBidPriceSol] = useState("1"); // NEW
 
   const walletBase58 = publicKey?.toBase58() ?? "";
 
-  const [poolResult, setPoolResult] = useState<{
-  txs: string[];
-  swapUrl: string;
-} | null>(null);
-
+const [txSigs, setTxSigs] = useState<string[]>([]);
   const auctionStatus = auctionData ? enumKey(auctionData.status).toLowerCase() : "";
   const isOpen = auctionStatus === "open";
   const isResolved = auctionStatus === "resolved";
-  const isFinal = auctionData && !isOpen && !isResolved;
 
   const winnerNow = auctionData && publicKey ? isWinnerOfAuction(auctionData, walletBase58) : false;
 
@@ -177,19 +160,22 @@ const [bidPriceSol, setBidPriceSol] = useState("1"); // NEW
   const bidCount = auctionData ? getBidCount(auctionData) : 0;
   const hasNoBids = auctionData ? bidCount === 0 : false;
 
-  const canDetermineWinner = !!auctionData && auctionEnded && !isResolved && !isFinal && !hasNoBids;
+  const canDetermineWinner =
+  !!auctionData &&
+  auctionEnded &&
+  auctionStatus === "closed" &&
+  !hasNoBids;
 
   const canReclaimUnsold = !!auctionData && auctionEnded && !isResolved && isCreator && hasNoBids;
 
-  const canWinnerSettle = !!auctionData && auctionEnded && isResolved && publicKey && winnerNow && !winnerClaimed;
-
-  const canCreatorSettle = !!auctionData && auctionEnded && isResolved && publicKey && isCreator && !winnerNow;
-
   const canClaimRefund = !!auctionData && auctionEnded && isResolved && publicKey && !winnerNow && escrowExists === true;
 
-  const noRefundToClaim = !!auctionData && auctionEnded && isResolved && publicKey && !winnerNow && escrowExists === false;
-
-  const primaryActionLabel = metadataOnly || isCreator ? "Settle auction" : "Claim winner payout";
+  const swapUrl =
+  auctionData?.raydiumPoolCreated
+    ? `https://raydium.io/swap/?inputMint=So11111111111111111111111111111111111111112&outputMint=${
+        auctionData.tokenMint ?? auctionData.token_mint
+      }`
+    : null;
 
 const outcomeText = !auctionData
   ? "Loading..."
@@ -224,12 +210,6 @@ const determineWinnerKind =
         ? "uniform"
         : null;
 
-      const canCreatePool =
-  !!auctionData &&
-  auctionEnded &&
-  isResolved &&
-  isCreator;
-
   const determineWinnerLabel =
     determineWinnerKind === "first"
       ? "Determine first-price winner"
@@ -260,8 +240,6 @@ const determineWinnerKind =
       refreshedAtZeroRef.current = false;
       return;
     }
-
-
 
     const endTime = Number(auctionData.endTime ?? auctionData.end_time ?? 0);
 
@@ -294,25 +272,6 @@ const determineWinnerKind =
     return () => clearInterval(interval);
   }, [auctionData]);
 
-      useEffect(() => {
-  if (!auctionPkStr) return;
-
-  try {
-    const stored = localStorage.getItem(
-      `raydium-pool:${auctionPkStr}`
-    );
-
-    if (stored) {
-      setPoolResult(JSON.parse(stored));
-    }
-  } catch (e) {
-    console.warn("Failed to load poolResult", e);
-  }
-}, [auctionPkStr]);
-
-useEffect(() => {
-  setPoolResult(null);
-}, [auctionPkStr]);
 
   function formatTimeLeft(seconds: number | null): string {
     if (seconds === null) return "Loading...";
@@ -332,46 +291,6 @@ useEffect(() => {
   function getBidCount(auction: any): number {
     return Number(auction?.bidCount ?? auction?.bid_count ?? 0);
   }
-  async function buildWrapSolInstructions(
-  connection: Connection,
-  payer: PublicKey,
-  amountLamports: number
-) {
-  const ata = getAssociatedTokenAddressSync(
-    NATIVE_MINT,
-    payer,
-    false
-  );
-
-  const ixs: TransactionInstruction[] = [];
-
-  const ataInfo = await connection.getAccountInfo(ata);
-
-  if (!ataInfo) {
-    ixs.push(
-      createAssociatedTokenAccountInstruction(
-        payer,
-        ata,
-        payer,
-        NATIVE_MINT
-      )
-    );
-  }
-
-  // transfer SOL → ATA
-  ixs.push(
-    SystemProgram.transfer({
-      fromPubkey: payer,
-      toPubkey: ata,
-      lamports: amountLamports,
-    })
-  );
-
-  // sync wSOL
-  ixs.push(createSyncNativeInstruction(ata));
-
-  return { ata, ixs };
-}
 
   useEffect(() => {
     let cancelled = false;
@@ -555,7 +474,6 @@ body: JSON.stringify({
     const ended = now >= endTime || statusKey === "closed" || statusKey === "resolved";
     setAuctionEnded(ended);
 
-    setIsWinner(isWinnerOfAuction(auction, publicKey?.toBase58() ?? ""));
   }
 
   async function handlePlaceBid() {
@@ -691,7 +609,8 @@ setStatus(
 
     return res.json();
   }
-async function handleCreatePool() {
+
+async function handleFinalizeAll() {
   try {
     if (!programClient || !publicKey || !auctionData) {
       throw new Error("Missing state");
@@ -707,80 +626,110 @@ async function handleCreatePool() {
       localStorage.getItem("raydiumReserve") || "0"
     );
 
-    if (liquidityTokens <= 0) {
-      throw new Error("No liquidity tokens available");
-    }
+    setStatus("Building transactions...");
 
-    setStatus("Building Raydium pool tx...");
-
-    const res = await fetch("/api/createRaydiumPool", {
+    const res = await fetch("/api/finalizeAuction", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        owner: publicKey.toBase58(),
+        auctionPk: auctionPkStr,
+        publicKey: publicKey.toBase58(),
         tokenMint: auctionData.tokenMint ?? auctionData.token_mint,
         wsolAmount: paymentAmount,
         tokenAmount: liquidityTokens,
       }),
     });
 
+    
+
     const json = await res.json();
 
     if (!res.ok) {
-      throw new Error(json?.error || "Pool creation failed");
+      throw new Error(json?.error || "Failed");
     }
 
-   const adapter = wallet?.adapter as any;
-
-    if (!adapter?.signTransaction) {
-      throw new Error("Wallet cannot sign transactions");
-    }
-
-    const txs = json.txs.map((b64: string) =>
-      VersionedTransaction.deserialize(Buffer.from(b64, "base64"))
-    );
-
-    setStatus("Signing pool creation transactions...");
-
-    const sigs: string[] = [];
-
-    for (const tx of txs) {
-      // 🔥 set fresh blockhash
-      const { blockhash } = await connection.getLatestBlockhash();
-      tx.message.recentBlockhash = blockhash;
-
-      // 🔥 SIGN (correct context)
-      const signed = await adapter.signTransaction(tx);
-
-      const sig = await connection.sendRawTransaction(signed.serialize());
-      await connection.confirmTransaction(sig, "confirmed");
-
-      sigs.push(sig);
-    }
-
-// ✅ build swap URL
-const swapUrl = `https://raydium.io/swap/?inputMint=So11111111111111111111111111111111111111112&outputMint=${auctionData.tokenMint ?? auctionData.token_mint}`;
-
-const result = {
-  txs: sigs,
-  swapUrl,
-};
-
-// ✅ persist
-localStorage.setItem(
-  `raydium-pool:${auctionPkStr}`,
-  JSON.stringify(result)
+    const adapter = wallet?.adapter as any;
+const txs = json.txs.map((b64: string) =>
+  VersionedTransaction.deserialize(Buffer.from(b64, "base64"))
 );
 
-// ✅ update UI
-setPoolResult(result);
+if (!json.txs || json.txs.length === 0) {
+  setStatus("Nothing to execute — already settled");
+  return;
+}
 
-    setStatus("Pool created: " + sigs.join(", "));
+// ✅ ONE shared blockhash
+const { blockhash } = await connection.getLatestBlockhash();
+
+for (const tx of txs) {
+  tx.message.recentBlockhash = blockhash;
+}
+
+// ✅ ONE SIGN PROMPT
+const signedTxs = await adapter.signAllTransactions(txs);
+
+const sigs: string[] = [];
+
+
+
+// ✅ SEND IN ORDER
+let settlementSucceeded = false;
+
+for (let i = 0; i < signedTxs.length; i++) {
+  try {
+    const sig = await connection.sendRawTransaction(
+      signedTxs[i].serialize()
+    );
+
+    await connection.confirmTransaction(sig, "confirmed");
+
+    sigs.push(sig);
+
+    if (i === 0) {
+      settlementSucceeded = true;
+      setStatus("✅ SOL claimed successfully...");
+    }
+
+  } catch (err: any) {
+    console.error("TX failed:", err);
+
+    const msg = err?.message || "";
+
+    // 🔥 Detect insufficient liquidity error
+    if (msg.includes("insufficient lamports")) {
+        setStatus(
+          "✅ Bid rewards claimed. ❌ Not enough liquidity to create pool."
+        );
+    } else {
+      setStatus(
+        "❌ Transaction failed: " + msg
+      );
+    }
+
+    return; // stop further tx execution
+  }
+}
+
+setTxSigs(sigs);
+
+// ✅ OPTIMISTIC UI UPDATE
+setAuctionData((prev: any) =>
+  prev
+    ? {
+        ...prev,
+        raydiumPoolCreated: true,
+      }
+    : prev
+);
+
+// ✅ proper status
+setStatus("All done: " + sigs.join(", "));
+
   } catch (err: any) {
     console.error(err);
-    setStatus("Pool creation failed: " + err?.message);
+    setStatus("Failed: " + err.message);
   }
 }
 
@@ -911,48 +860,45 @@ await refreshAuctionState();
 />
         ) : null}
 
-        {poolResult && (
+{auctionData?.raydiumPoolCreated && (
   <div className="mt-6 border border-[var(--line)] bg-[var(--surface)] p-5">
     <h3 className="text-lg font-semibold text-[var(--foreground)]">
       Liquidity Pool Created
     </h3>
 
     <div className="mt-3 space-y-3 text-sm">
-
-      {/* 🔗 Swap link */}
       <div>
         <span className="text-[var(--muted)]">Trade on Raydium:</span>
         <br />
         <a
-          href={poolResult.swapUrl}
+          href={swapUrl!}
           target="_blank"
           rel="noopener noreferrer"
           className="text-blue-500 underline break-all"
         >
-          {poolResult.swapUrl}
+          {swapUrl}
         </a>
       </div>
-
-      {/* 🔗 TX links */}
-      <div>
-        <span className="text-[var(--muted)]">Transactions:</span>
-
-        <ul className="mt-1 space-y-1">
-          {poolResult.txs.map((sig, i) => (
-            <li key={sig}>
-              <a
-                href={`https://explorer.solana.com/tx/${sig}?cluster=devnet`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-500 underline break-all"
-              >
-                TX {i + 1}: {sig.slice(0, 8)}...{sig.slice(-8)}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </div>
     </div>
+  </div>
+)}
+{txSigs.length > 0 && (
+  <div className="mt-4 text-sm">
+    <span className="text-[var(--muted)]">Recent Transactions:</span>
+    <ul className="mt-1 space-y-1">
+      {txSigs.map((sig, i) => (
+        <li key={sig}>
+          <a
+            href={`https://explorer.solana.com/tx/${sig}?cluster=devnet`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 underline break-all"
+          >
+            TX {i + 1}: {sig.slice(0, 8)}...{sig.slice(-8)}
+          </a>
+        </li>
+      ))}
+    </ul>
   </div>
 )}
 
@@ -1002,23 +948,14 @@ await refreshAuctionState();
               </button>
             ) : null}
 
-            {canWinnerSettle ? (
-              <button onClick={() => handleSettleAuction("settleWinner")} className={buttonPrimary}>
-                {primaryActionLabel}
-              </button>
-            ) : null}
 
-            {canCreatorSettle ? (
-              <button onClick={() => handleSettleAuction("settleWinner")} className={buttonPrimary}>
-                Settle auction
-              </button>
-            ) : null}
 
-{canCreatePool && !poolResult && (
-  <button onClick={handleCreatePool} className={buttonPrimary}>
-    Create Raydium Pool
+{auctionEnded && isResolved && !auctionData.raydiumPoolCreated && (
+  <button onClick={handleFinalizeAll} className={buttonPrimary}>
+    {isCreator ? "Claim payout" : "Settle auction"}
   </button>
 )}
+
 
             {canDetermineWinner ? (
               <button

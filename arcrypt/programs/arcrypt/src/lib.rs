@@ -141,7 +141,7 @@ const COMP_DEF_OFFSET_PLACE_ENCRYPTED_BID: u32 =
 
 
 
-declare_id!("5u3mcLQx7fqoTAaPCFMRVNXFPyu1CEKDNc2AHEgiTR1x");
+declare_id!("JEJdjPBaWAteXajrhpEJCWcgUci3QUCJbCvEJxwM9ZYq");
 // Auction account byte offset: 8 (discriminator) + 1 + 32 + 1 + 1 + 8 + 8 + 2 + 16 = 77
 const AUCTION_HEADER_SIZE: u32 = 8 + 1 + 32 + 1 + 1 + 8 + 8 + 2 + 16;
 const ENCRYPTED_STATE_OFFSET: u32 = AUCTION_HEADER_SIZE;
@@ -1189,6 +1189,7 @@ pub prize_decimals: u8,
     pub winner: Pubkey,
     pub payment_amount: u64,
     pub winner_paid: bool,
+    pub raydium_pool_created: bool,
 
     pub winner_prices: [u64; 3],
 
@@ -1874,7 +1875,6 @@ pub struct SubmitEncryptedBid<'info> {
 }
 
 
-
 #[account]
 #[derive(InitSpace)]
 pub struct EscrowAccount {
@@ -1882,6 +1882,34 @@ pub struct EscrowAccount {
     pub auction: Pubkey,
     pub bidder: Pubkey,
     pub deposited_amount: u64,
+}
+
+pub fn mark_pool_created(ctx: Context<MarkPoolCreated>) -> Result<()> {
+    let auction = &mut ctx.accounts.auction;
+    require_keys_eq!(
+        ctx.accounts.authority.key(),
+        auction.authority,
+        ErrorCode::Unauthorized
+    );
+    require!(
+        auction.status == AuctionStatus::Resolved,
+        ErrorCode::AuctionNotResolved
+    );
+    require!(!auction.raydium_pool_created, ErrorCode::PoolAlreadyCreated);
+    auction.raydium_pool_created = true;
+    Ok(())
+}
+
+#[derive(Accounts)]
+pub struct MarkPoolCreated<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    #[account(
+        mut,
+        has_one = authority @ ErrorCode::Unauthorized
+    )]
+    pub auction: Box<Account<'info, Auction>>,
 }
 
 /// Finalizes payout for token/NFT auctions.
@@ -2124,7 +2152,7 @@ let payout_amount = ((auction.sale_amount as u128)
     .checked_div(total_value)
     .ok_or(ErrorCode::LamportOverflow)? as u64;
 
-let auction_key = auction.key(); // 👈 store it
+let auction_key = auction.key(); 
 
 let seeds = &[
     b"escrow",
@@ -2209,7 +2237,7 @@ settle_token_escrow(
                 _ => unreachable!(),
             };
 
-let auction_key = auction.key(); // 👈 store it
+let auction_key = auction.key();
 
 let seeds = &[
     b"escrow",
@@ -3172,6 +3200,8 @@ pub struct MultiWinnerAuctionResolvedEvent {
 
 #[error_code]
 pub enum ErrorCode {
+    #[msg("Pool already created")]
+    PoolAlreadyCreated,
     #[msg("The computation was aborted")]
     AbortedComputation,
     #[msg("Cluster not set")]
@@ -3376,6 +3406,8 @@ fn init_auction_common(
     auction.bid_count = 0;
     auction.state_nonce = 0;
     auction.encrypted_state = [[0u8; 32]; 13];
+
+    auction.raydium_pool_created = false;
 
     auction.token_mint = token_mint;
     auction.sale_amount = sale_amount;
