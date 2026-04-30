@@ -1,3 +1,117 @@
+//! # Arcrypt
+//!
+//! Arcrypt is a privacy-preserving sealed-bid auction program built on Solana.
+//!
+//! It enables auctions where all bids remain encrypted throughout the bidding
+//! phase and are only revealed at settlement. This prevents front-running,
+//! bid shading, and information leakage during the auction lifecycle.
+//!
+//! ## Core Concept
+//!
+//! Arcrypt implements sealed auctions using encrypted state and off-chain
+//! secure computation via the Arcium network.
+//!
+//! - Bids are never stored in plaintext on-chain
+//! - Auction state is maintained as encrypted ciphertext
+//! - Winner determination is computed privately via Arcium
+//! - Only final outputs (winner and payment) are revealed
+//!
+//! ## Supported Auction Types
+//!
+//! - First Price — highest bidder wins and pays their bid
+//! - Vickrey (Second Price) — highest bidder wins, pays second-highest bid
+//! - Uniform Price — top bidders win at a shared clearing price
+//! - Pro Rata — allocation proportional to bid size
+//!
+//! ## Asset Types
+//!
+//! - Fungible tokens (SPL)
+//! - NFTs (1/1)
+//! - Metadata-only auctions (no token transfer)
+//!
+//! ## Arcium Integration
+//!
+//! Arcrypt relies on the Arcium secure computation network to process encrypted
+//! bids and determine winners without revealing sensitive data.
+//!
+//! Each auction step:
+//! - queues encrypted computation
+//! - verifies outputs via callbacks
+//! - updates encrypted state on-chain
+//!
+//! ## Umbra Integration and Encrypted Escrow Flow
+//!
+//! Arcrypt integrates with the Umbra privacy system via CPI to enable
+//! confidential escrow of bid funds. This allows token balances to remain
+//! encrypted and program-controlled without exposing them on-chain.
+//!
+//! The escrow and bidding process proceeds as follows:
+//!
+//! 1. Deposit  
+//!    The client encrypts their bid amount against Umbra's MXE using wSOL
+//!    and invokes Arcrypt.
+//!
+//! 2. CPI to Umbra  
+//!    Arcrypt performs a CPI into Umbra, passing:
+//!    - the encrypted token account (ETA)
+//!    - the encrypted bid amount
+//!
+//! 3. Umbra secure allocation  
+//!    Umbra decrypts the bid amount inside its MXE and allocates the
+//!    corresponding funds from the user's encrypted token account into
+//!    its internal shielded pool.
+//!
+//! 4. Re-encryption for Arcrypt  
+//!    Umbra re-encrypts the bid amount, this time targeting Arcrypt's MXE,
+//!    producing a ciphertext that Arcrypt can process.
+//!
+//! 5. Temporary storage  
+//!    Arcrypt receives this encrypted bid and stores it in a temporary
+//!    account via `submit_encrypted_bid`.
+//!
+//! 6. State update via MPC  
+//!    A crank triggers `place_encrypted_bid`, which feeds the encrypted bid
+//!    into Arcium MPC to update Arcrypt’s internal encrypted auction state.
+//!
+//! 7. Confidential escrow model  
+//!    At no point does escrowed value exist in plaintext on-chain.
+//!    All balances remain encrypted and program-controlled, effectively
+//!    implementing confidential token balances prior to native C-SPL support.
+//!
+//! ## Privacy Guarantees
+//!
+//! - Bid values are encrypted before reaching the chain
+//! - Competing bids are never visible to participants
+//! - Auction logic operates on encrypted state
+//! - Only final results are revealed after computation
+//! - Escrowed balances remain confidential throughout
+//!
+//! ## Escrow Model
+//!
+//! - Funds are escrowed through Umbra's encrypted balance system
+//! - No plaintext token transfers occur during bidding
+//! - Settlement occurs only after winner determination
+//!
+//! ## High-Level Flow
+//!
+//! 1. Create auction (optionally escrowing assets)
+//! 2. Submit encrypted bids (directly or via Umbra CPI)
+//! 3. Arcium processes encrypted auction state
+//! 4. Winner is determined privately
+//! 5. Settlement transfers assets and final payments
+//!
+//! ## Notes
+//!
+//! - Correct encryption inputs are assumed from clients and CPI callers
+//! - Nonces must be unique per bid
+//! - Multi-winner auctions require sufficient supply
+//!
+//! ---
+//!
+//! Arcrypt combines on-chain guarantees with off-chain secure computation
+//! to enable fully private, trust-minimized auction mechanisms on Solana. This makes Arcrypt the ultimate
+//! auction platform on any blockchain, and the first *truly* sealed one. 
+
 use anchor_lang::prelude::*;
 use arcium_anchor::prelude::*;
 use arcium_client::idl::arcium::types::{CircuitSource, OffChainCircuitSource, CallbackAccount};
@@ -156,7 +270,17 @@ pub fn init_determine_winner_pro_rata_comp_def(
 }
 
 
-
+/// Executes a previously submitted encrypted bid.
+///
+/// Consumes a `PendingEncryptedBid` and queues the encrypted computation. Called via crank after submit_encrypted_bid
+///
+/// # Requirements
+/// - `temp_bid` must not be consumed
+/// - Must match auction + shared vault
+///
+/// # Effects
+/// - Marks temp bid as consumed
+/// - Queues Arcium computation
 pub fn place_encrypted_bid(
     ctx: Context<PlaceEncryptedBid>,
     computation_offset: u64,
@@ -233,6 +357,25 @@ pub fn place_encrypted_bid(
     Ok(())
 }
 
+
+/// Places an encrypted bid with escrow.
+///
+/// Transfers WSOL into the bidder's escrow PDA and submits encrypted bid data
+/// to Arcium for off-chain computation.
+///
+/// # Arguments
+/// - `escrow_amount`: Total bid amount (lamports)
+/// - `encrypted_*`: Ciphertext components for bidder + bid
+/// - `nonce`: Unique encryption nonce
+///
+/// # Behavior
+/// - Supports bid top-ups (cannot decrease)
+/// - Escrow is tracked per (auction, bidder)
+/// - For FP/Vickrey: price = amount
+///
+/// # Effects
+/// - Transfers WSOL into escrow ATA
+/// - Queues encrypted computation
 pub fn place_bid(
     ctx: Context<PlaceBid>,
     computation_offset: u64,
@@ -414,6 +557,28 @@ pub fn place_encrypted_bid_callback(
     Ok(())
 }
 
+/// Creates a token-backed auction (SPL or NFT).
+///
+/// Transfers the prize tokens from the creator into a vault owned by the program,
+/// initializes the `Auction` account, and queues the encrypted state initialization
+/// via Arcium.
+///
+/// # Arguments
+/// - `auction_type`: Pricing mechanism (FirstPrice, Vickrey, Uniform, ProRata)
+/// - `asset_kind`: Fungible or NFT
+/// - `min_bid`: Minimum bid in lamports
+/// - `end_time`: Unix timestamp when auction ends
+/// - `sale_amount`: Total tokens being auctioned
+/// - `auction_metadata_uri`: Off-chain metadata (IPFS / HTTPS)
+///
+/// # Constraints
+/// - NFT must have `decimals == 0` and `sale_amount == 1`
+/// - Multi-winner auctions require `sale_amount >= 3`
+///
+/// # Effects
+/// - Moves tokens into `prize_vault`
+/// - Initializes auction state
+/// - Queues encrypted computation
 pub fn create_token_auction(
     ctx: Context<CreateTokenAuction>,
     computation_offset: u64,
@@ -526,6 +691,16 @@ ctx.accounts.auction.shared_vault = ctx.accounts.shared_vault.key();
     Ok(())
 }
 
+/// Creates a metadata-only auction (no token escrow).
+///
+/// Used for auctions where only metadata is sold (e.g. rights, off-chain assets).
+///
+/// # Constraints
+/// - Only supports single-winner auctions (FirstPrice, Vickrey)
+///
+/// # Effects
+/// - Initializes auction without token vault
+/// - Queues encrypted state initialization
 pub fn create_metadata_auction(
     ctx: Context<CreateMetadataAuction>,
     computation_offset: u64,
@@ -639,6 +814,14 @@ pub fn submit_encrypted_bid(
     Ok(())
 }
 
+/// Closes an auction manually.
+///
+/// # Requirements
+/// - Only authority
+/// - Auction must be open
+///
+/// # Effects
+/// - Sets status = Closed
 pub fn close_auction(ctx: Context<CloseAuction>) -> Result<()> {
     let auction = &mut ctx.accounts.auction;
 
@@ -655,6 +838,15 @@ pub fn close_auction(ctx: Context<CloseAuction>) -> Result<()> {
     Ok(())
 }
 
+
+/// Triggers winner computation for a First Price auction.
+///
+/// # Requirements
+/// - Auction must be ended
+/// - Auction must not be resolved
+///
+/// # Effects
+/// - Queues encrypted computation
 pub fn determine_winner_first_price(
     ctx: Context<DetermineWinnerFirstPrice>,
     computation_offset: u64,
@@ -697,6 +889,14 @@ pub fn determine_winner_first_price(
     Ok(())
 }
 
+/// Triggers winner computation for a Uniform auction.
+///
+/// Produces:
+/// - Top 3 winners
+/// - Clearing price
+///
+/// # Effects
+/// - Queues encrypted computation
 pub fn determine_winner_uniform(
     ctx: Context<DetermineWinnerUniform>,
     computation_offset: u64,
@@ -739,6 +939,7 @@ pub fn determine_winner_uniform(
     Ok(())
 }
 
+// DEPRECATED
 pub fn determine_winner_pro_rata(
     ctx: Context<DetermineWinnerProRata>,
     computation_offset: u64,
@@ -862,6 +1063,12 @@ pub fn determine_winner_first_price_callback(
     Ok(())
 }
 
+/// Triggers winner computation for a Vickrey auction.
+///
+/// Winner pays second-highest price.
+///
+/// # Effects
+/// - Queues encrypted computation
 pub fn determine_winner_vickrey(
     ctx: Context<DetermineWinnerVickrey>,
     computation_offset: u64,
@@ -1677,6 +1884,23 @@ pub struct EscrowAccount {
     pub deposited_amount: u64,
 }
 
+/// Finalizes payout for token/NFT auctions.
+///
+/// Handles:
+/// - Paying creator from escrow
+/// - Refunding excess to winner
+/// - Transferring prize tokens
+///
+/// # Behavior
+/// - FirstPrice: winner pays bid
+/// - Vickrey: winner pays second price
+/// - Uniform: multi-winner clearing price
+/// - ProRata: proportional distribution (Deprecated)
+///
+/// # Effects
+/// - Moves WSOL from escrow
+/// - Transfers prize tokens
+/// - Marks winners as paid
 pub fn finalize_token_winner_payout(ctx: Context<FinalizeTokenWinnerPayout>) -> Result<()> {
     let auction = &mut ctx.accounts.auction;
 
@@ -2034,7 +2258,13 @@ settle_token_escrow(
     Ok(())
 }
 
-
+/// Finalizes payout for metadata-only auctions.
+///
+/// Only transfers WSOL (no token payout).
+///
+/// # Effects
+/// - Pays creator
+/// - Refunds winner excess
 pub fn finalize_metadata_winner_payout(
     ctx: Context<FinalizeMetadataWinnerPayout>,
 ) -> Result<()> {
@@ -2117,9 +2347,15 @@ let signer_seeds: &[&[&[u8]]] = &[seeds];
 }
 
 
-
-
-
+/// Allows losing bidders to reclaim escrowed funds.
+///
+/// # Requirements
+/// - Auction must be ended
+/// - Caller must NOT be a winner
+///
+/// # Effects
+/// - Transfers WSOL back to bidder
+/// - Closes escrow account
 pub fn claim_refund(ctx: Context<ClaimRefund>) -> Result<()> {
     let auction = &ctx.accounts.auction;
 
@@ -2587,6 +2823,15 @@ emit!(MultiWinnerAuctionResolvedEvent {
     Ok(())
 }
 
+/// Allows creator to reclaim unsold tokens if no bids were placed.
+///
+/// # Requirements
+/// - Auction ended
+/// - `bid_count == 0`
+///
+/// # Effects
+/// - Transfers tokens back to creator
+/// - Closes auction
 pub fn reclaim_unsold_token_item(ctx: Context<ReclaimUnsoldTokenItem>) -> Result<()> {
     let auction = &mut ctx.accounts.auction;
 
@@ -3020,6 +3265,11 @@ fn require_settlement_allowed(auction: &Auction) -> Result<()> {
     Ok(())
 }
 
+/// Transfers funds from escrow:
+/// - Pays creator
+/// - Refunds winner remainder
+///
+/// Used during settlement.
 fn settle_token_escrow<'info>(
     escrow_token: &AccountInfo<'info>,
     creator_token: &AccountInfo<'info>,
@@ -3069,7 +3319,9 @@ fn settle_token_escrow<'info>(
     Ok(())
 }
 
-
+/// Transfers prize tokens from vault to winner.
+///
+/// Uses PDA signer (`vault_authority`).
 pub fn pay_winner<'info>(
     token_program: AccountInfo<'info>,
     mint: AccountInfo<'info>,
