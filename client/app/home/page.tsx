@@ -345,8 +345,8 @@ const scrollTo =
                       {item}
                     </div>
                     <div className="mt-3 text-sm leading-6 text-[var(--muted)] md:text-base">
-                      {index === 0 && "Launch your project with total protection from bots and MEV."}
-                      {index === 1 && "Auction and bid for NFTs, completely sealed - create your own or sell an existing one."}
+                      {index === 0 && "Launch a token to Raydium with absolute rug protection"}
+                      {index === 1 && "Auction and bid for NFTs, completely sealed - create your own or sell an existing one"}
                       {index === 2 && "Plug in with DAOs and Realms governance to propose treasury liquidations"}
                       {index === 3 && "Use the auction program directly inside your app or protocol with the SDK"}
                     </div>
