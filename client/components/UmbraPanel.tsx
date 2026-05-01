@@ -686,7 +686,7 @@ const result = await withdrawFn(destination, activeMint, amount);
 return (
   <div className="page-shell min-h-[100svh] px-4 py-6 md:px-8 lg:px-10">
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
-      {/* Hero / balance center */}
+
       <section className="surface-strong overflow-hidden p-6 md:p-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl space-y-3">

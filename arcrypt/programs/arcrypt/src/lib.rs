@@ -25,8 +25,7 @@
 //!
 //! ## Asset Types
 //!
-//! - Fungible tokens (SPL)
-//! - NFTs (1/1)
+//! - SPL (NFT or Token)
 //! - Metadata-only auctions (no token transfer)
 //!
 //! ## Arcium Integration
@@ -62,7 +61,7 @@
 //!    its internal shielded pool.
 //!
 //! 4. Re-encryption for Arcrypt  
-//!    Umbra re-encrypts the bid amount, this time targeting Arcrypt's MXE,
+//!    Umbra re-encrypts the bid amount, this time against Arcrypt's MXE,
 //!    producing a ciphertext that Arcrypt can process.
 //!
 //! 5. Temporary storage  
@@ -92,7 +91,7 @@
 //! - No plaintext token transfers occur during bidding
 //! - Settlement occurs only after winner determination
 //!
-//! ## High-Level Flow
+//! ## High-Level
 //!
 //! 1. Create auction (optionally escrowing assets)
 //! 2. Submit encrypted bids (directly or via Umbra CPI)
@@ -102,14 +101,13 @@
 //!
 //! ## Notes
 //!
-//! - Correct encryption inputs are assumed from clients and CPI callers
-//! - Nonces must be unique per bid
-//! - Multi-winner auctions require sufficient supply
+//! - Nonces must be unique per bid per user per auction
+//! - Multi-winner auctions limited to n=3 for hackathon purposes.
 //!
 //! ---
 //!
 //! Arcrypt combines on-chain guarantees with off-chain secure computation
-//! to enable fully private, trust-minimized auction mechanisms on Solana. This makes Arcrypt the ultimate
+//! to enable fully private, trust-minimised auction mechanisms on Solana. This makes Arcrypt the ultimate
 //! auction platform on any blockchain, and the first *truly* sealed one. 
 
 use anchor_lang::prelude::*;
@@ -138,7 +136,6 @@ const COMP_DEF_OFFSET_DETERMINE_WINNER_PRO_RATA: u32 =
     comp_def_offset("determine_winner_pro_rata");
 const COMP_DEF_OFFSET_PLACE_ENCRYPTED_BID: u32 =
     comp_def_offset("place_encrypted_bid");
-
 
 
 declare_id!("JEJdjPBaWAteXajrhpEJCWcgUci3QUCJbCvEJxwM9ZYq");
@@ -173,8 +170,6 @@ pub enum AssetKind {
 pub mod arcrypt {
     use super::*;
 
-
-
     pub fn init_auction_state_comp_def(ctx: Context<InitAuctionStateCompDef>) -> Result<()> {
         init_comp_def(
             ctx.accounts,
@@ -187,6 +182,7 @@ pub mod arcrypt {
         Ok(())
     }
 
+    // legacy. encrypts amounts but not the token balances
     pub fn init_place_bid_comp_def(ctx: Context<InitPlaceBidCompDef>) -> Result<()> {
         init_comp_def(
             ctx.accounts,
@@ -199,6 +195,7 @@ pub mod arcrypt {
         Ok(())
     }
 
+    // used with umbra escrow method
     pub fn init_place_encrypted_bid_comp_def(
         ctx: Context<InitPlaceEncryptedBidCompDef>,
     ) -> Result<()> {
@@ -1976,7 +1973,7 @@ require!(
             let payment_amount = auction.payment_amount;
             let sale_amount = auction.sale_amount;
 
-let auction_key = auction.key(); // 👈 store it
+let auction_key = auction.key(); 
 
 let seeds = &[
     b"escrow",
@@ -2032,7 +2029,7 @@ settle_token_escrow(
             let payment_amount = auction.payment_amount;
             let sale_amount = auction.sale_amount;
 
-let auction_key = auction.key(); // 👈 store it
+let auction_key = auction.key(); 
 
 let seeds = &[
     b"escrow",
@@ -2340,7 +2337,7 @@ pub fn finalize_metadata_winner_payout(
             require!(!auction.winner_paid, ErrorCode::AuctionAlreadySettled);
 
             let payment_amount = auction.payment_amount;
-let auction_key = auction.key(); // 👈 store it
+let auction_key = auction.key(); 
 
 let seeds = &[
     b"escrow",
@@ -2421,7 +2418,7 @@ require!(
 );
 require!(amount > 0, ErrorCode::NoFundsInEscrow);
 
-let auction_key = auction.key(); // 👈 store it
+let auction_key = auction.key();
 
 let seeds = &[
     b"escrow",
@@ -3188,7 +3185,7 @@ pub struct MultiWinnerAuctionResolvedEvent {
     pub auction_type: AuctionType,
     pub winners: [[u8; 32]; 3],
     pub winner_bids: [u64; 3],   // amounts
-    pub winner_prices: [u64; 3], // ✅ ADD THIS
+    pub winner_prices: [u64; 3],  
     pub clearing_price: u64,
     pub total_bid: u64,
 }
@@ -3449,5 +3446,5 @@ pub struct PendingEncryptedBid {
     pub nonce: u128,
     pub encrypted_amount: [u8; 32],
     pub consumed: bool,
-    pub encrypted_price: [u8; 32], // NEW
+    pub encrypted_price: [u8; 32], 
 }

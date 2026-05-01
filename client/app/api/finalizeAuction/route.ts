@@ -71,7 +71,7 @@ export async function POST(req: Request) {
     );
 
     // -----------------------------
-    // 🧱 1. BUILD SETTLEMENT TX
+    // BUILD SETTLEMENT TX
     // -----------------------------
     const settlementBundle = await createSettlement({
       programClient: program,
@@ -114,7 +114,7 @@ if (!alreadySettled) {
 
 
     // -----------------------------
-    // 🏊 2. ONLY CREATOR → ADD RAYDIUM
+    // ONLY CREATOR → ADD RAYDIUM
     // -----------------------------
     if (isCreator) {
       if (!tokenMint || !wsolAmount || !tokenAmount) {
@@ -192,7 +192,7 @@ if (!alreadySettled) {
     }
 
     // -----------------------------
-// 🏁 3. MARK POOL CREATED (CREATOR ONLY)
+//  3. MARK POOL CREATED (CREATOR ONLY)
 // -----------------------------
 if (isCreator) {
   const ix = await program.methods

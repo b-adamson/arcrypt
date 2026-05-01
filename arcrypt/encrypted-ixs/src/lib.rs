@@ -20,7 +20,7 @@
 //! - `amount`: total funds committed (escrow backing)
 //! - `price`: bid price used for ranking. NOTE: price === amount as enforced by anchor in single winner auctions
 //!
-//! In uniform auctions, we use a price sorting method. ONLY 3 WINNERS SUPPORTED FOR UNIFORM, EASILY EXPANDABLE, FOR DEMO PURPOSES 
+//! In uniform auctions, we use a price sorting method. ONLY 3 WINNERS SUPPORTED FOR UNIFORM, EXPANDABLE, FOR DEMO PURPOSES 
 //!
 //! ## Supported Auction Logic
 //!
@@ -44,6 +44,8 @@ use arcis::*;
 #[encrypted]
 mod circuits {
     use arcis::*;
+
+    const TOP_N: usize = 3;
 
     pub struct Bid {
         pub bidder: SerializedSolanaPublicKey,
@@ -69,6 +71,7 @@ mod circuits {
         pub second_highest: Bid,
         pub third_highest: Bid,
         pub bid_count: u16,
+        pub top_bids: [Bid; TOP_N],
     }
 
     /// Result for single-winner auctions (FirstPrice, Vickrey).
@@ -164,7 +167,7 @@ mod circuits {
         let bid = bid_ctxt.to_arcis();
         let mut state = state_ctxt.to_arcis();
 
-        // 🔥 RANK BY PRICE (NOT AMOUNT)
+        // RANK BY PRICE (NOT AMOUNT)
         if bid.price > state.highest.price {
             state.third_highest = state.second_highest;
             state.second_highest = state.highest;
@@ -209,7 +212,7 @@ mod circuits {
 
         let bid = Bid { bidder, amount, price };
 
-        // 🔥 RANK BY PRICE
+        // RANK BY PRICE
         if bid.price > state.highest.price {
             state.third_highest = state.second_highest;
             state.second_highest = state.highest;

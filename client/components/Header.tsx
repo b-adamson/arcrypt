@@ -72,19 +72,19 @@ export default function Header() {
         Home
       </Link>
 
-      {/* 🔥 PRIMARY CTA */}
+
       <Link
         href="/auction"
         className="relative px-4 py-2 text-black bg-[var(--accent)] font-bold tracking-wide border border-[var(--accent)] overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-[0_0_18px_var(--accent)]"
       >
-        <span className="relative z-10">Create auction</span>
+        <span className="relative z-10">Create project</span>
 
-        {/* glow layer */}
+
         <span className="absolute inset-0 opacity-0 hover:opacity-100 transition duration-300 bg-[radial-gradient(circle_at_center,var(--accent)_0%,transparent_70%)] blur-md"></span>
       </Link>
 
       <Link href="/market" className="text-[var(--foreground)]/80 hover:text-white transition">
-        View auctions
+        View projects
       </Link>
 
       <Link href="/profile" className="text-[var(--foreground)]/80 hover:text-white transition">
@@ -106,7 +106,7 @@ export default function Header() {
       </Link>
     </nav>
 
-    {/* Wallet */}
+
     <div className="scale-95 brightness-110">
       <WalletSection />
     </div>

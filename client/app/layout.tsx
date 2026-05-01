@@ -21,7 +21,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const isHomePage = pathname === "/home"; // or "/" if needed
+  const isHomePage = pathname === "/home"; 
 
   return (
     <html lang="en" className={interTight.className}>

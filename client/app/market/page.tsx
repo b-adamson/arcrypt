@@ -397,7 +397,7 @@ export default function MarketPage() {
                 Market
               </div>
               <h1 className="mt-3 text-3xl font-semibold tracking-tight md:text-4xl text-[var(--foreground)]">
-                All auctions
+                All projects
               </h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">
                 Browse live and historical auctions from anyone.

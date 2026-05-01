@@ -37,17 +37,16 @@ export default function DocsPage() {
     The highest bidder is incentivised to pay what your asset is truly worth.
   </strong>
 
-  {"\n\n"}<strong className="text-[var(--foreground)]">
-    NFTs launched on the arcrypt marktplace go directly to the highest bidder.
-  </strong> <strong className="text-[var(--foreground)]">
-    Tokens launched on arcrypt go through a uniform FDV based auciton, and the bids generate liquidity for an automatically generated Raydium swap pool once the auction closes.
+  {"\n\n"}
+    NFTs launched on the Arcrypt marktplace go directly to the highest bidder. <strong className="text-[var(--foreground)]">
+     Tokens launched on Arcrypt go through a uniform FDV based auciton, and the bids generate liquidity for an automatically generated Raydium swap pool once the auction closes.
   </strong> <strong className="text-[var(--foreground)]">
     This enables token launches in just a few clicks with 100% resistance to rug pulls.
   </strong>
 
   {"\n\n"}ARCRYPT leverages state of the art cryptography and MPC technology to keep your money entirely hidden from the chain.{" "}
   <strong className="text-[var(--foreground)]">
-    Not only do we hide your bid, we hide the account that holds your bid - using CPI calls with the Umbra program. This makes it the first truly sealed auction platform made with Arcium.
+    Not only do we encrypt your bid, we hide the account that holds your bid - using CPI calls with the Umbra program. This makes it the first truly sealed auction platform made with Arcium.
   </strong>
 
   {"\n\n"}Selling assets is harder than it looks. OTC deals rely on negotiation and often do not result in the best price. Public auctions expose bids in real time, inviting bots, MEV, and front-running that distort true price discovery.

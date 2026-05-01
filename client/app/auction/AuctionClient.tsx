@@ -115,15 +115,6 @@ export default function AuctionClient() {
       nativeTreasury: string;
       tokenAccounts: TreasuryAccountRow[];
     };
-    // ATA dropdown
-    type AtaRow = {
-      pubkey: string;
-      mint: string;
-      owner: string;
-      amount: string;
-      decimals: number;
-      uiAmountString: string;
-    };
 
     const wallet = useWallet();
 // const { publicKey, connected, signAllTransactions } = wallet;
@@ -180,7 +171,7 @@ function handleAssetKindChange(nextKind: AssetKind) {
   setAssetKind(nextKind);
 
   if (nextKind === "Fungible") {
-    setAuctionType("Uniform"); // ✅ force default
+    setAuctionType("Uniform");
   } else {
     setAuctionType((current) =>
       normalizeAuctionType(nextKind, current)
@@ -437,14 +428,6 @@ if (!finalMetadataUri) {
         setStatus("Governance proposal failed: " + (err?.message ?? String(err)));
       }
     }
-      // async function callMakeAuction(authorityBase58: string) {
-      //   const res = await fetch("/api/makeAuction", {
-      //     method: "POST",
-      //     headers: { "Content-Type": "application/json" },
-      //     body: JSON.stringify({ authority: authorityBase58 }),
-      //   });
-      //   return res.json();
-      // }
     
       type PinMetadataResponse = {
       imageCid: string | null;
@@ -570,11 +553,10 @@ async function handleMakeAuction(
   return (
 <main className="px-6 py-10">
 
-  {/* 🔥 FIXED POSITIONED / FULL WIDTH WRAPPER */}
+
   <div className="mb-10 flex justify-center">
     <div className="w-full max-w-[400px]">
-      
-      {/* TOGGLE */}
+
       <div className="inline-flex relative w-full p-1 rounded-full border border-white/10 bg-white/[0.03] backdrop-blur-xl">
         
         <div
@@ -607,7 +589,7 @@ async function handleMakeAuction(
     </div>
   </div>
 
-  {/* 👇 NOW your content container */}
+
   <div
     className={`
       w-full mx-auto

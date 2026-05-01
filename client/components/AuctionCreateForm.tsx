@@ -33,8 +33,6 @@ type TokenOption = {
 const METADATA_PROGRAM_ID = new PublicKeyCtor("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL ?? "https://api.devnet.solana.com";
 
-// const umi = createUmi(RPC_URL).use(mplTokenMetadata());
-
 const tokenMetadataCache = new Map<string, TokenOption>();
 const tokenMetadataInFlight = new Map<string, Promise<TokenOption>>();
 
@@ -150,7 +148,7 @@ onSubmit: (
     mint: string;
     sourceAta?: string;
   }
-) => Promise<void>; // 👈 IMPORTANT
+) => Promise<void>;
 };
 
 function Field({
@@ -456,7 +454,7 @@ localStorage.setItem("userReserve", String(userReserve));
 
     setIsProcessing(true);
 
-    // ✅ Upload metadata FIRST (same as NFT)
+
     const formData = new FormData();
     formData.append("name", metadataName.trim());
     formData.append("description", metadataDescription.trim());
@@ -478,7 +476,7 @@ localStorage.setItem("userReserve", String(userReserve));
 
     metadataUri = json.metadataUri;
 
-    // ✅ Mint token
+
 const { mint, ownerAta } = await mintToken(
   connection,
   wallet.adapter,

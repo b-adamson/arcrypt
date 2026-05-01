@@ -137,7 +137,7 @@ function AuctionCard({ item }: { item: AuctionSummary }) {
   </div>
 </div>
 
-          {/* DESCRIPTION */}
+
           <p
             className="mt-4 text-sm leading-6 text-[var(--muted)]"
             style={{
@@ -150,7 +150,7 @@ function AuctionCard({ item }: { item: AuctionSummary }) {
             {item.description || "No description available."}
           </p>
 
-          {/* DETAILS */}
+    
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             {!isMetadataOnly && (
               <Field
@@ -174,7 +174,7 @@ function AuctionCard({ item }: { item: AuctionSummary }) {
             />
           </div>
 
-          {/* ERROR */}
+   
           {item.error && (
             <div className="mt-4 border border-[var(--accent)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--accent)]">
               {item.error}
