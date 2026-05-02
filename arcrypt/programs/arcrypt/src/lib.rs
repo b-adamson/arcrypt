@@ -444,7 +444,7 @@ token_interface::transfer_checked(
             auction.auction_type,
             AuctionType::FirstPrice | AuctionType::Vickrey
         ) {
-            encrypted_amount // 👈 copy amount → price
+            encrypted_amount 
         } else {
             encrypted_price
         };
@@ -2348,7 +2348,6 @@ let seeds = &[
 
 let signer_seeds: &[&[&[u8]]] = &[seeds];
 
-            // ✅ THIS is the important part
             settle_token_escrow(
                 &ctx.accounts.escrow_token_account.to_account_info(),
                 &ctx.accounts.creator_wsol_ata.to_account_info(),
@@ -2727,7 +2726,7 @@ pub fn determine_winner_uniform_callback(
     auction.status = AuctionStatus::Resolved;
     auction.winners = [winner1_pk, winner2_pk, winner3_pk];
 auction.winner_bids = [
-    winner1_bid.field_1, // amount ✅
+    winner1_bid.field_1, 
     winner2_bid.field_1,
     winner3_bid.field_1,
 ];
@@ -3076,7 +3075,6 @@ pub struct FinalizeTokenWinnerPayout<'info> {
     )]
     pub winner_escrow: Box<Account<'info, EscrowAccount>>,
 
-    // 🔥 HEAVY → BOX
     pub prize_mint: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
@@ -3184,7 +3182,7 @@ pub struct MultiWinnerAuctionResolvedEvent {
     pub auction: Pubkey,
     pub auction_type: AuctionType,
     pub winners: [[u8; 32]; 3],
-    pub winner_bids: [u64; 3],   // amounts
+    pub winner_bids: [u64; 3],   
     pub winner_prices: [u64; 3],  
     pub clearing_price: u64,
     pub total_bid: u64,
