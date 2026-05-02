@@ -119,52 +119,48 @@ export default function BidPageClient({ auctionPk }: { auctionPk: string | null 
   const [programClient, setProgramClient] = useState<any | null>(null);
   const [readOnlyProgram, setReadOnlyProgram] = useState<any | null>(null);
   const [status, setStatus] = useState<string | null>(null);
-const [bidAmountSol, setBidAmountSol] = useState("1");
-const [bidPriceSol, setBidPriceSol] = useState("1"); // NEW
+  const [bidTokens, setBidTokens] = useState("1");
+  const [bidPriceSol, setBidPriceSol] = useState("1");
+  const [bidAmountSolInput, setBidAmountSolInput] = useState("1"); // for FP/Vickrey
+
+const derivedAmountSol =
+  Number(bidTokens || 0) * Number(bidPriceSol || 0);
+
   const [bidNonceHex, setBidNonceHex] = useState<string | null>(null);
   const [auctionData, setAuctionData] = useState<any | null>(null);
   const [auctionEnded, setAuctionEnded] = useState(false);
   const [tokenDecimals, setTokenDecimals] = useState<number | null>(null);
   const refreshedAtZeroRef = useRef(false);
-
   const [umbraClient, setUmbraClient] = useState<any | null>(null);
   const [umbraReady, setUmbraReady] = useState(false);
   const [umbraStatus, setUmbraStatus] = useState<string>("Not set up");
   const [escrowExists, setEscrowExists] = useState<boolean | null>(null);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
-
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const walletBase58 = publicKey?.toBase58() ?? "";
-
-const [txSigs, setTxSigs] = useState<string[]>([]);
+  const [txSigs, setTxSigs] = useState<string[]>([]);
   const auctionStatus = auctionData ? enumKey(auctionData.status).toLowerCase() : "";
-  const isOpen = auctionStatus === "open";
   const isResolved = auctionStatus === "resolved";
-
   const winnerNow = auctionData && publicKey ? isWinnerOfAuction(auctionData, walletBase58) : false;
-
   const winnerClaimed = auctionData && publicKey ? isWinnerClaimed(auctionData, walletBase58) : false;
-
-  const metadataOnly = auctionData ? isMetadataAuction(auctionData) : false;
-
   const showWinConfetti = auctionData && isResolved && winnerNow;
-
   const isCreator = auctionData && publicKey ? new PublicKey(auctionData.authority).equals(publicKey) : false;
-
   const auctionType = auctionData ? getAuctionType(auctionData) : "";
-
   const resolvedWinnerKeys = auctionData ? getResolvedWinnerKeys(auctionData) : [];
   const resolvedWinnerBase58 = resolvedWinnerKeys[0] ?? null;
-
   const bidCount = auctionData ? getBidCount(auctionData) : 0;
   const hasNoBids = auctionData ? bidCount === 0 : false;
 
   const canDetermineWinner =
-  !!auctionData &&
-  auctionEnded &&
-  auctionStatus === "closed" &&
-  !hasNoBids;
+    !!auctionData &&
+    auctionEnded &&
+    auctionStatus === "closed" &&
+    !hasNoBids;
+
+  const bidAmountSol =
+    auctionType === "uniform"
+      ? derivedAmountSol.toString()
+      : bidAmountSolInput;
 
   const canReclaimUnsold = !!auctionData && auctionEnded && !isResolved && isCreator && hasNoBids;
 
@@ -496,7 +492,7 @@ body: JSON.stringify({
       const program = programClient;
       assertProviderReady(program);
 
-      const finalPrice =
+const finalPrice =
   auctionType === "uniform"
     ? bidPriceSol
     : bidAmountSol;
@@ -505,7 +501,7 @@ const srv = await callPlaceBid(
   auctionPkStr,
   publicKey.toBase58(),
   bidAmountSol,
-  finalPrice, // NEW
+  finalPrice, 
   bidNonceHex ?? null
 );
 
@@ -660,21 +656,17 @@ if (!json.txs || json.txs.length === 0) {
   return;
 }
 
-// ✅ ONE shared blockhash
 const { blockhash } = await connection.getLatestBlockhash();
 
 for (const tx of txs) {
   tx.message.recentBlockhash = blockhash;
 }
 
-// ✅ ONE SIGN PROMPT
 const signedTxs = await adapter.signAllTransactions(txs);
 
 const sigs: string[] = [];
 
 
-
-// ✅ SEND IN ORDER
 let settlementSucceeded = false;
 
 for (let i = 0; i < signedTxs.length; i++) {
@@ -689,7 +681,7 @@ for (let i = 0; i < signedTxs.length; i++) {
 
     if (i === 0) {
       settlementSucceeded = true;
-      setStatus("✅ SOL claimed successfully...");
+      setStatus("SOL claimed successfully...");
     }
 
   } catch (err: any) {
@@ -697,14 +689,14 @@ for (let i = 0; i < signedTxs.length; i++) {
 
     const msg = err?.message || "";
 
-    // 🔥 Detect insufficient liquidity error
+
     if (msg.includes("insufficient lamports")) {
         setStatus(
-          "✅ Bid rewards claimed. ❌ Not enough liquidity to create pool."
+          "Bid rewards claimed. Not enough liquidity to create pool."
         );
     } else {
       setStatus(
-        "❌ Transaction failed: " + msg
+        "Transaction failed: " + msg
       );
     }
 
@@ -714,7 +706,7 @@ for (let i = 0; i < signedTxs.length; i++) {
 
 setTxSigs(sigs);
 
-// ✅ OPTIMISTIC UI UPDATE
+
 setAuctionData((prev: any) =>
   prev
     ? {
@@ -724,7 +716,7 @@ setAuctionData((prev: any) =>
     : prev
 );
 
-// ✅ proper status
+
 setStatus("All done: " + sigs.join(", "));
 
   } catch (err: any) {
@@ -760,20 +752,20 @@ setStatus("All done: " + sigs.join(", "));
       const tx = Transaction.from(Buffer.from(srv.txBase64, "base64"));
 
       setStatus("Signing and sending settlement tx...");
-const sig = await safeSendTx(program, tx);
+    const sig = await safeSendTx(program, tx);
 
-setStatus(
-  sig === "already-processed"
-    ? "Settlement already processed"
-    : "Settlement tx sent: " + sig
-);
+    setStatus(
+      sig === "already-processed"
+        ? "Settlement already processed"
+        : "Settlement tx sent: " + sig
+    );
 
-await refreshAuctionState();
-    } catch (err: any) {
-      console.error("Settlement failed:", err);
-      setStatus("Settlement failed: " + (err?.message ?? String(err)));
-    }
-  }
+    await refreshAuctionState();
+        } catch (err: any) {
+          console.error("Settlement failed:", err);
+          setStatus("Settlement failed: " + (err?.message ?? String(err)));
+        }
+      }
 
   async function handleDetermineWinner(which: "first" | "vickrey" | "uniform") {
     setStatus("Preparing determine winner...");
@@ -818,10 +810,10 @@ await refreshAuctionState();
   }
 
   const isBidDisabled =
-  !connected ||
-  !auctionPkStr ||
-  auctionEnded ||
-  isSubmitting;
+    !connected ||
+    !auctionPkStr ||
+    auctionEnded ||
+    isSubmitting;
 
   return (
     <main className="page-shell min-h-screen px-5 py-5 md:px-8 md:py-8">
@@ -904,14 +896,21 @@ await refreshAuctionState();
 
         <div className="mt-6">
 <AuctionBidForm
-  bidAmountSol={bidAmountSol}
+  auctionType={auctionType}
+
+  // uniform
+  bidTokens={bidTokens}
+  bidPriceSol={bidPriceSol}
+  onBidTokensChange={setBidTokens}
+  onBidPriceSolChange={setBidPriceSol}
+
+  // single winner
+  bidAmountSol={bidAmountSolInput}
+  onBidAmountSolChange={setBidAmountSolInput}
+
   disabled={isBidDisabled}
   isSubmitting={isSubmitting}
-    bidPriceSol={bidPriceSol}
-  auctionType={auctionType}
   auctionEnded={auctionEnded}
-  onBidAmountSolChange={setBidAmountSol}
-  onBidPriceSolChange={setBidPriceSol} 
   onSubmit={handlePlaceBid}
 />
         </div>

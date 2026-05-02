@@ -21,33 +21,35 @@ It supports:
 * Vickrey (second-price) auctions
 * Uniform-price auctions for multi-winner sales (up to 3 winners)
 **Launching a token to Raydium once the auction ends for instant swaps**
-* Launching an NFT
+* Launching an NFT (Possibly pending deprecation)
 * DAO treasury auctions through proposal instructions
 
 ## How it works
 
-ARCRYPT combines three pieces:
+ARCRYPT combines four pieces:
 
 * **Solana program**: stores auction state and handles settlement
+* **Cross Program Invocation with UMBRA Solana program**: Locks encrypted bids as escrows in the UMBRA shielded pool
 * **Arcium confidential compute**: evaluates encrypted bids without exposing them
-* **Client app + SDK**: creates auctions, places bids, securely escrows funds, and settles winners
+* **Client app + SDK**: creates auctions, places bids, securely escrows funds, settles winners and creates the Raydium pool at settlement.
 
-Broadly speaking,
+## **Procedure**
 
-1. A seller creates an auction.
-2. Bidders place encrypted bids.
-3. Funds are escrowed securely within the UMBRA shielded pool.
-4. Arcium computes the winner privately.
-5. The program settles the auction on-chain.
+1. A seller creates a project which mints a token and creates an auction through Arcrypt.
+2. Bidders place encrypted bids from their personal encrypted balance (See below).
+3. Funds are escrowed securely within the UMBRA shielded pool (See below).
+4. Off-chain worker calls Arcium to determine the winner and reveal it publicly.
+5. To claim their rewards, the auction creator clicks "Settle" on the dashboard, releasing the tokens to the Raydium DEX seeded at the clearing price.
+6. Losers reclaim their bids.
 
 Under the hood, when submitting a bid:
 
-1. The client generates an encrypted token account and funds it with wSOL.
-2. The bidder encrypts their bid using Umbra’s MXE and submits it to Arcrypt.
+1. The client generates an encrypted token account and funds it with wSOL using the dashboard.
+2. The bid client encrypts their bid using Umbra’s MXE and submits it to Arcrypt.
 3. Arcrypt performs a CPI into Umbra, passing the encrypted token account and bid amount.
 4. Umbra decrypts the bid inside its own Arcium MXE and allocates the corresponding funds into its shielded pool.
-5. Umbra re-encrypts the bid for Arcrypt’s MXE and returns the ciphertext.
-6. Arcrypt stores the encrypted bid in a temporary on-chain account.
+5. Umbra re-encrypts the bid for Arcrypt’s MXE and CPIs back to Arcrypt with the ciphertext via `submit_encrypted_bid`.
+6. `submit_encrypted_bid` stores the encrypted bid in a temporary on-chain account seeded by random nonce (to resolve double bids from same user).
 7. A crank calls `place_encrypted_bid`, feeding the ciphertext into Arcium MPC to update the encrypted auction state.
 8. At all times, funds remain encrypted and program-controlled, ensuring fully confidential escrow with no plaintext balances on-chain.
 
@@ -175,9 +177,9 @@ ARCRYPT supports multiple auction styles:
 
 ARCRYPT supports:
 
-* **Fungible**: token sales
-* **NFT**: single-item sales
-* **MetadataOnly**: auctions without token transfer, useful for rights, access, or off-chain deliverables
+* **Fungible**: token sales (routes through Uniform mode by default)
+* **NFT**: single-item sales (routes through FirstPrice mode by default) (Potentially pending deprecation)
+* **MetadataOnly**: auctions without token transfer, useful for rights/access or proofs (Potentially pending deprecation)
 
 ## Developer workflow overview
 
@@ -192,6 +194,8 @@ The on-chain program is built around a few core steps:
 The Rust program uses Arcium compute definitions and callbacks to keep bid values encrypted while still resolving the auction correctly.
 
 ## Example SDK usage
+
+The arcrypt.bid website uses the arcrypt sdk extensively to make auctions. 
 
 ```ts
 import { PublicKey } from "@solana/web3.js";

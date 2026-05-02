@@ -1,6 +1,6 @@
-//! # Arcrypt Circuits (Arcis / Arcium)
+//! # Arcrypt Circuits in Arcis
 //!
-//! This module defines the **encrypted auction logic** for Arcrypt using Arcis.
+//! This module defines the encrypted auction logic for Arcrypt using Arcis.
 //!
 //! These circuits operate on encrypted data and are executed via the Arcium
 //! secure computation network. They are responsible for:
@@ -11,27 +11,30 @@
 //!
 //! ## Privacy Model
 //!
-//! - All bids (`amount`, `price`, `bidder`) are encrypted before computation
-//! - State is stored as ciphertext (`Enc<Mxe, AuctionState>`)
+//! - All bids (`amount`, `price`) are encrypted before computation
+//! - Identity for uniform auctions is represented via `bidder_id` (plaintext index)
+//! - State is stored as ciphertext (`Enc<Mxe, ...>`)
 //! - Only final outputs (winner, price, allocation) are revealed
 //!
-//! ## Key Concepts
+//! ## Meaning of related terms
 //!
 //! - `amount`: total funds committed (escrow backing)
-//! - `price`: bid price used for ranking. NOTE: price === amount as enforced by anchor in single winner auctions
+//! - `price`: bid price used for ranking
+//! - `quantity`: derived as `amount / price` (integer division)
 //!
-//! In uniform auctions, we use a price sorting method. ONLY 3 WINNERS SUPPORTED FOR UNIFORM, EXPANDABLE, FOR DEMO PURPOSES 
+//! Uniform auctions operate on a fixed-size encrypted bid book (`Pack`),
+//! while single-winner auctions rely on top-2 tracking to prevent unneccessary extra arcis circuits. 
 //!
-//! ## Supported Auction Logic
+//! ## Supported Auction Types
 //!
 //! - First Price
 //! - Vickrey (Second Price)
-//! - Uniform Price (top 3, shared clearing price)
-//! - Pro Rata (allocation proportional to bid amounts)
+//! - Uniform Price (top N, shared clearing price)
+//! - Pro rata is deprecated
 //!
 //! ## Execution
 //!
-//! 1. Initialize encrypted auction state
+//! 1. Initialize encrypted auction state and bid book
 //! 2. Submit encrypted bids
 //! 3. Update encrypted state via `place_bid` / `place_encrypted_bid`
 //! 4. Run winner determination circuits
@@ -45,253 +48,253 @@ use arcis::*;
 mod circuits {
     use arcis::*;
 
-    const TOP_N: usize = 3;
+    const MAX_BIDS: usize = 3;
+    const FLAT_SIZE: usize = MAX_BIDS * 3;
 
+    /// Packed bid book:
+    /// [price, amount, bidder_id] repeated MAX_BIDS times
+    ///
+    /// Pack must be a top-level encrypted type and cannot be nested inside structs.
+    pub type BidBook = Pack<[u64; FLAT_SIZE]>;
+
+    /// Value for unused slots
+    pub const EMPTY_BIDDER_ID: u64 = u64::MAX;
+
+    // -------------------------
+    // BID (USED ONLY FOR FP / VICKREY)
+    // -------------------------
     pub struct Bid {
         pub bidder: SerializedSolanaPublicKey,
         pub amount: u64,
-        pub price: u64, // NEW
+        pub price: u64,
     }
 
-    /// Encrypted auction state tracked across all bids.
-    ///
-    /// Maintains the top 3 bids ranked by `price`.
-    ///
-    /// # Fields
-    /// - `highest`: best bid
-    /// - `second_highest`: second-best bid
-    /// - `third_highest`: third-best bid
-    /// - `bid_count`: total number of bids processed
-    ///
-    /// # Notes
-    /// - Only top 3 bids are tracked for efficiency
-    /// - Used for all auction types
+    // -------------------------
+    // STATE (TOP-2 ONLY)
+    // -------------------------
     pub struct AuctionState {
         pub highest: Bid,
         pub second_highest: Bid,
-        pub third_highest: Bid,
         pub bid_count: u16,
-        pub top_bids: [Bid; TOP_N],
     }
 
-    /// Result for single-winner auctions (FirstPrice, Vickrey).
-    ///
-    /// # Fields
-    /// - `winner`: winning bidder
-    /// - `payment_amount`: amount to be paid
+    // -------------------------
+    // RESULT (FP / VICKREY)
+    // -------------------------
     pub struct AuctionResult {
         pub winner: SerializedSolanaPublicKey,
         pub payment_amount: u64,
     }
 
-    /// Result for Uniform Price auctions.
-    ///
-    /// # Fields
-    /// - `winner1`, `winner2`, `winner3`: top 3 bidders
-    /// - `clearing_price`: price paid by all winners
-    ///
-    /// # Notes
-    /// - Clearing price = 3rd highest bid price
-    pub struct UniformAuctionResult {
-        pub winner1: Bid,
-        pub winner2: Bid,
-        pub winner3: Bid,
-        pub clearing_price: u64,
+    // -------------------------
+    // SORTING NETWORK (N = 3)
+    // -------------------------
+    // Deterministic sorting network required (no dynamic loops / branching).
+    fn compare_swap(flat: &mut [u64; FLAT_SIZE], i: usize, j: usize) {
+        let pi = 3 * i;
+        let pj = 3 * j;
+
+        if flat[pi] < flat[pj] {
+            flat.swap(pi, pj);
+            flat.swap(pi + 1, pj + 1);
+            flat.swap(pi + 2, pj + 2);
+        }
     }
 
-    /// Result for Pro Rata auctions.
-    ///
-    /// # Fields
-    /// - `winner1`, `winner2`, `winner3`: top bidders
-    /// - `total_bid`: sum of all winning bid amounts
-    ///
-    /// # Notes
-    /// - Used to compute proportional allocation off-chain/on-chain
-    pub struct ProRataAuctionResult {
-        pub winner1: Bid,
-        pub winner2: Bid,
-        pub winner3: Bid,
-        pub total_bid: u64,
+    fn sort3(flat: &mut [u64; FLAT_SIZE]) {
+        compare_swap(flat, 0, 1);
+        compare_swap(flat, 1, 2);
+        compare_swap(flat, 0, 1);
     }
 
-    /// Initializes encrypted auction state.
-    ///
-    /// # Returns
-    /// - Empty `AuctionState` with zeroed bids
-    ///
-    /// # Effects
-    /// - Sets initial ciphertext state for the auction
+    // -------------------------
+    // INIT
+    // -------------------------
     #[instruction]
-    pub fn init_auction_state() -> Enc<Mxe, AuctionState> {
-        let initial_state = AuctionState {
-            highest: Bid {
-                bidder: SerializedSolanaPublicKey { lo: 0, hi: 0 },
-                amount: 0,
-                price: 0,
-            },
-            second_highest: Bid {
-                bidder: SerializedSolanaPublicKey { lo: 0, hi: 0 },
-                amount: 0,
-                price: 0,
-            },
-            third_highest: Bid {
-                bidder: SerializedSolanaPublicKey { lo: 0, hi: 0 },
-                amount: 0,
-                price: 0,
-            },
-            bid_count: 0,
-        };
-        Mxe::get().from_arcis(initial_state)
-    }
+    pub fn init_auction() -> (Enc<Mxe, AuctionState>, Enc<Mxe, BidBook>) {
+        let mut flat = [0u64; FLAT_SIZE];
 
-    /// Updates auction state with a new encrypted bid.
-    ///
-    /// # Arguments
-    /// - `bid_ctxt`: encrypted bid (Shared context)
-    /// - `state_ctxt`: current encrypted auction state
-    ///
-    /// # Behavior
-    /// - Inserts bid into top 3 ranking
-    /// - Ranking is based on `price`
-    /// - Shifts existing bids down as needed
-    ///
-    /// # Effects
-    /// - Increments `bid_count`
-    /// - Updates encrypted state
-    /// Will eventually made legacy in favour of umbra invoked bids (See place_encrypted_bid)
-    #[instruction]
-    pub fn place_bid(
-        bid_ctxt: Enc<Shared, Bid>,
-        state_ctxt: Enc<Mxe, AuctionState>,
-    ) -> Enc<Mxe, AuctionState> {
-        let bid = bid_ctxt.to_arcis();
-        let mut state = state_ctxt.to_arcis();
-
-        // RANK BY PRICE (NOT AMOUNT)
-        if bid.price > state.highest.price {
-            state.third_highest = state.second_highest;
-            state.second_highest = state.highest;
-            state.highest = bid;
-        } else if bid.price > state.second_highest.price {
-            state.third_highest = state.second_highest;
-            state.second_highest = bid;
-        } else if bid.price > state.third_highest.price {
-            state.third_highest = bid;
+        for i in 0..MAX_BIDS {
+            flat[3 * i + 2] = EMPTY_BIDDER_ID;
         }
 
-        state.bid_count += 1;
+        let highest = Bid {
+            bidder: SerializedSolanaPublicKey { lo: 0, hi: 0 },
+            amount: 0,
+            price: 0,
+        };
 
-        state_ctxt.owner.from_arcis(state)
+        let second_highest = Bid {
+            bidder: SerializedSolanaPublicKey { lo: 0, hi: 0 },
+            amount: 0,
+            price: 0,
+        };
+
+        (
+            Mxe::get().from_arcis(AuctionState {
+                highest,
+                second_highest,
+                bid_count: 0,
+            }),
+            Mxe::get().from_arcis(Pack::new(flat)),
+        )
     }
 
-    /// Updates auction state using separately encrypted inputs, CPIed from UMBRA
-    ///
-    /// # Arguments
-    /// - `bidder`: bidder public key
-    /// - `amount_ctxt`: encrypted bid amount
-    /// - `price_ctxt`: encrypted bid price
-    /// - `state_ctxt`: current encrypted state
-    ///
-    /// # Behavior
-    /// - Constructs `Bid` from inputs
-    /// - Inserts into top 3 ranking (by price)
-    ///
-    /// # Effects
-    /// - Updates encrypted state
-    /// - Increments bid count
+    // -------------------------
+    // INTERNAL INSERT HELPER FN
+    // -------------------------
+    fn insert_bid(
+        state: &mut AuctionState,
+        flat: &mut [u64; FLAT_SIZE],
+        price: u64,
+        amount: u64,
+        bidder_id: u64,
+    ) {
+        // Maintain top-2 for FP / Vickrey
+        if price > state.highest.price {
+            state.second_highest = Bid {
+                bidder: SerializedSolanaPublicKey { lo: 0, hi: 0 },
+                amount: state.highest.amount,
+                price: state.highest.price,
+            };
+
+            state.highest = Bid {
+                bidder: SerializedSolanaPublicKey { lo: 0, hi: 0 },
+                amount,
+                price,
+            };
+        } else if price > state.second_highest.price {
+            state.second_highest = Bid {
+                bidder: SerializedSolanaPublicKey { lo: 0, hi: 0 },
+                amount,
+                price,
+            };
+        }
+
+        // Insert into packed book
+        // When full, index 2 is always worst after sorting network
+        let idx = if state.bid_count < MAX_BIDS as u16 {
+            state.bid_count as usize
+        } else {
+            MAX_BIDS - 1
+        };
+
+        flat[3 * idx] = price;
+        flat[3 * idx + 1] = amount;
+        flat[3 * idx + 2] = bidder_id;
+
+        sort3(flat);
+
+        state.bid_count += 1;
+    }
+
+    // --------------------------------------
+    // PLACE BID 
+    // Legacy, uses `Shared` as this is 
+    // called by a client invoked anchor ix
+    // --------------------------------------
+    #[instruction]
+    pub fn place_bid(
+        bidder_id: u64,
+        bid_ctxt: Enc<Shared, Bid>,
+        state_ctxt: Enc<Mxe, AuctionState>,
+        book_ctxt: Enc<Mxe, BidBook>,
+    ) -> (Enc<Mxe, AuctionState>, Enc<Mxe, BidBook>) {
+        let bid = bid_ctxt.to_arcis();
+        let mut state = state_ctxt.to_arcis();
+        let mut flat = book_ctxt.to_arcis().unpack();
+
+        insert_bid(&mut state, &mut flat, bid.price, bid.amount, bidder_id);
+
+        (
+            state_ctxt.owner.from_arcis(state),
+            book_ctxt.owner.from_arcis(Pack::new(flat)),
+        )
+    }
+
+    // -------------------------------------------------------
+    // PLACE ENCRYPTED BID 
+    // More advanced and uses `Mxe` instead of `Shared`. 
+    // Cranked by place_encrypted_bid and receives 
+    // ciphertext directly via CPI from UMBRA program on-chain
+    // -------------------------------------------------------
     #[instruction]
     pub fn place_encrypted_bid(
-        bidder: SerializedSolanaPublicKey,
+        bidder_id: u64,
         amount_ctxt: Enc<Mxe, u64>,
-        price_ctxt: Enc<Mxe, u64>, // NEW
+        price_ctxt: Enc<Mxe, u64>,
         state_ctxt: Enc<Mxe, AuctionState>,
-    ) -> Enc<Mxe, AuctionState> {
+        book_ctxt: Enc<Mxe, BidBook>,
+    ) -> (Enc<Mxe, AuctionState>, Enc<Mxe, BidBook>) {
         let amount = amount_ctxt.to_arcis();
         let price = price_ctxt.to_arcis();
         let mut state = state_ctxt.to_arcis();
+        let mut flat = book_ctxt.to_arcis().unpack();
 
-        let bid = Bid { bidder, amount, price };
+        insert_bid(&mut state, &mut flat, price, amount, bidder_id);
 
-        // RANK BY PRICE
-        if bid.price > state.highest.price {
-            state.third_highest = state.second_highest;
-            state.second_highest = state.highest;
-            state.highest = bid;
-        } else if bid.price > state.second_highest.price {
-            state.third_highest = state.second_highest;
-            state.second_highest = bid;
-        } else if bid.price > state.third_highest.price {
-            state.third_highest = bid;
-        }
-
-        state.bid_count += 1;
-        state_ctxt.owner.from_arcis(state)
+        (
+            state_ctxt.owner.from_arcis(state),
+            book_ctxt.owner.from_arcis(Pack::new(flat)),
+        )
     }
 
-    /// Determines winners for a Uniform Price auction.
-    ///
-    /// # Behavior
-    /// - Selects top 3 bids
-    /// - Sets clearing price = 3rd highest price
-    ///
-    /// # Returns
-    /// - Top 3 bidders + clearing price
-    ///
-    /// # Privacy
-    /// - Only result is revealed
+    // -------------------------
+    // UNIFORM 
+    // -------------------------
     #[instruction]
     pub fn determine_winner_uniform(
-        state_ctxt: Enc<Mxe, AuctionState>,
-    ) -> UniformAuctionResult {
-        let state = state_ctxt.to_arcis();
+        book_ctxt: Enc<Mxe, BidBook>,
+        total_supply: u64,
+    ) -> (u64, [u64; MAX_BIDS], [u64; MAX_BIDS], [u64; MAX_BIDS]) {
+        let flat = book_ctxt.to_arcis().unpack();
 
-        let highest = state.highest;
-        let second_highest = state.second_highest;
-        let third_highest = state.third_highest;
+        let mut remaining = total_supply;
+        let mut clearing_price = 0;
 
-        let clearing_price = third_highest.price;
+        let mut fills = [0u64; MAX_BIDS];
+        let mut amounts = [0u64; MAX_BIDS];
+        let mut ids = [0u64; MAX_BIDS];
 
-        UniformAuctionResult {
-            winner1: highest,
-            winner2: second_highest,
-            winner3: third_highest,
-            clearing_price,
+        // Arcis requires masking instead of control flow (no continue/break)
+        for i in 0..MAX_BIDS {
+            let price = flat[3 * i];
+            let amount = flat[3 * i + 1];
+            let id = flat[3 * i + 2];
+
+            let is_valid = id != EMPTY_BIDDER_ID;
+
+            let qty = if price == 0 { 0 } else { amount / price };
+            let qty = if is_valid { qty } else { 0 };
+
+            let fill = if qty <= remaining { qty } else { remaining };
+
+            fills[i] = if is_valid { fill } else { 0 };
+            amounts[i] = if is_valid { amount } else { 0 };
+            ids[i] = id;
+
+            remaining = if is_valid { remaining - fill } else { remaining };
+
+            if is_valid && fill > 0 {
+                clearing_price = price;
+            }
         }
-        .reveal()
+
+        (
+            clearing_price.reveal(),
+            fills.reveal(),
+            amounts.reveal(),
+            ids.reveal(),
+        )
     }
 
-    // Deprecated
+    // -------------------------
+    // FIRST PRICE 
+    // -------------------------
     #[instruction]
-    pub fn determine_winner_pro_rata(
+    pub fn determine_winner_first_price(
         state_ctxt: Enc<Mxe, AuctionState>,
-    ) -> ProRataAuctionResult {
-        let state = state_ctxt.to_arcis();
-
-        let highest = state.highest;
-        let second_highest = state.second_highest;
-        let third_highest = state.third_highest;
-
-        let total_bid = highest.amount + second_highest.amount + third_highest.amount;
-
-        ProRataAuctionResult {
-            winner1: highest,
-            winner2: second_highest,
-            winner3: third_highest,
-            total_bid,
-        }
-        .reveal()
-    }
-
-    /// Determines winner for a First Price auction.
-    ///
-    /// # Behavior
-    /// - Highest bidder wins
-    /// - Pays their full bid amount
-    ///
-    /// # Returns
-    /// - Winner + payment amount
-    #[instruction]
-    pub fn determine_winner_first_price(state_ctxt: Enc<Mxe, AuctionState>) -> AuctionResult {
+    ) -> AuctionResult {
         let state = state_ctxt.to_arcis();
 
         AuctionResult {
@@ -301,16 +304,13 @@ mod circuits {
         .reveal()
     }
 
-    /// Determines winner for a Vickrey (second-price) auction.
-    ///
-    /// # Behavior
-    /// - Highest bidder wins
-    /// - Pays second-highest bid amount
-    ///
-    /// # Returns
-    /// - Winner + payment amount
+    // -------------------------
+    // VICKREY
+    // -------------------------
     #[instruction]
-    pub fn determine_winner_vickrey(state_ctxt: Enc<Mxe, AuctionState>) -> AuctionResult {
+    pub fn determine_winner_vickrey(
+        state_ctxt: Enc<Mxe, AuctionState>,
+    ) -> AuctionResult {
         let state = state_ctxt.to_arcis();
 
         AuctionResult {
