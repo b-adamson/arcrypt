@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
     const { owner, tokenMint, wsolAmount, tokenAmount } = body;
 
-    console.log("📥 INPUT:", body);
+    console.log("INPUT:", body);
 
     if (!owner || !tokenMint) {
       return NextResponse.json(
@@ -57,14 +57,11 @@ export async function POST(req: Request) {
 
     console.log("📊 decimals:", decimals);
 
-    // -----------------------------
-    // ⚠️ CRITICAL: RAW AMOUNTS (NO FLOATS)
-    // -----------------------------
     const baseAmount = new BN(tokenAmount); // already human units
     const quoteAmount = new BN(wsolAmount); // already lamports
 
-    console.log("💰 baseAmount:", baseAmount.toString());
-    console.log("💰 quoteAmount:", quoteAmount.toString());
+    console.log("baseAmount:", baseAmount.toString());
+    console.log("quoteAmount:", quoteAmount.toString());
 
     // -----------------------------
     // STEP 1: CREATE OPENBOOK MARKET
@@ -90,17 +87,17 @@ export async function POST(req: Request) {
 
     const marketTxs = marketRes.transactions;
 
-    console.log("📦 market tx count:", marketTxs.length);
+    console.log("market tx count:", marketTxs.length);
 
     const marketId =
       marketRes.extInfo.address.marketId;
 
-    console.log("🧾 marketId:", marketId.toBase58());
+    console.log("marketId:", marketId.toBase58());
 
     // -----------------------------
     // STEP 2: CREATE AMM POOL
     // -----------------------------
-    console.log("🏊 Creating AMM pool...");
+    console.log("Creating AMM pool...");
 
     const poolRes = await raydium.liquidity.createPoolV4({
       programId: DEVNET_PROGRAM_ID.AMM_V4,
@@ -135,21 +132,18 @@ export async function POST(req: Request) {
       feeDestinationId: DEVNET_PROGRAM_ID.FEE_DESTINATION_ID,
     });
 
-    // -----------------------------
-    // 🚨 FIX: NORMALIZE TX FORMAT
-    // -----------------------------
     const poolTxs = Array.isArray(poolRes.transaction)
       ? poolRes.transaction
       : [poolRes.transaction];
 
-    console.log("📦 pool tx count:", poolTxs.length);
+    console.log("pool tx count:", poolTxs.length);
 
     // -----------------------------
     // MERGE TXS
     // -----------------------------
     const allTxs = [...marketTxs, ...poolTxs];
 
-    console.log("📦 total tx count:", allTxs.length);
+    console.log("total tx count:", allTxs.length);
 
     // -----------------------------
     // SERIALIZE
@@ -166,7 +160,7 @@ export async function POST(req: Request) {
       txs: serialized,
     });
   } catch (err: any) {
-    console.error("❌ createRaydiumPool error:", err);
+    console.error("createRaydiumPool error:", err);
 
     return NextResponse.json(
       { error: err?.message ?? String(err) },

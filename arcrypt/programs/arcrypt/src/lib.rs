@@ -3424,8 +3424,6 @@ fn init_auction_common(
     Ok(())
 }
 
-
-
 #[account]
 #[derive(InitSpace)]
 pub struct SharedVault {

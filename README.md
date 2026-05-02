@@ -53,6 +53,8 @@ Under the hood, when submitting a bid:
 7. A crank calls `place_encrypted_bid`, feeding the ciphertext into Arcium MPC to update the encrypted auction state.
 8. At all times, funds remain encrypted and program-controlled, ensuring fully confidential escrow with no plaintext balances on-chain.
 
+![flowchart](./flowchart.png)
+
 ## Repository structure
 
 * `client/` — the website and user interface
