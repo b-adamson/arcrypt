@@ -1,7 +1,7 @@
 // initcompdef.ts
 // Minimal, explicit init script for 4 compdefs (no LUT).
 // Usage:
-//   export OWNER_KEYPAIR_PATH="/home/beada/.config/solana/id.json"
+//   export OWNER_KEYPAIR_PATH=".../solana/id.json"
 //   export ARCIUM_CLUSTER_OFFSET=456
 //   export SOLANA_RPC_URL="https://devnet.helius-rpc.com/?api-key=..."
 //   ts-node initcompdef.ts

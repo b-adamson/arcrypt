@@ -38,14 +38,14 @@ ARCRYPT combines four pieces:
 1. A seller creates a project which mints a token and creates an auction through Arcrypt.
 2. Bidders place encrypted bids from their personal encrypted balance (See below).
 3. Funds are escrowed securely within the UMBRA shielded pool (See below).
-4. Off-chain worker calls Arcium to determine the winner and reveal it publicly.
+4. Off-chain worker calls MPC to determine the winner and reveal it publicly.
 5. To claim their rewards, the auction creator clicks "Settle" on the dashboard, releasing the tokens to the Raydium DEX seeded at the clearing price.
 6. Losers reclaim their bids.
 
 Under the hood, when submitting a bid:
 
 1. The client generates an encrypted token account and funds it with wSOL using the dashboard.
-2. The bid client encrypts their bid using Umbra’s MXE and submits it to Arcrypt.
+2. The bid client encrypts their bid against Umbra’s MXE and submits it to Arcrypt.
 3. Arcrypt performs a CPI into Umbra, passing the encrypted token account and bid amount.
 4. Umbra decrypts the bid inside its own Arcium MXE and allocates the corresponding funds into its shielded pool.
 5. Umbra re-encrypts the bid for Arcrypt’s MXE and CPIs back to Arcrypt with the ciphertext via `submit_encrypted_bid`.
@@ -128,22 +128,15 @@ To fund your local wallet on the local validator, run:
 solana airdrop 1000 <YOUR_WALLET_PUBKEY> --url http://localhost:8899
 ```
 
-Or, if your Solana CLI is already pointed at the local validator, the URL flag may not be necessary.
-
-
 ### 5) Run the website
 
-The website lives in `client/`.
-
-From a new terminal:
+The website is in `client/`.
 
 ```bash
 cd client
 npm install
 npm run dev
 ```
-
-Open the local URL shown in the terminal to use the app.
 
 ## SDK
 
@@ -190,8 +183,6 @@ The on-chain program is built around a few core steps:
 3. **Close auction**
 4. **Determine winner privately**
 5. **Finalize settlement and refunds**
-
-The Rust program uses Arcium compute definitions and callbacks to keep bid values encrypted while still resolving the auction correctly.
 
 ## Example SDK usage
 
@@ -247,16 +238,15 @@ On devnet we are deployed at
 * If bid settlement fails, confirm that the auction has ended and the correct settlement instruction is being used.
 * Make sure, if testing in localnet, you have ARCIUM_CLUSTER_OFFSET=0 specified as a client environment variable. The SDK will default to 0 (localnet). The devnet program is deployed at 456
 
-## Roadmap
+## Upcoming
 
 Planned and in-progress areas include:
 
+* On-chain CPI into Raydium so off-chain worker can auto create the Raydium pool
+* Finalise Umbra integration
+* UI Changes
 * Rust SDK support
-* On-chain validation of Raydium pool
 * Mainnet Launch
-* Complete UMBRA integration
-* Better auto-crons for settlement at the end
-* UX Changes
 
 ## License
 
