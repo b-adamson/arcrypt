@@ -17,7 +17,7 @@ const NAV: NavItem[] = [
   { id: "arcium", label: "What is Arcium" },
   {
     id: "rules",
-    label: "How it works",
+    label: "How to use Arcrypt",
     children: [
       { id: "seller-flow", label: "Seller flow" },
       { id: "auction-types", label: "Auction types" },
@@ -26,7 +26,6 @@ const NAV: NavItem[] = [
     ],
   },
   { id: "dao-proposal", label: "Create a DAO proposal" },
-  { id: "arcrypt-dao", label: "Create an ARCRYPT DAO" },
   {
     id: "developers",
     label: "Developers",

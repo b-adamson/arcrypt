@@ -3,6 +3,7 @@
 import DocsSidebar from '../../components/DocsSidebar';
 import Link from 'next/link';
 import CodeBlock from '@/components/CodeBlock';
+import Image from "next/image";
 
 export default function DocsPage() {
   return (
@@ -89,7 +90,7 @@ export default function DocsPage() {
             <h2 className="mb-4 text-2xl font-bold text-accent">Ensuring privacy</h2>
 
             <div className="max-w-5xl space-y-4 text-[var(--muted)]">
-              <p>
+              <p><strong className="text-[var(--foreground)]">
                 ARCRYPT automatically generates an{' '}
                 <a
                   href="https://sdk.umbraprivacy.com/introduction"
@@ -108,7 +109,7 @@ export default function DocsPage() {
                 >
                   ETA
                 </a>
-                ) associated with your wallet address. This ETA is the link between the private world and the public chain. Funds can be moved in and out of your ARCRYPT account in the Encrypted Balance page.
+                ) associated with your wallet address. This ETA is the link between the private world and the public chain. </strong> Funds can be moved in and out of your ARCRYPT account in the Encrypted Balance page.
               </p>
 
               <p>
@@ -124,7 +125,7 @@ export default function DocsPage() {
                 .
               </p>
 
-              <p>
+              <p><strong className="text-[var(--foreground)]">
                 The UMBRA program performs a rescue cipher of the bid amount against the ARCRYPT mixed execution environment, controlled by the{' '}
                 <a
                   href="https://docs.arcium.com/developers"
@@ -134,7 +135,7 @@ export default function DocsPage() {
                 >
                   Arcium MPC network
                 </a>
-                . ARCRYPT validates the ciphertext and sends it to the MXE where we compare it against the current highest bid(s). The exact computation depends on the type of auction (see below).
+                . ARCRYPT validates the ciphertext and sends it to the MXE where we compare it against the current highest bid(s).</strong> The exact computation depends on the type of auction (see below).
               </p>
 
               <p>
@@ -144,11 +145,18 @@ export default function DocsPage() {
               <p>
                 We will eventually migrate to the confidential token standard to simplify the flow and directly read escrow accounts within the MXE, rather than sending the encrypted amount as ciphertext to the MXE.
               </p>
+              <p><strong className="text-[var(--foreground)]"> Escrow deposit mechanism flowchart:</strong></p>
             </div>
+            <Image
+  src="/flowchart.png"
+  alt="Auction flow diagram"
+  width={800}
+  height={500}
+/>
           </section>
 
           <section id="rules" className="mb-16 scroll-mt-32">
-            <h2 className="mb-4 text-2xl font-bold text-accent">How it works</h2>
+            <h2 className="mb-4 text-2xl font-bold text-accent">How to use Arcrypt</h2>
 
             <h3 id="seller-flow" className="mb-2 text-lg font-semibold text-[var(--foreground)]">
               Seller flow
@@ -172,7 +180,7 @@ export default function DocsPage() {
 
   <li>
     <strong className="text-[var(--foreground)]">Vickrey (second-price) auction:</strong>{" "}
-    the highest bidder wins but pays the second-highest bid, encouraging truthful bidding.
+    the highest bidder wins but pays the second-highest bid, meaning incentive is bid your true value: nothing less and nothing more. 
   </li>
 
   <li>
@@ -188,27 +196,20 @@ export default function DocsPage() {
     Winners are selected by highest price, and:
     <ul className="ml-5 list-disc">
       <li>All winners pay the same final clearing price</li>
-      <li>This price is typically the lowest winning price (or highest losing price)</li>
+      <li>This price is the lowest winning price needed to clear</li>
     </ul>
     {"\n\n"}
-    This enables fair price discovery while distributing assets across multiple participants.
+    This enables fair price discovery while distributing assets across multiple participants, and <strong>developing a substantial liquidity pool before being launched on the DEX.</strong>
   </li>
 </ul>
 
-            <h3 id="bidding-escrow" className="mb-2 text-lg font-semibold text-[var(--foreground)]">
-              Bidding &amp; escrow
-            </h3>
-            <p className="mb-4 text-[var(--muted)]">
-              When a bidder places funds, ARCRYPT automatically calls the UMBRA program to securely lock away the escrow within a program controlled encrypted balance.
-            </p>
 
             <h3 id="settlement" className="mb-2 text-lg font-semibold text-[var(--foreground)]">
               Settlement
             </h3>
 <ul className="ml-5 list-disc space-y-2 text-[var(--muted)]">
   <li>At auction close, bids are revealed and the winner is determined according to the chosen auction type.</li>
-  <li>On-chain settlement transfers the asset to the winner and the proceeds to the seller; all escrowed bidders who didn’t win are automatically refunded.</li>
-  <li>Every transfer is verifiable while preserving bid privacy - so outcomes are auditable without leaking individual bid amounts.</li>
+  <li>On-chain settlement transfers the asset(s) to the winner(s) and the winning bids to seed the Raydium pool; all escrowed bidders who didn’t win can claim refunds.</li>
   <li>
     <strong className="text-[var(--foreground)]">
       Tokens launched through ARCRYPT are automatically made available for trading on the Raydium DEX immediately after settlement.
@@ -221,13 +222,6 @@ export default function DocsPage() {
             <h2 className="mb-4 text-2xl font-bold text-accent">Create a DAO proposal</h2>
             <p className="text-[var(--muted)]">
               Connect directly with Realms, MetaDAO or any DAO that accepts arbitrary instructions to call the ARCRYPT program and propose to auction treasury tokens. Just specify the amount and duration and auction rules as normal.
-            </p>
-          </section>
-
-          <section id="ARCRYPT-dao" className="mb-16 scroll-mt-32">
-            <h2 className="mb-4 text-2xl font-bold text-accent">Create an ARCRYPT DAO</h2>
-            <p className="text-[var(--muted)]">
-              We are rapidly developing a new DAO Launchpad that tokenizes part of the initial token sale that are bought via sealed bids. This is excellent for new startups looking for maximal price discovery. We will also build Realms integration to enable you to start a Realms DAO with a section of the initial treasury available via sealed-auction.
             </p>
           </section>
 

@@ -22,89 +22,27 @@ type AuctionMetadata = {
   image?: string;
 };
 
-function enumKey(v: any): string {
-  if (v && typeof v === "object") return Object.keys(v)[0];
-  return String(v ?? "");
-}
-
-function toBase58Maybe(v: any): string {
-  if (!v) return "";
-  return v?.toBase58?.() ?? new PublicKey(v).toBase58();
-}
-
-const LAMPORTS_PER_SOL = 1_000_000_000n;
-
-function formatSolAmount(v: any): string {
-  const lamports = BigInt(v?.toString?.() ?? 0);
-  const whole = lamports / LAMPORTS_PER_SOL;
-  const frac = lamports % LAMPORTS_PER_SOL;
-
-  if (frac === 0n) return `${whole.toString()} SOL`;
-  return `${whole.toString()}.${frac.toString().padStart(9, "0").replace(/0+$/, "")} SOL`;
-}
-
-function formatTokenAmount(v: any, decimals: number): string {
-  const amount = BigInt(v?.toString?.() ?? 0);
-  const base = 10n ** BigInt(decimals);
-
-  const whole = amount / base;
-  const frac = amount % base;
-
-  if (decimals === 0 || frac === 0n) return whole.toString();
-
-  return `${whole.toString()}.${frac.toString().padStart(decimals, "0").replace(/0+$/, "")}`;
-}
+import {
+  shorten,
+  enumKey,
+  toBase58Maybe,
+  formatSolAmount,
+  formatTokenAmount,
+  formatEndTime,
+  toHttpGateway,
+  getAuctionType,
+  isMetadataOnly,
+  getSingleWinner,
+  getMultiWinners,
+} from "@/lib/utils";
 
 function toStringMaybe(v: any): string {
   if (v == null) return "";
   return v?.toString?.() ?? String(v);
 }
 
-function shorten(pk: string): string {
-  if (!pk) return "";
-  if (pk.length <= 12) return pk;
-  return `${pk.slice(0, 4)}…${pk.slice(-4)}`;
-}
-
-function getAuctionType(auction: any): string {
-  return enumKey(auction?.auctionType ?? auction?.auction_type).toLowerCase();
-}
-
 function isMultiWinnerAuction(auctionType: string): boolean {
   return auctionType === "uniform";
-}
-
-function isMetadataOnly(auction: any): boolean {
-  return enumKey(auction?.assetKind ?? auction?.asset_kind).toLowerCase() === "metadataonly";
-}
-
-function getSingleWinner(auction: any, winnerBase58?: string | null): string | null {
-  if (winnerBase58) return winnerBase58;
-
-  const winner = auction?.winner;
-  if (!winner) return null;
-
-  try {
-    const s = toBase58Maybe(winner);
-    return s && s !== PublicKey.default.toBase58() ? s : null;
-  } catch {
-    return null;
-  }
-}
-
-function getMultiWinners(auction: any): string[] {
-  const winners = auction?.winners;
-  if (!Array.isArray(winners)) return [];
-
-  return winners
-    .map((w) => {
-      try {
-        return toBase58Maybe(w);
-      } catch {
-        return "";
-      }
-    })
-    .filter((w) => w && w !== PublicKey.default.toBase58());
 }
 
 function getMetadataUri(auction: any): string {
@@ -118,35 +56,6 @@ function getMetadataUri(auction: any): string {
     "";
 
   return toStringMaybe(raw);
-}
-
-function formatEndTime(endTime: any): string {
-  const ts = Number(endTime ?? 0);
-  if (!ts) return "Unavailable";
-
-  return new Date(ts * 1000).toLocaleString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-}
-
-function toHttpGateway(uri: string): string {
-  if (!uri) return "";
-
-  const gateway =
-    (process.env.NEXT_PUBLIC_PINATA_GATEWAY_URL || "https://gateway.pinata.cloud/ipfs").replace(/\/$/, "");
-
-  if (uri.startsWith("ipfs://")) {
-    const path = uri.slice("ipfs://".length).replace(/^ipfs\/+/, "");
-    return `${gateway}/${path}`;
-  }
-
-  return uri;
 }
 
 export default function AuctionResultCard({
@@ -475,11 +384,15 @@ const formattedClearingPrice = hasEnoughBids
           </>
         ) : (
           <>
-            <CopyableField
-              label="Winners"
-              value={multiWinners.length ? multiWinners.map(shorten).join(", ") : "Not resolved yet"}
-              copyValue={multiWinners.join(", ")}
-            />
+<CopyableField
+  label="Winners"
+  value={
+    multiWinners.length
+      ? multiWinners.map((w) => shorten(w)).join(", ")
+      : "Not resolved yet"
+  }
+  copyValue={multiWinners.join(", ")}
+/>
            <CopyableField
   label="Winner bids"
   value={formattedWinnerBids}

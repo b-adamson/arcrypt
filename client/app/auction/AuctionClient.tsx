@@ -11,6 +11,11 @@ import GovernanceProposalPanel from "@/components/GovernanceProposalPanel";
 import { createAnchorProgramInBrowser, createReadOnlyProgram, assertProviderReady } from "../../lib/anchorClient";
 
 import {
+  enumKey,
+  isWinnerOfAuction,
+} from "@/lib/utils";
+
+import {
   PublicKey,
   Transaction,
 } from "@solana/web3.js";
@@ -22,46 +27,6 @@ type RawIxView = {
   dataBase64: string;
 };
 type AssetKind = "Fungible" | "Nft" | "MetadataOnly";
-
-
-function enumKey(v: any): string {
-  if (v && typeof v === "object") return Object.keys(v)[0];
-  return String(v ?? "");
-}
-
-function toBase58Maybe(v: any): string {
-  if (!v) return "";
-  return v?.toBase58?.() ?? new PublicKey(v).toBase58();
-}
-
-function getResolvedWinnerKeys(auction: any): string[] {
-  const winners = auction?.winners;
-  if (Array.isArray(winners) && winners.length > 0) {
-    return winners
-      .map((w) => {
-        try {
-          return toBase58Maybe(w);
-        } catch {
-          return "";
-        }
-      })
-      .filter(Boolean);
-  }
-
-  if (auction?.winner) {
-    try {
-      return [toBase58Maybe(auction.winner)];
-    } catch {
-      return [];
-    }
-  }
-
-  return [];
-}
-
-function isWinnerOfAuction(auction: any, walletBase58: string): boolean {
-  return getResolvedWinnerKeys(auction).includes(walletBase58);
-}
 
 function persistAuctionForWallet(walletBase58: string, auctionPk: string) {
   try {

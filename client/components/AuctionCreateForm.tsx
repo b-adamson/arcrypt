@@ -15,6 +15,11 @@ import { mintNft } from "../lib/mintNft";
 
 import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-adapters";
 
+import {
+  shorten,
+  formatTokenAmount,
+} from "@/lib/utils";
+
 type AuctionType = "FirstPrice" | "Vickrey" | "Uniform";
 type AssetKind = "Fungible" | "Nft" | "MetadataOnly";
 
@@ -32,25 +37,6 @@ const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL ?? "https://api.devnet.solana.co
 
 const tokenMetadataCache = new Map<string, TokenOption>();
 const tokenMetadataInFlight = new Map<string, Promise<TokenOption>>();
-
-function shorten(value: string, head = 6, tail = 4): string {
-  if (!value) return "";
-  if (value.length <= head + tail + 1) return value;
-  return `${value.slice(0, head)}…${value.slice(-tail)}`;
-}
-
-function formatTokenAmount(rawAmount: bigint, decimals: number): string {
-  if (decimals <= 0) return rawAmount.toString();
-  const negative = rawAmount < 0n;
-  const abs = negative ? -rawAmount : rawAmount;
-
-  const padded = abs.toString().padStart(decimals + 1, "0");
-  const integer = padded.slice(0, -decimals);
-  const fraction = padded.slice(-decimals).replace(/0+$/, "");
-
-  const out = fraction ? `${integer}.${fraction}` : integer;
-  return negative ? `-${out}` : out;
-}
 
 async function fetchJson(url?: string): Promise<any | null> {
   const clean = (url ?? "").replace(/\0/g, "").trim();

@@ -22,96 +22,15 @@ import {
 } from "@solana/spl-token";
 import { TransactionInstruction } from "@solana/web3.js";
 import { VersionedTransaction } from "@solana/web3.js";
+import {
+  enumKey,
+  getAuctionType,
+  getResolvedWinnerKeys,
+  isWinnerClaimed,
+  isWinnerOfAuction,
+  deriveEscrowPda,
+} from "@/lib/utils";
 
-function deriveEscrowPda(auctionPk: PublicKey, bidderPk: PublicKey, programId: PublicKey) {
-  return PublicKey.findProgramAddressSync(
-    [Buffer.from("escrow"), auctionPk.toBuffer(), bidderPk.toBuffer()],
-    programId
-  )[0];
-}
-
-const LOCAL_UMBRA_SIGNER_KEY = "umbra:local-signer-secret-key";
-
-function enumKey(v: any): string {
-  if (v && typeof v === "object") return Object.keys(v)[0];
-  return String(v ?? "");
-}
-
-function toBase58Maybe(v: any): string {
-  if (!v) return "";
-  return v?.toBase58?.() ?? new PublicKey(v).toBase58();
-}
-
-const DEFAULT_PUBKEY = "11111111111111111111111111111111";
-
-function isDefaultPubkey(v: string) {
-  return !v || v === DEFAULT_PUBKEY;
-}
-
-function getAuctionType(auction: any): string {
-  return enumKey(auction?.auctionType ?? auction?.auction_type).toLowerCase();
-}
-
-function getResolvedWinnerKeys(auction: any): string[] {
-  const type = getAuctionType(auction);
-
-  if (type === "firstprice" || type === "vickrey") {
-    try {
-      const winner = toBase58Maybe(auction?.winner);
-      return !isDefaultPubkey(winner) ? [winner] : [];
-    } catch {
-      return [];
-    }
-  }
-
-  const winners = auction?.winners;
-  if (Array.isArray(winners)) {
-    return winners
-      .map((w) => {
-        try {
-          return toBase58Maybe(w);
-        } catch {
-          return "";
-        }
-      })
-      .filter((w) => !isDefaultPubkey(w));
-  }
-
-  return [];
-}
-
-function getWinnerIndex(auction: any, walletBase58: string): number {
-  const winners = auction?.winners;
-  if (!Array.isArray(winners)) return -1;
-
-  return winners.map((w) => toBase58Maybe(w)).findIndex((w) => w === walletBase58);
-}
-
-function isWinnerClaimed(auction: any, walletBase58: string): boolean {
-  const type = getAuctionType(auction);
-
-  if (type === "firstprice" || type === "vickrey") {
-    return Boolean(auction?.winnerPaid ?? auction?.winner_paid);
-  }
-
-  const idx = getWinnerIndex(auction, walletBase58);
-  if (idx < 0) return false;
-
-  const paidMulti = auction?.winnerPaidMulti ?? auction?.winner_paid_multi;
-  return Array.isArray(paidMulti) ? Boolean(paidMulti[idx]) : false;
-}
-
-function isWinnerOfAuction(auction: any, walletBase58: string): boolean {
-  return getResolvedWinnerKeys(auction).includes(walletBase58);
-}
-
-function getAssetKind(auction: any): string {
-  return enumKey(auction?.assetKind ?? auction?.asset_kind).toLowerCase();
-}
-
-function isMetadataAuction(auction: any): boolean {
-  return getAssetKind(auction) === "metadataonly";
-}
 
 export default function BidPageClient({ auctionPk }: { auctionPk: string | null }) {
   const auctionPkStr = auctionPk;
@@ -580,10 +499,6 @@ setStatus(
     : "placeBid tx sent: " + sig
 );
 
-// await refreshAuctionState();
-
-      // setStatus("placeBid tx sent: " + sig);
-      // await refreshAuctionState();
     } catch (err: any) {
       console.error("placeBid failed:", err);
       setStatus("placeBid failed: " + (err?.message ?? String(err)));
@@ -700,12 +615,11 @@ for (let i = 0; i < signedTxs.length; i++) {
       );
     }
 
-    return; // stop further tx execution
+    return; 
   }
 }
 
 setTxSigs(sigs);
-
 
 setAuctionData((prev: any) =>
   prev
@@ -715,7 +629,6 @@ setAuctionData((prev: any) =>
       }
     : prev
 );
-
 
 setStatus("All done: " + sigs.join(", "));
 

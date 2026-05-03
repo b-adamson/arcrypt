@@ -27,56 +27,21 @@ type SearchSuggestion = {
   auctionPk: string;
 };
 
+import {
+  shorten,
+  enumKey,
+  toBase58Maybe,
+  toHttpGateway,
+  formatTokenAmount,
+} from "@/lib/utils";
+
 const INITIAL_VISIBLE = 12;
 const LOAD_MORE_STEP = 12;
 const METADATA_TIMEOUT_MS = 2500;
 
-function shorten(value: string, head = 6, tail = 4): string {
-  if (!value) return "";
-  if (value.length <= head + tail + 1) return value;
-  return `${value.slice(0, head)}…${value.slice(-tail)}`;
-}
-
-function enumKey(v: any): string {
-  if (v && typeof v === "object") return Object.keys(v)[0];
-  return String(v ?? "");
-}
-
 function toStringMaybe(v: any): string {
   if (v == null) return "";
   return v?.toString?.() ?? String(v);
-}
-
-function toBase58Maybe(v: any): string {
-  if (!v) return "";
-  return v?.toBase58?.() ?? new PublicKey(v).toBase58();
-}
-
-function toHttpGateway(uri: string): string {
-  if (!uri) return "";
-  const gateway =
-    (process.env.NEXT_PUBLIC_PINATA_GATEWAY_URL || "https://gateway.pinata.cloud/ipfs").replace(/\/$/, "");
-
-  if (uri.startsWith("ipfs://")) {
-    const path = uri.slice("ipfs://".length).replace(/^ipfs\/+/, "");
-    return `${gateway}/${path}`;
-  }
-
-  return uri;
-}
-
-function formatTokenAmount(v: any, decimals: number): string {
-  try {
-    const amount = BigInt(v?.toString?.() ?? 0);
-    const base = 10n ** BigInt(decimals);
-    const whole = amount / base;
-    const frac = amount % base;
-
-    if (decimals === 0 || frac === 0n) return whole.toString();
-    return `${whole.toString()}.${frac.toString().padStart(decimals, "0").replace(/0+$/, "")}`;
-  } catch {
-    return String(v?.toString?.() ?? v ?? "");
-  }
 }
 
 async function fetchJsonWithTimeout(url: string, timeoutMs: number): Promise<any | null> {
