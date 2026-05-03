@@ -1,7 +1,5 @@
 "use client";
 
-import { isUiamountToAmountInstruction } from "@solana/spl-token";
-
 type Props = {
   // uniform
   bidTokens: string;
@@ -100,17 +98,16 @@ export default function AuctionBidForm({
         )}
 
         <div className="flex items-end">
-          <button
-            onClick={onSubmit}
-            disabled={disabled}
-            className="btn btn-primary w-full md:w-auto"
-          >
-            {isSubmitting
-              ? "Submitting..."
-              : auctionEnded
-              ? "Auction ended"
-              : "Place bid"}
-          </button>
+<button
+  onClick={onSubmit}
+  disabled={disabled}
+  className="relative overflow-hidden rounded-lg border border-[var(--accent)] bg-[var(--accent)] px-5 py-3 text-sm font-bold uppercase tracking-[0.18em] text-black transition-all duration-300 hover:scale-105 hover:shadow-[0_0_18px_var(--accent)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-none"
+>
+  <span className="relative z-10">
+    {isSubmitting ? "Submitting..." : auctionEnded ? "Auction ended" : "Place bid"}
+  </span>
+  <span className="absolute inset-0 opacity-0 transition duration-300 hover:opacity-100 bg-[radial-gradient(circle_at_center,var(--accent)_0%,transparent_70%)] blur-md"></span>
+</button>
         </div>
       </div>
 

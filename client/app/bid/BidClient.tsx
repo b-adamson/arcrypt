@@ -8,6 +8,8 @@ import { createAnchorProgramInBrowser, createReadOnlyProgram, assertProviderRead
 import AuctionBidForm from "../../components/AuctionBidForm";
 import AuctionResultCard from "../../components/AuctionResultCard";
 import AuctionWinConfetti from "../../components/AuctionWinConfetti";
+import { useRouter } from "next/navigation";
+import Balance from "../../components/Balance";
 import {
   getMint,
 } from "@solana/spl-token";
@@ -150,7 +152,7 @@ const derivedAmountSol =
   const resolvedWinnerBase58 = resolvedWinnerKeys[0] ?? null;
   const bidCount = auctionData ? getBidCount(auctionData) : 0;
   const hasNoBids = auctionData ? bidCount === 0 : false;
-
+const router = useRouter();
   const canDetermineWinner =
     !!auctionData &&
     auctionEnded &&
@@ -451,7 +453,7 @@ body: JSON.stringify({
   auctionPk,
   bidderPubkey,
   bidAmountSol,
-  bidPriceSol, // NEW
+  bidPriceSol, 
   nonceHex,
 }),
     });
@@ -638,8 +640,6 @@ async function handleFinalizeAll() {
       }),
     });
 
-    
-
     const json = await res.json();
 
     if (!res.ok) {
@@ -817,17 +817,18 @@ await refreshAuctionState();
 
   return (
     <main className="page-shell min-h-screen px-5 py-5 md:px-8 md:py-8">
+      
       <AuctionWinConfetti show={showWinConfetti} />
+<div className="mx-auto max-w-6xl">
 
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-6 border border-[var(--line)] bg-[var(--surface)] px-5 py-4 md:px-6">
-          <h1 className="text-2xl font-semibold tracking-tight text-[var(--foreground)] md:text-3xl">
-            Sealed-bid Auction
-          </h1>
-          <p className="mt-2 text-sm text-[var(--muted)]">
-            Bid, settle, reclaim, and resolve auction outcomes from one page.
-          </p>
-        </div>
+  <div className="mb-6">
+    <button
+      onClick={() => router.push("/market")}
+      className="inline-flex items-center gap-2 border border-[var(--line)] px-4 py-2 text-sm font-medium hover:bg-[var(--surface-2)] transition"
+    >
+      ← Back to projects
+    </button>
+  </div>
 
         {auctionData ? (
           <div className="fixed right-4 top-4 z-50 border border-[var(--line)] bg-[var(--background)] px-5 py-4 shadow-none backdrop-blur-md">
@@ -848,7 +849,8 @@ await refreshAuctionState();
   isWinner={winnerNow}
   winnerBase58={resolvedWinnerBase58}
   tokenDecimals={tokenDecimals ?? undefined}
-  bidCount={bidCount}  
+  bidCount={bidCount}
+  connection={programClient?.provider.connection ?? readOnlyProgram?.provider.connection ?? null}
 />
         ) : null}
 
@@ -895,6 +897,8 @@ await refreshAuctionState();
 )}
 
         <div className="mt-6">
+          <Balance/>
+  
 <AuctionBidForm
   auctionType={auctionType}
 

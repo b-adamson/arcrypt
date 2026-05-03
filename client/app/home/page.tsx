@@ -5,15 +5,16 @@ import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "re
 
 const launchPhrases = [
   "Launch a token",
-  "Launch an NFT",
+  "Eliminate rug-pulls",
+  // "Launch an NFT",
   // "Launch your DAO",
-  "Run sealed liquidation auctions",
+  // "Run sealed liquidation auctions",
   "Sell DAO treasuries",
   // "Liquidate positions",
-  "Protect your launch from MEV",
+  "Protect from MEV",
   "Sell a token",
-  "Run private launch sales",
-  "Sell an NFT",
+  "Run private sales",
+  // "Sell an NFT",
   "Protect bids from MEV",
   "Develop with sealed auctions",
   "Avoid OTC",
@@ -54,7 +55,6 @@ const flowSteps = [
     eyebrow: "1 · Fund",
     description:
       "ARCRYPT generates an UMBRA encrypted token account for every user. You can freely move tokens in and out while concealing the funds you actually use to bid from on-chain observers.",
-    stat: "Private balance layer",
   },
   {
     id: "bid",
@@ -62,7 +62,6 @@ const flowSteps = [
     eyebrow: "2 · Bid",
     description:
       "ARCRYPT places your funds inside the UMBRA shielded pool, where nobody can see them. Your escrow and bid stay concealed from public Solana ledgers, so no one knows how much you are willing to spend.",
-    stat: "Hidden escrow",
   },
   {
     id: "wait",
@@ -70,7 +69,6 @@ const flowSteps = [
     eyebrow: "3 · Process",
     description:
       "UMBRA submits your bid as encrypted ciphertext to the ARCRYPT program, which is processed through Arcium's MPC network. We compare every bid inside a mixed execution environment using thousands of Arcium nodes, so no individual can piece together any bids or computation.",
-    stat: "Encrypted MPC",
   },
 {
     id: "settle",
@@ -82,7 +80,6 @@ const flowSteps = [
       <strong>The token can be automatically launched to Raydium once the seller claims (configurable).</strong>
     </>
   ),
-  stat: "Winner public, amount private",
 },
   {
     id: "create",
@@ -90,7 +87,6 @@ const flowSteps = [
     eyebrow: "5 · Launch",
     description:
       "Create highest-bid, Vickrey, uniform, or pro-rata auctions with the ARCRYPT program. Auction SPL tokens, NFTs, or use DAO treasury mode to create a governance proposal, then post it on the ARCRYPT marketplace or launch with your own program using the SDK.",
-    stat: "Multi-format auctions",
   },
 ] as const;
 
@@ -111,7 +107,7 @@ function RotatingPhrase() {
   }, []);
 
   return (
-    <span className="relative flex h-[1.1em] w-full items-center justify-center overflow-hidden text-center">
+    <span className="relative flex h-[1.4em] w-full items-center justify-center overflow-hidden text-center whitespace-nowrap">
       <span
         className={`absolute left-0 top-0 flex h-full w-full items-center justify-center font-extrabold text-accent transition-all duration-300 ${
           visible ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0"
@@ -159,6 +155,9 @@ export default function HomePage() {
 
   const activeDetailRef = useRef<HTMLDivElement | null>(null);
   const didMountRef = useRef(false);
+
+  const highlightTransition =
+  "transition-[border-color,background-color,box-shadow,color] duration-200 ease-out";
 
   useEffect(() => {
     if (!didMountRef.current) {
@@ -224,7 +223,7 @@ const scrollTo =
             muted
             loop
             playsInline
-            className="h-full w-full object-cover brightness-[0.62] contrast-125"
+            className="h-full w-full object-cover brightness-[0.4] contrast-125"
           >
             <source src="/backdrop.mp4" type="video/mp4" />
           </video>
@@ -269,13 +268,12 @@ const scrollTo =
               >
                 Begin
               </a>
-              <a
-                href="#sdk-section"
-                onClick={scrollTo(sdkRef)}
-                className="btn text-sm font-semibold uppercase tracking-[0.2em] md:text-base"
-              >
-                Read docs
-              </a>
+<Link
+  href="/docs"
+  className="btn text-sm font-semibold uppercase tracking-[0.2em] md:text-base"
+>
+  Read docs
+</Link>
             </div>
           </div>
 
@@ -335,20 +333,20 @@ const scrollTo =
               {launchUseCases.map((item, index) => {
                 const isActive = index === activeUseCase;
                 return (
+                <div
+                  key={item}
+                  className={`border p-5 ${highlightTransition} ${
+                    isActive ? "card-active" : "card"
+                  }`}
+                >
                   <div
-                    key={item}
-                    className={`border p-5 transition duration-300 ${
-                      isActive ? "card-active" : "card"
+                    className={`text-xl font-black tracking-tight md:text-3xl ${highlightTransition} ${
+                      isActive ? "text-accent" : "text-[var(--foreground)]"
                     }`}
                   >
-                    <div
-                      className={`text-xl font-black tracking-tight md:text-3xl ${
-                        isActive ? "text-accent" : "text-[var(--foreground)]"
-                      }`}
-                    >
-                      {item}
-                    </div>
-                    <div className="mt-3 text-sm leading-6 text-[var(--muted)] md:text-base">
+                    {item}
+                  </div>
+                  <div className="mt-3 text-sm leading-6 text-[var(--muted)] md:text-base">
                       {index === 0 && "Launch a token to Raydium with absolute rug protection"}
                       {index === 1 && "Auction and bid for NFTs, completely sealed - create your own or sell an existing one"}
                       {index === 2 && "Plug in with DAOs and Realms governance to propose treasury liquidations"}
@@ -422,23 +420,23 @@ const scrollTo =
               {sdkPanels.map((item, index) => {
                 const isActive = index === activeSdkUseCase;
                 return (
+                <div
+                  key={item.title}
+                  className={`border p-5 ${highlightTransition} ${
+                    isActive ? "card-active" : "card"
+                  }`}
+                >
                   <div
-                    key={item.title}
-                    className={`border p-5 transition duration-300 ${
-                      isActive ? "card-active" : "card"
+                    className={`text-lg font-black tracking-tight md:text-2xl ${highlightTransition} ${
+                      isActive ? "text-accent" : "text-[var(--foreground)]"
                     }`}
                   >
-                    <div
-                      className={`text-lg font-black tracking-tight md:text-2xl ${
-                        isActive ? "text-accent" : "text-[var(--foreground)]"
-                      }`}
-                    >
-                      {item.title}
-                    </div>
-                    <div className="mt-3 text-sm leading-6 text-[var(--muted)] md:text-base">
-                      {item.copy}
-                    </div>
+                    {item.title}
                   </div>
+                  <div className="mt-3 text-sm leading-6 text-[var(--muted)] md:text-base">
+                    {item.copy}
+                  </div>
+                </div>
                 );
               })}
             </div>
@@ -534,7 +532,7 @@ const scrollTo =
                 ref={activeDetailRef}
                 className="mt-4 border border-[var(--line)] bg-[var(--background)] p-4 md:p-5"
               >
-                <div className="badge-accent">{active.stat}</div>
+                {/* <div className="badge-accent">{active.stat}</div> */}
 
                 <h3 className="mt-3 text-2xl font-black tracking-tight text-[var(--foreground)] md:text-3xl">
                   {active.title}
@@ -801,9 +799,6 @@ cargo install arcrypt-sdk`}
                 </p>
               </div>
 
-              <div className="mt-6 text-xs text-[var(--muted)]">
-                <div className="italic">Status: UI only — no live functionality.</div>
-              </div>
             </article>
           </div>
         </div>

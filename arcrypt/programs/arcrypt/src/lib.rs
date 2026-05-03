@@ -317,8 +317,6 @@ pub fn place_encrypted_bid(
     temp.encrypted_price
 };
     
-    
-
     let args = ArgBuilder::new()
         .plaintext_u128(bidder_lo)
         .plaintext_u128(bidder_hi)
@@ -333,8 +331,6 @@ pub fn place_encrypted_bid(
         )
         .build();
     
-        
-
     queue_computation(
         ctx.accounts,
         computation_offset,
@@ -3374,6 +3370,7 @@ pub fn pay_winner<'info>(
     Ok(())
 }
 
+// internal
 fn init_auction_common(
     auction: &mut Auction,
     authority: Pubkey,

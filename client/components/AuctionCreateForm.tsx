@@ -3,9 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
-import type { PublicKey } from "@solana/web3.js";
-import { PublicKey as PublicKeyCtor } from "@solana/web3.js";
+import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token"; 
 
 import { mintToken } from "../lib/mintToken";
 
@@ -30,7 +28,6 @@ type TokenOption = {
   image?: string;
 };
 
-const METADATA_PROGRAM_ID = new PublicKeyCtor("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
 const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL ?? "https://api.devnet.solana.com";
 
 const tokenMetadataCache = new Map<string, TokenOption>();
@@ -53,17 +50,6 @@ function formatTokenAmount(rawAmount: bigint, decimals: number): string {
 
   const out = fraction ? `${integer}.${fraction}` : integer;
   return negative ? `-${out}` : out;
-}
-
-function getMetadataPda(mint: string): PublicKey {
-  return PublicKeyCtor.findProgramAddressSync(
-    [
-      new TextEncoder().encode("metadata"),
-      METADATA_PROGRAM_ID.toBytes(),
-      new PublicKeyCtor(mint).toBytes(),
-    ],
-    METADATA_PROGRAM_ID
-  )[0];
 }
 
 async function fetchJson(url?: string): Promise<any | null> {
@@ -239,8 +225,6 @@ const [isProcessing, setIsProcessing] = useState(false);
 
   const [tokenMintMode, setTokenMintMode] = useState<"Existing" | "CreateNew">("CreateNew");
 
-  
-
 const [totalSupply, setTotalSupply] = useState("1000000");
 const [keepAmount, setKeepAmount] = useState("");
 const [keepPercent, setKeepPercent] = useState("10");
@@ -410,8 +394,6 @@ options.slice(0, 8).map((opt) =>
   }
 }, [lockTokenMint]);
 
-
-
 async function handleSubmit() {
   if (isDisabled) return;
 
@@ -476,7 +458,6 @@ localStorage.setItem("userReserve", String(userReserve));
 
     metadataUri = json.metadataUri;
 
-
 const { mint, ownerAta } = await mintToken(
   connection,
   wallet.adapter,
@@ -486,12 +467,9 @@ const { mint, ownerAta } = await mintToken(
 
 mintAddress = mint.toBase58();
 
-
-
 onTokenMintChange(mintAddress);
 onSaleAmountTokenChange(String(auctionAmountUi));
 
-// ✅ CORRECT
 await onSubmit(metadataUri, {
   mint: mintAddress,
   sourceAta: ownerAta.toBase58(),
@@ -555,7 +533,6 @@ mintAddress = await mintNft(
       onTokenMintChange(mintAddress);
     }
 
-    // continue
 await onSubmit(metadataUri, {
   mint: mintAddress,
 });
@@ -584,22 +561,11 @@ await onSubmit(metadataUri, {
               Configure the details of your sealed auction launch.
             </p>
           </div>
-
-          <div className="border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-sm text-white/70">
-            <span className="block text-[11px] uppercase tracking-[0.22em] text-white/70/70">
-              Auction PDA
-            </span>
-            <span className="mt-1 block font-mono text-xs text-[var(--foreground)]">
-              {auctionPkStr ?? "<none>"}
-            </span>
-          </div>
         </div>
 
         <div className="flex flex-col gap-6">
         <Field label="Asset type">
   <div className="flex w-full border border-[var(--line)] bg-[var(--background)] overflow-hidden">
-
-    {/* TOKEN (bigger) */}
     <button
       type="button"
       onClick={() => onAssetKindChange("Fungible")}
@@ -610,8 +576,6 @@ await onSubmit(metadataUri, {
     >
       TOKEN
     </button>
-
-    {/* NFT */}
     {!lockTokenMint && (
       <button
         type="button"
@@ -624,8 +588,6 @@ await onSubmit(metadataUri, {
         NFT
       </button>
     )}
-
-    {/* METADATA */}
     <button
       type="button"
       onClick={() => onAssetKindChange("MetadataOnly")}

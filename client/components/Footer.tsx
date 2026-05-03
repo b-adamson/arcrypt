@@ -13,7 +13,6 @@ export default function Footer() {
           <Link href="/docs" className={linkStyle}>Docs</Link>
           <Link href="/docs#faq" className={linkStyle}>FAQ</Link>
         </div>
-
 <div className={sectionStyle}>
   <span className="text-white font-medium">Social</span>
 
@@ -43,7 +42,6 @@ export default function Footer() {
     X 
   </a>
 </div>
-
         <div className={sectionStyle}>
           <span className="text-white font-medium">Ecosystem</span>
           <a

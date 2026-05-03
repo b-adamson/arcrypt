@@ -19,7 +19,6 @@ export default function CodeBlock({ code, language = "tsx" }: CodeBlockProps) {
       setTimeout(() => setCopied(false), 1200);
     } catch {}
   }
-
   return (
     <div
       className="
@@ -27,7 +26,6 @@ export default function CodeBlock({ code, language = "tsx" }: CodeBlockProps) {
       shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_20px_60px_rgba(0,0,0,0.7)]
     "
     >
-      {/* Copy button */}
       <button
         onClick={handleCopy}
         className="
@@ -40,7 +38,6 @@ export default function CodeBlock({ code, language = "tsx" }: CodeBlockProps) {
       >
         {copied ? "Copied" : "Copy"}
       </button>
-
       <SyntaxHighlighter
         language={language}
         style={vscDarkPlus}
@@ -49,7 +46,7 @@ export default function CodeBlock({ code, language = "tsx" }: CodeBlockProps) {
           borderRadius: 0,
           background: "#000000",
           padding: "1.25rem",
-          paddingTop: "2.5rem", // 👈 space for button
+          paddingTop: "2.5rem",
           fontSize: "0.9rem",
           lineHeight: "1.65",
         }}

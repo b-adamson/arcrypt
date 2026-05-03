@@ -25,8 +25,6 @@ export async function mintNft(
     uri: metadataUri,
     name: name || "Auction NFT",
     sellerFeeBasisPoints: percentAmount(5),
-
-    // IMPORTANT: ensure correct owner
     tokenOwner: umiPublicKey(owner),
   }).sendAndConfirm(umi);
 

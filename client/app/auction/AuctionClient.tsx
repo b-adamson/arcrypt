@@ -13,7 +13,6 @@ import { createAnchorProgramInBrowser, createReadOnlyProgram, assertProviderRead
 import {
   PublicKey,
   Transaction,
-  TransactionInstruction,
 } from "@solana/web3.js";
 
 const REALMS_PROGRAM_ID = "GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw";
@@ -797,11 +796,13 @@ onSubmit={(metadataUri, tokenOverride) =>
   )}
 
   {auctionData ? (
-    <AuctionResultCard
-      auctionData={auctionData}
-      auctionEnded={auctionEnded}
-      winnerBase58={isWinner ? publicKey?.toBase58() : undefined}
-    />
+<AuctionResultCard
+  auctionData={auctionData}
+  auctionEnded={auctionEnded}
+  winnerBase58={isWinner ? publicKey?.toBase58() : undefined}
+  tokenDecimals={tokenDecimals}
+  connection={programClient?.provider.connection ?? null}
+/>
   ) : null}
 
   <div style={{ marginTop: 12, color: "#333" }}>

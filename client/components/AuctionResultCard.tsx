@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { PublicKey } from "@solana/web3.js";
-import { useBidFlash } from "../hooks/addBidFlash"; // adjust path
+import { useBidFlash } from "../hooks/addBidFlash";
+import { Connection } from "@solana/web3.js";
+import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 
 type Props = {
   auctionData: any | null;
@@ -10,7 +12,8 @@ type Props = {
   isWinner?: boolean;
   winnerBase58?: string | null;
   tokenDecimals?: number;
-  bidCount?: number;   // 👈 ADD
+  bidCount?: number;
+  connection?: Connection | null;
 };
 
 type AuctionMetadata = {
@@ -152,10 +155,13 @@ export default function AuctionResultCard({
   isWinner = false,
   winnerBase58 = null,
   tokenDecimals = 0,
+  connection = null,
 }: Props) {
   const [metadata, setMetadata] = useState<AuctionMetadata | null>(null);
   const [metadataError, setMetadataError] = useState<string | null>(null);
   const [metadataLoading, setMetadataLoading] = useState(false);
+  const [devBalanceRaw, setDevBalanceRaw] = useState<bigint>(0n);
+const [programBalanceRaw, setProgramBalanceRaw] = useState<bigint>(0n);
 
   const auctionType = getAuctionType(auctionData);
   const status = enumKey(auctionData?.status);
@@ -233,6 +239,101 @@ export default function AuctionResultCard({
     };
   }, [metadataHttpUri]);
 
+  const mintStr = useMemo(
+  () => toBase58Maybe(auctionData?.tokenMint ?? auctionData?.token_mint),
+  [auctionData?.tokenMint, auctionData?.token_mint]
+);
+
+const vaultStr = useMemo(
+  () => toBase58Maybe(auctionData?.prizeVault ?? auctionData?.prize_vault),
+  [auctionData?.prizeVault, auctionData?.prize_vault]
+);
+
+const creatorStr = useMemo(
+  () => toBase58Maybe(auctionData?.authority),
+  [auctionData?.authority]
+);
+
+useEffect(() => {
+  let cancelled = false;
+
+  async function loadBalances() {
+    try {
+      if (!connection || !mintStr || !vaultStr || !creatorStr || isMetadataOnly(auctionData)) {
+        if (!cancelled) {
+          setDevBalanceRaw(0n);
+          setProgramBalanceRaw(0n);
+        }
+        return;
+      }
+
+      const mintPk = new PublicKey(mintStr);
+      const vaultPk = new PublicKey(vaultStr);
+      const creatorPk = new PublicKey(creatorStr);
+
+      let vaultAmount = 0n;
+      try {
+        const bal = await connection.getTokenAccountBalance(vaultPk);
+        vaultAmount = BigInt(bal.value.amount);
+      } catch {
+        vaultAmount = 0n;
+      }
+
+      const [legacyAccounts, token2022Accounts] = await Promise.all([
+        connection.getParsedTokenAccountsByOwner(creatorPk, { programId: TOKEN_PROGRAM_ID }),
+        connection.getParsedTokenAccountsByOwner(creatorPk, { programId: TOKEN_2022_PROGRAM_ID }),
+      ]);
+
+      let creatorAmount = 0n;
+
+      for (const parsedSet of [legacyAccounts, token2022Accounts]) {
+        for (const entry of parsedSet.value) {
+          const info = (entry.account.data as any)?.parsed?.info;
+          const accMint = String(info?.mint ?? "");
+          const rawAmount = BigInt(String(info?.tokenAmount?.amount ?? "0"));
+
+          if (accMint === mintStr && rawAmount > 0n) {
+            creatorAmount += rawAmount;
+          }
+        }
+      }
+
+      if (!cancelled) {
+        setProgramBalanceRaw(vaultAmount);
+        setDevBalanceRaw(creatorAmount);
+      }
+    } catch {
+      if (!cancelled) {
+        setDevBalanceRaw(0n);
+        setProgramBalanceRaw(0n);
+      }
+    }
+  }
+
+  void loadBalances();
+
+  return () => {
+    cancelled = true;
+  };
+}, [connection, mintStr, vaultStr, creatorStr, auctionData?.assetKind, auctionData?.asset_kind]);
+
+const displayedSupplyRaw = devBalanceRaw + programBalanceRaw;
+
+const formattedDisplayedSupply =
+  isMetadataOnly(auctionData)
+    ? "Metadata only"
+    : formatTokenAmount(displayedSupplyRaw, tokenDecimals);
+
+const formattedDevBalance =
+  isMetadataOnly(auctionData)
+    ? "Metadata only"
+    : formatTokenAmount(devBalanceRaw, tokenDecimals);
+
+const formattedProgramBalance =
+  isMetadataOnly(auctionData)
+    ? "Metadata only"
+    : formatTokenAmount(programBalanceRaw, tokenDecimals);
+
   if (!auctionData) return null;
 
   const metadataImage = metadata?.image ? toHttpGateway(metadata.image) : "";
@@ -264,9 +365,9 @@ const formattedClearingPrice = hasEnoughBids
     <section className="mt-6 overflow-hidden border border-[var(--line)] bg-[var(--surface)] p-6 shadow-none">
       <div className="mb-5 flex items-center justify-between gap-3 border-b border-[var(--line)] pb-4">
         <div>
-          <h3 className="text-lg font-semibold text-[var(--foreground)]">Auction status</h3>
+          <h3 className="text-lg font-semibold text-[var(--foreground)]">Project status</h3>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Core auction status, settlement details, and pinned metadata
+            Core project status, settlement details, and pinned metadata
           </p>
         </div>
 
@@ -311,6 +412,10 @@ const formattedClearingPrice = hasEnoughBids
                   value={metadata?.image ? shorten(metadata.image) : "Unavailable"}
                   copyValue={metadata?.image || ""}
                 />
+
+<CopyableField label="Dev balance" value={formattedDevBalance} />
+<CopyableField label="Program balance" value={formattedProgramBalance} />
+                <CopyableField label="Supply (dev + program)" value={formattedDisplayedSupply} />
               </div>
 
               {metadataError ? <p className="mt-3 text-sm text-[var(--accent)]">{metadataError}</p> : null}

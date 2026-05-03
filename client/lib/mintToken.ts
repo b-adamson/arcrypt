@@ -80,7 +80,7 @@ export async function mintToken(
     )
   );
 
-  // 5. Revoke mint authority 🔥
+  // 5. Revoke mint authority
   tx.add(
     createSetAuthorityInstruction(
       mint.publicKey,
@@ -97,7 +97,6 @@ export async function mintToken(
 
   tx.recentBlockhash = blockhash;
 
-  // sign mint keypair + wallet
   tx.partialSign(mint);
 
   if (!wallet?.signTransaction) {

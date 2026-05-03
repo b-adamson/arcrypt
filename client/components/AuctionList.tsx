@@ -87,8 +87,6 @@ function AuctionCard({ item }: { item: AuctionSummary }) {
       className="block w-full overflow-hidden border border-[var(--line)] bg-[var(--surface)] transition surface-hover"
     >
       <article className="grid min-h-[260px] gap-0 lg:grid-cols-[320px_1fr]">
-
-        {/* LEFT: IMAGE */}
         <div className="relative min-h-[260px] border-b border-[var(--line)] lg:border-b-0 lg:border-r">
           {item.image ? (
             <img
@@ -102,11 +100,7 @@ function AuctionCard({ item }: { item: AuctionSummary }) {
             </div>
           )}
         </div>
-
-        {/* RIGHT PANEL */}
         <div className="flex flex-col p-5 md:p-6">
-
-        {/* TITLE */}
 <div>
   <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--muted)]">
     Auction
@@ -115,8 +109,6 @@ function AuctionCard({ item }: { item: AuctionSummary }) {
     {item.name}
   </h3>
 </div>
-
-{/* 🔥 BID COUNTER (moved here) */}
 <div
   className={`
     mt-3 surface-strong px-4 py-3 transition-all
@@ -136,8 +128,6 @@ function AuctionCard({ item }: { item: AuctionSummary }) {
     {item.bidCount ?? 0}
   </div>
 </div>
-
-
           <p
             className="mt-4 text-sm leading-6 text-[var(--muted)]"
             style={{
@@ -149,8 +139,6 @@ function AuctionCard({ item }: { item: AuctionSummary }) {
           >
             {item.description || "No description available."}
           </p>
-
-    
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             {!isMetadataOnly && (
               <Field
@@ -173,8 +161,6 @@ function AuctionCard({ item }: { item: AuctionSummary }) {
               copyValue={item.metadataUri}
             />
           </div>
-
-   
           {item.error && (
             <div className="mt-4 border border-[var(--accent)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--accent)]">
               {item.error}

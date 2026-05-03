@@ -5,13 +5,11 @@ import React, { useMemo } from "react";
 type Props = {
   show: boolean;
 };
-
 const COLORS = ["#00e676", "#f5f7fb", "#b7f7d0", "#7CFFB0", "#d9ffe8"];
 
 function rand(min: number, max: number) {
   return Math.random() * (max - min) + min;
 }
-
 export default function AuctionWinConfetti({ show }: Props) {
   const pieces = useMemo(() => {
     if (!show) return [];
