@@ -114,7 +114,7 @@ if (!alreadySettled) {
 
 
     // -----------------------------
-    // ONLY CREATOR → ADD RAYDIUM
+    // ONLY CREATOR, ADD RAYDIUM
     // -----------------------------
     if (isCreator) {
       if (!tokenMint || !wsolAmount || !tokenAmount) {

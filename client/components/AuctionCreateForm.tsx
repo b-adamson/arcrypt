@@ -537,14 +537,12 @@ await onSubmit(metadataUri, {
       <div className="relative">
         <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <div className="mb-2 inline-flex border border-[var(--line)] bg-[var(--background)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/70">
-              Create auction
-            </div>
+
             <h3 className="text-2xl font-semibold tracking-tight text-[var(--foreground)] md:text-3xl">
               Launch your project
             </h3>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
-              Configure the details of your sealed auction launch.
+              Configure the details of your project launch.
             </p>
           </div>
         </div>
@@ -842,7 +840,6 @@ await onSubmit(metadataUri, {
   />
 </Field>
 
-{/* subtle display only */}
 <div className="text-[10px] text-white/70 mt-1">
   You keep: {split.user} • Auction: {split.auction}
 </div>
@@ -934,7 +931,7 @@ await onSubmit(metadataUri, {
 <button
   onClick={handleSubmit}
   disabled={isDisabled || isProcessing}
-  className="btn btn-primary h-12 px-5 text-sm font-semibold"
+  className="btn btn-primary h-12 px-5 text-sm font-bold uppercase tracking-[0.18em] transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-[0_8px_24px_rgba(0,230,118,0.14)] active:translate-y-0 active:scale-[0.99] disabled:translate-y-0 disabled:scale-100 disabled:opacity-60"
 >
   {isProcessing
     ? assetKind === "Fungible"

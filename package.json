@@ -1,5 +1,5 @@
 {
-  "name": "arcibid",
+  "name": "arcrypt",
   "private": true,
   "workspaces": [
     "client",

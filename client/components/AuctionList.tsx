@@ -4,6 +4,10 @@ import React from "react";
 import Link from "next/link";
 import { useBidFlash } from "../hooks/addBidFlash";
 
+import {
+  shorten,
+} from "@/lib/utils";
+
 type AuctionSummary = {
   auctionPk: string;
   name: string;
@@ -22,12 +26,6 @@ type AuctionSummary = {
 type Props = {
   auctions: AuctionSummary[];
 };
-
-function shorten(pk: string): string {
-  if (!pk) return "";
-  if (pk.length <= 14) return pk;
-  return `${pk.slice(0, 5)}…${pk.slice(-5)}`;
-}
 
 function Field({
   label,

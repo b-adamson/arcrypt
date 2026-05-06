@@ -85,7 +85,7 @@
 //! - Only final results are revealed after computation
 //! - Escrowed balances remain confidential throughout
 //!
-//! ## Escrow Model
+//! ## Escrows
 //!
 //! - Funds are escrowed through Umbra's encrypted balance system
 //! - No plaintext token transfers occur during bidding

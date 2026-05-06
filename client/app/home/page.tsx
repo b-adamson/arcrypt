@@ -575,7 +575,7 @@ const scrollTo =
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <h3 className="mt-1 text-xl font-bold text-[var(--foreground)] md:text-2xl">
-                    Click to move through the flow
+                    Click to learn how Arcrypt works
                   </h3>
                 </div>
                 <div className="badge">
@@ -657,7 +657,7 @@ const scrollTo =
                 </button>
 
                 <a href="#launch-section" onClick={scrollTo(launchRef)} className="btn w-full sm:w-auto">
-                  Back to the launch flow
+                  Back to launch
                 </a>
               </div>
             </div>
@@ -777,8 +777,7 @@ cargo install arcrypt-sdk`}
 
                 <div className="mt-6 text-xs text-[var(--muted)]">
                   <div className="italic">
-                    Example use cases: lending protocols, DAO launchpads, treasury tooling, and
-                    auction-based DeFi apps.
+                    Examples: lending protocols, sealed auction tx validators, DAO launchpads
                   </div>
                 </div>
               </article>

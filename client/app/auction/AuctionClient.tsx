@@ -52,8 +52,6 @@ export default function AuctionClient() {
 
     type Mode = "auction" | "proposal";
     
-    // const [mode, setMode] = useState<Mode>("auction");
-    
     // governance / realm inputs
     const [proposalName, setProposalName] = useState(
       "Create sealed auction for treasury tokens"
@@ -518,42 +516,6 @@ async function handleMakeAuction(
 <main className="px-6 py-10">
 
 
-  <div className="mb-10 flex justify-center">
-    <div className="w-full max-w-[400px]">
-
-      <div className="inline-flex relative w-full p-1 rounded-full border border-white/10 bg-white/[0.03] backdrop-blur-xl">
-        
-        <div
-          className={`
-            absolute top-1 bottom-1 w-1/2 rounded-full transition-all
-            ${mode === "auction" ? "left-1" : "left-[calc(50%+2px)]"}
-            bg-white/10
-          `}
-        />
-
-        <button
-          onClick={() => setMode("auction")}
-          className={`flex-1 z-10 py-2 text-sm font-semibold ${
-            mode === "auction" ? "text-white" : "text-white/50"
-          }`}
-        >
-          Auction
-        </button>
-
-        <button
-          onClick={() => setMode("proposal")}
-          className={`flex-1 z-10 py-2 text-sm font-semibold ${
-            mode === "proposal" ? "text-white" : "text-white/50"
-          }`}
-        >
-          Governance
-        </button>
-
-      </div>
-    </div>
-  </div>
-
-
   <div
     className={`
       w-full mx-auto
@@ -769,6 +731,23 @@ onSubmit={(metadataUri, tokenOverride) =>
   connection={programClient?.provider.connection ?? null}
 />
   ) : null}
+
+  
+
+<div className="mt-8 mb-10 flex justify-center">
+  <button
+    type="button"
+    onClick={() =>
+      setMode((m) => (m === "proposal" ? "auction" : "proposal"))
+    }
+    className="rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-bold uppercase tracking-[0.18em] text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.06] hover:shadow-[0_8px_24px_rgba(0,230,118,0.10)] active:translate-y-0 active:scale-[0.99]"
+  >
+    {mode === "proposal"
+      ? "Hide advanced governance"
+      : "Show advanced governance"}
+  </button>
+</div>
+
 
   <div style={{ marginTop: 12, color: "#333" }}>
     <strong>Status:</strong> {status}

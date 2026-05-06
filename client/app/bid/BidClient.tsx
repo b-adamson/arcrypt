@@ -136,20 +136,15 @@ const determineWinnerKind =
           ? "Determine uniform winner"
           : "Determine pro-rata winner";
 
-  const panelClass =
-    "mt-6 overflow-hidden border border-[var(--line)] bg-[var(--surface)] p-6 shadow-none";
+  const panelClass = "mt-6 overflow-hidden border border-[var(--line)] bg-[var(--surface)] p-6 shadow-none";
 
-  const buttonBase =
-    "inline-flex items-center justify-center border px-4 py-3 text-sm font-semibold transition duration-200 ease-out focus:outline-none focus:ring-1 focus:ring-[var(--accent)]/50 disabled:cursor-not-allowed disabled:opacity-40";
+  const buttonBase = "inline-flex items-center justify-center border px-4 py-3 text-sm font-semibold transition duration-200 ease-out focus:outline-none focus:ring-1 focus:ring-[var(--accent)]/50 disabled:cursor-not-allowed disabled:opacity-40";
 
-  const buttonPrimary =
-    `${buttonBase} border-[var(--accent)] bg-[var(--accent)] text-black hover:opacity-95 hover:-translate-y-0.5`;
+  const buttonPrimary = `${buttonBase} border-[var(--accent)] bg-[var(--accent)] text-black hover:opacity-95 hover:-translate-y-0.5`;
 
-  const buttonSecondary =
-    `${buttonBase} border-[var(--line)] bg-[var(--background)] text-[var(--foreground)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)] hover:-translate-y-0.5`;
+  const buttonSecondary = `${buttonBase} border-[var(--line)] bg-[var(--background)] text-[var(--foreground)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)] hover:-translate-y-0.5`;
 
-  const outcomeBadgeClass =
-    "inline-flex items-center border border-[var(--line)] bg-[var(--background)] px-3 py-1 text-xs font-medium text-[var(--foreground)]";
+  const outcomeBadgeClass = "inline-flex items-center border border-[var(--line)] bg-[var(--background)] px-3 py-1 text-xs font-medium text-[var(--foreground)]";
 
   useEffect(() => {
     if (!auctionData) {
@@ -284,7 +279,7 @@ const determineWinnerKind =
         const { program } = await createAnchorProgramInBrowser(wallet as any, process.env.NEXT_PUBLIC_PROGRAM_ID);
         if (!cancelled) {
           setProgramClient(program);
-          setStatus("Program client ready (wallet).");
+          setStatus("Wallet client ready.");
         }
       } catch (e: any) {
         if (!cancelled) {
@@ -892,7 +887,7 @@ await refreshAuctionState();
         </div>
 
         <div className="mt-4 border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--muted)]">
-          <strong className="text-[var(--foreground)]">Status:</strong> {status}
+          {status}
         </div>
       </div>
     </main>
