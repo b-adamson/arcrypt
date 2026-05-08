@@ -34,6 +34,7 @@ type TokenOption = {
 };
 
 const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL ?? "https://api.devnet.solana.com";
+const PAYMENT_DECIMALS = 6;
 
 const tokenMetadataCache = new Map<string, TokenOption>();
 const tokenMetadataInFlight = new Map<string, Promise<TokenOption>>();
@@ -92,7 +93,7 @@ async function enrichTokenOption(option: TokenOption, umi: any): Promise<TokenOp
 }
 
 type Props = {
-  minBidSol: string;
+  minBidUsdc: string;
   saleAmountToken: string;
   tokenMint: string;
   durationSecs: number;
@@ -109,7 +110,7 @@ type Props = {
   onMetadataNameChange: (v: string) => void;
   onMetadataDescriptionChange: (v: string) => void;
   onMetadataImageChange: (file: File | null) => void;
-  onMinBidSolChange: (value: string) => void;
+  onMinBidUsdcChange: (value: string) => void;
   onSaleAmountTokenChange: (value: string) => void;
   onTokenMintChange: (value: string) => void;
   onDurationSecsChange: (value: number) => void;
@@ -153,7 +154,7 @@ const selectClass =
 const MAX_METADATA_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
 
 export default function AuctionCreateForm({
-  minBidSol,
+  minBidUsdc,
   saleAmountToken,
   tokenMint,
   durationSecs,
@@ -170,7 +171,7 @@ export default function AuctionCreateForm({
   onMetadataNameChange,
   onMetadataDescriptionChange,
   onMetadataImageChange,
-  onMinBidSolChange,
+  onMinBidUsdcChange,
   onSaleAmountTokenChange,
   onTokenMintChange,
   onDurationSecsChange,
@@ -682,17 +683,17 @@ await onSubmit(metadataUri, {
             ) : null}
           </Field>
 
-          <Field label="Min bid (SOL)" hint="Lowest bid allowed for this auction.">
-            <input
-              type="number"
-              step="0.000000001"
-              min={0}
-              value={minBidSol}
-              onChange={(e) => onMinBidSolChange(e.target.value)}
-              className={inputClass}
-              placeholder="0.10"
-            />
-          </Field>
+<Field label="Min bid (USDC)" hint="Lowest bid allowed for this auction.">
+  <input
+    type="number"
+    step="0.000001"
+    min={0}
+    value={minBidUsdc}
+    onChange={(e) => onMinBidUsdcChange(e.target.value)}
+    className={inputClass}
+    placeholder="1.00"
+  />
+</Field>
 
         {assetKind === "Fungible" && tokenMintMode !== "CreateNew" ? (
   <Field label="Prize amount" hint="Token amount sent to the winner(s).">
@@ -943,10 +944,10 @@ await onSubmit(metadataUri, {
 
         {auctionPkStr ? (
           <div className="mt-5">
-            <Link
-              href={`/bid?auctionPk=${encodeURIComponent(auctionPkStr)}`}
-              className="btn surface-hover inline-flex items-center gap-2 px-4 py-2 text-sm text-[var(--foreground)]"
-            >
+<Link
+  href={`/bid?auctionPk=${encodeURIComponent(auctionPkStr)}`}
+  className="btn inline-flex items-center gap-2 bg-[var(--accent)] text-black hover:opacity-90 px-4 py-2"
+>
               Open this auction’s bid page
               <span aria-hidden>→</span>
             </Link>

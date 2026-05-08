@@ -1,10 +1,21 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { PublicKey } from "@solana/web3.js";
-import { useBidFlash } from "../hooks/addBidFlash";
-import { Connection } from "@solana/web3.js";
+import { PublicKey, Connection } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
+import { useBidFlash } from "../hooks/addBidFlash";
+import {
+  shorten,
+  enumKey,
+  toBase58Maybe,
+  formatTokenAmount,
+  formatEndTime,
+  toHttpGateway,
+  getAuctionType,
+  isMetadataOnly,
+  getSingleWinner,
+  getMultiWinners,
+} from "@/lib/utils";
 
 type Props = {
   auctionData: any | null;
@@ -22,19 +33,7 @@ type AuctionMetadata = {
   image?: string;
 };
 
-import {
-  shorten,
-  enumKey,
-  toBase58Maybe,
-  formatSolAmount,
-  formatTokenAmount,
-  formatEndTime,
-  toHttpGateway,
-  getAuctionType,
-  isMetadataOnly,
-  getSingleWinner,
-  getMultiWinners,
-} from "@/lib/utils";
+const USDC_DECIMALS = 6;
 
 function toStringMaybe(v: any): string {
   if (v == null) return "";
@@ -58,6 +57,10 @@ function getMetadataUri(auction: any): string {
   return toStringMaybe(raw);
 }
 
+function formatUsdcAmount(raw: any): string {
+  return formatTokenAmount(raw ?? 0, USDC_DECIMALS);
+}
+
 export default function AuctionResultCard({
   auctionData,
   auctionEnded,
@@ -70,7 +73,7 @@ export default function AuctionResultCard({
   const [metadataError, setMetadataError] = useState<string | null>(null);
   const [metadataLoading, setMetadataLoading] = useState(false);
   const [devBalanceRaw, setDevBalanceRaw] = useState<bigint>(0n);
-const [programBalanceRaw, setProgramBalanceRaw] = useState<bigint>(0n);
+  const [programBalanceRaw, setProgramBalanceRaw] = useState<bigint>(0n);
 
   const auctionType = getAuctionType(auctionData);
   const status = enumKey(auctionData?.status);
@@ -97,8 +100,10 @@ const [programBalanceRaw, setProgramBalanceRaw] = useState<bigint>(0n);
   const metadataUri = getMetadataUri(auctionData);
   const metadataHttpUri = toHttpGateway(metadataUri);
 
-  const formattedPayment = formatSolAmount(paymentAmount ?? 0);
-  const formattedSaleAmount = isMetadataOnly(auctionData) ? "Metadata only" : formatTokenAmount(saleAmount ?? 0, tokenDecimals);
+  const formattedPayment = formatUsdcAmount(paymentAmount ?? 0);
+  const formattedSaleAmount = isMetadataOnly(auctionData)
+    ? "Metadata only"
+    : formatTokenAmount(saleAmount ?? 0, tokenDecimals);
 
   const bidCount = Number(auctionData?.bidCount ?? auctionData?.bid_count ?? 0);
   const flash = useBidFlash(bidCount);
@@ -149,97 +154,93 @@ const [programBalanceRaw, setProgramBalanceRaw] = useState<bigint>(0n);
   }, [metadataHttpUri]);
 
   const mintStr = useMemo(
-  () => toBase58Maybe(auctionData?.tokenMint ?? auctionData?.token_mint),
-  [auctionData?.tokenMint, auctionData?.token_mint]
-);
+    () => toBase58Maybe(auctionData?.tokenMint ?? auctionData?.token_mint),
+    [auctionData?.tokenMint, auctionData?.token_mint]
+  );
 
-const vaultStr = useMemo(
-  () => toBase58Maybe(auctionData?.prizeVault ?? auctionData?.prize_vault),
-  [auctionData?.prizeVault, auctionData?.prize_vault]
-);
+  const vaultStr = useMemo(
+    () => toBase58Maybe(auctionData?.prizeVault ?? auctionData?.prize_vault),
+    [auctionData?.prizeVault, auctionData?.prize_vault]
+  );
 
-const creatorStr = useMemo(
-  () => toBase58Maybe(auctionData?.authority),
-  [auctionData?.authority]
-);
+  const creatorStr = useMemo(
+    () => toBase58Maybe(auctionData?.authority),
+    [auctionData?.authority]
+  );
 
-useEffect(() => {
-  let cancelled = false;
+  useEffect(() => {
+    let cancelled = false;
 
-  async function loadBalances() {
-    try {
-      if (!connection || !mintStr || !vaultStr || !creatorStr || isMetadataOnly(auctionData)) {
+    async function loadBalances() {
+      try {
+        if (!connection || !mintStr || !vaultStr || !creatorStr || isMetadataOnly(auctionData)) {
+          if (!cancelled) {
+            setDevBalanceRaw(0n);
+            setProgramBalanceRaw(0n);
+          }
+          return;
+        }
+
+        const vaultPk = new PublicKey(vaultStr);
+        const creatorPk = new PublicKey(creatorStr);
+
+        let vaultAmount = 0n;
+        try {
+          const bal = await connection.getTokenAccountBalance(vaultPk);
+          vaultAmount = BigInt(bal.value.amount);
+        } catch {
+          vaultAmount = 0n;
+        }
+
+        const [legacyAccounts, token2022Accounts] = await Promise.all([
+          connection.getParsedTokenAccountsByOwner(creatorPk, { programId: TOKEN_PROGRAM_ID }),
+          connection.getParsedTokenAccountsByOwner(creatorPk, { programId: TOKEN_2022_PROGRAM_ID }),
+        ]);
+
+        let creatorAmount = 0n;
+
+        for (const parsedSet of [legacyAccounts, token2022Accounts]) {
+          for (const entry of parsedSet.value) {
+            const info = (entry.account.data as any)?.parsed?.info;
+            const accMint = String(info?.mint ?? "");
+            const rawAmount = BigInt(String(info?.tokenAmount?.amount ?? "0"));
+
+            if (accMint === mintStr && rawAmount > 0n) {
+              creatorAmount += rawAmount;
+            }
+          }
+        }
+
+        if (!cancelled) {
+          setProgramBalanceRaw(vaultAmount);
+          setDevBalanceRaw(creatorAmount);
+        }
+      } catch {
         if (!cancelled) {
           setDevBalanceRaw(0n);
           setProgramBalanceRaw(0n);
         }
-        return;
-      }
-
-      const mintPk = new PublicKey(mintStr);
-      const vaultPk = new PublicKey(vaultStr);
-      const creatorPk = new PublicKey(creatorStr);
-
-      let vaultAmount = 0n;
-      try {
-        const bal = await connection.getTokenAccountBalance(vaultPk);
-        vaultAmount = BigInt(bal.value.amount);
-      } catch {
-        vaultAmount = 0n;
-      }
-
-      const [legacyAccounts, token2022Accounts] = await Promise.all([
-        connection.getParsedTokenAccountsByOwner(creatorPk, { programId: TOKEN_PROGRAM_ID }),
-        connection.getParsedTokenAccountsByOwner(creatorPk, { programId: TOKEN_2022_PROGRAM_ID }),
-      ]);
-
-      let creatorAmount = 0n;
-
-      for (const parsedSet of [legacyAccounts, token2022Accounts]) {
-        for (const entry of parsedSet.value) {
-          const info = (entry.account.data as any)?.parsed?.info;
-          const accMint = String(info?.mint ?? "");
-          const rawAmount = BigInt(String(info?.tokenAmount?.amount ?? "0"));
-
-          if (accMint === mintStr && rawAmount > 0n) {
-            creatorAmount += rawAmount;
-          }
-        }
-      }
-
-      if (!cancelled) {
-        setProgramBalanceRaw(vaultAmount);
-        setDevBalanceRaw(creatorAmount);
-      }
-    } catch {
-      if (!cancelled) {
-        setDevBalanceRaw(0n);
-        setProgramBalanceRaw(0n);
       }
     }
-  }
 
-  void loadBalances();
+    void loadBalances();
 
-  return () => {
-    cancelled = true;
-  };
-}, [connection, mintStr, vaultStr, creatorStr, auctionData?.assetKind, auctionData?.asset_kind]);
+    return () => {
+      cancelled = true;
+    };
+  }, [connection, mintStr, vaultStr, creatorStr, auctionData?.assetKind, auctionData?.asset_kind, auctionData]);
 
-const displayedSupplyRaw = devBalanceRaw + programBalanceRaw;
+  const displayedSupplyRaw = devBalanceRaw + programBalanceRaw;
 
-const formattedDisplayedSupply =
-  isMetadataOnly(auctionData)
+  const formattedDisplayedSupply = isMetadataOnly(auctionData)
     ? "Metadata only"
     : formatTokenAmount(displayedSupplyRaw, tokenDecimals);
 
-const formattedDevBalance =
-  isMetadataOnly(auctionData)
+  const formattedDevBalance = isMetadataOnly(auctionData)
     ? "Metadata only"
     : formatTokenAmount(devBalanceRaw, tokenDecimals);
 
-const formattedProgramBalance =
-  isMetadataOnly(auctionData)
+  const formattedProgramBalance = isMetadataOnly(auctionData)
     ? "Metadata only"
     : formatTokenAmount(programBalanceRaw, tokenDecimals);
 
@@ -248,27 +249,30 @@ const formattedProgramBalance =
   const metadataImage = metadata?.image ? toHttpGateway(metadata.image) : "";
 
   const winnerPrices = Array.isArray(auctionData?.winnerPrices ?? auctionData?.winner_prices)
-  ? (auctionData?.winnerPrices ?? auctionData?.winner_prices)
-  : [];
-const formatOrDash = (v: any) => {
-  const val = BigInt(v?.toString?.() ?? 0);
-  return val === 0n ? "-" : formatSolAmount(v);
-};
+    ? (auctionData?.winnerPrices ?? auctionData?.winner_prices)
+    : [];
 
-const formattedWinnerBids = winnerBids.length
-  ? winnerBids.map((v: any) => formatOrDash(v)).join(", ")
-  : "Not available yet";
+  const formatOrDash = (v: any) => {
+    const val = BigInt(v?.toString?.() ?? 0);
+    return val === 0n ? "-" : formatUsdcAmount(v);
+  };
 
-const formattedWinnerPrices = winnerPrices.length
-  ? winnerPrices.map((v: any) => formatOrDash(v)).join(", ")
-  : "Not available yet";
+  const formattedWinnerBids = winnerBids.length
+    ? winnerBids.map((v: any) => formatOrDash(v)).join(", ")
+    : "Not available yet";
 
-const hasEnoughBids = bidCount >= 3;
+  const formattedWinnerPrices = winnerPrices.length
+    ? winnerPrices.map((v: any) => formatOrDash(v)).join(", ")
+    : "Not available yet";
 
-const formattedClearingPrice = hasEnoughBids
-  ? formatSolAmount(clearingPrice ?? 0)
-  : "Not enough bids";
-  
+  const hasEnoughBids = bidCount >= 3;
+
+  const formattedClearingPrice = hasEnoughBids
+    ? formatUsdcAmount(clearingPrice ?? 0)
+    : "Not enough bids";
+
+  const formattedMinBid = formatUsdcAmount(minBid ?? 0);
+  const formattedTotalBid = formatUsdcAmount(totalBid ?? 0);
 
   return (
     <section className="mt-6 overflow-hidden border border-[var(--line)] bg-[var(--surface)] p-6 shadow-none">
@@ -288,7 +292,11 @@ const formattedClearingPrice = hasEnoughBids
           <div className="grid gap-0 md:grid-cols-[220px_1fr]">
             <div className="border-b border-[var(--line)] md:border-b-0 md:border-r">
               {metadataImage ? (
-                <img src={metadataImage} alt={metadata?.name || "Auction image"} className="h-full min-h-[220px] w-full object-cover" />
+                <img
+                  src={metadataImage}
+                  alt={metadata?.name || "Auction image"}
+                  className="h-full min-h-[220px] w-full object-cover"
+                />
               ) : (
                 <div className="flex min-h-[220px] items-center justify-center px-4 text-sm text-[var(--muted)]">
                   {metadataLoading ? "Loading metadata..." : "No image in metadata"}
@@ -322,38 +330,40 @@ const formattedClearingPrice = hasEnoughBids
                   copyValue={metadata?.image || ""}
                 />
 
-<CopyableField label="Dev balance" value={formattedDevBalance} />
-<CopyableField label="Program balance" value={formattedProgramBalance} />
+                <CopyableField label="Dev balance (USDC)" value={formattedDevBalance} />
+                <CopyableField label="Program balance (USDC)" value={formattedProgramBalance} />
                 <CopyableField label="Supply (dev + program)" value={formattedDisplayedSupply} />
               </div>
 
-              {metadataError ? <p className="mt-3 text-sm text-[var(--accent)]">{metadataError}</p> : null}
+              {metadataError ? (
+                <p className="mt-3 text-sm text-[var(--accent)]">{metadataError}</p>
+              ) : null}
             </div>
           </div>
         </div>
       ) : null}
 
-<div className="mb-5">
-  <div
-    className={`
-      surface-strong px-6 py-5 transition-all
-      ${flash ? "border-accent pulse-accent" : ""}
-    `}
-  >
-    <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--muted)]">
-      Bids submitted
-    </div>
+      <div className="mb-5">
+        <div
+          className={`
+            surface-strong px-6 py-5 transition-all
+            ${flash ? "border-accent pulse-accent" : ""}
+          `}
+        >
+          <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--muted)]">
+            Bids submitted
+          </div>
 
-    <div
-      className={`
-        mt-2 text-4xl font-bold transition-colors
-        ${flash ? "text-accent" : "text-[var(--foreground)]"}
-      `}
-    >
-      {bidCount}
-    </div>
-  </div>
-</div>
+          <div
+            className={`
+              mt-2 text-4xl font-bold transition-colors
+              ${flash ? "text-accent" : "text-[var(--foreground)]"}
+            `}
+          >
+            {bidCount}
+          </div>
+        </div>
+      </div>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         <CopyableField label="Status" value={status} />
@@ -366,13 +376,15 @@ const formattedClearingPrice = hasEnoughBids
           value={isMetadataOnly(auctionData) ? "Metadata only" : shorten(toBase58Maybe(tokenMint))}
           copyValue={isMetadataOnly(auctionData) ? "Metadata only" : toBase58Maybe(tokenMint)}
         />
-        <CopyableField label="Min bid" value={formatSolAmount(minBid ?? 0)} />
+        <CopyableField label="Min bid (USDC)" value={formattedMinBid} />
         <CopyableField label="End time" value={formatEndTime(endTime)} />
-{multi && bidCount < 3 && (
-  <div className="col-span-full border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm">
-    Uniform auctions require at least 3 bids. Results are incomplete.
-  </div>
-)}
+
+        {multi && bidCount < 3 && (
+          <div className="col-span-full border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm">
+            Uniform auctions require at least 3 bids. Results are incomplete.
+          </div>
+        )}
+
         {!multi ? (
           <>
             <CopyableField
@@ -380,39 +392,45 @@ const formattedClearingPrice = hasEnoughBids
               value={isWinner ? "You are the winner" : singleWinner ? shorten(singleWinner) : "Not resolved yet"}
               copyValue={singleWinner ?? ""}
             />
-            <CopyableField label="Payment" value={formattedPayment} copyValue={toStringMaybe(paymentAmount ?? 0)} />
+            <CopyableField
+              label="Payment (USDC)"
+              value={formattedPayment}
+              copyValue={toStringMaybe(paymentAmount ?? 0)}
+            />
           </>
         ) : (
           <>
-<CopyableField
-  label="Winners"
-  value={
-    multiWinners.length
-      ? multiWinners.map((w) => shorten(w)).join(", ")
-      : "Not resolved yet"
-  }
-  copyValue={multiWinners.join(", ")}
-/>
-           <CopyableField
-  label="Winner bids"
-  value={formattedWinnerBids}
-  copyValue={winnerBids.join(", ")}
-/>
-
-<CopyableField
-  label="Winner prices"
-  value={formattedWinnerPrices}
-  copyValue={winnerPrices.join(", ")}
-/>
-
-<CopyableField
-  label="Clearing price"
-  value={formattedClearingPrice}
-/>
             <CopyableField
-  label="Total bid"
-  value={formatSolAmount(totalBid ?? 0)}
-/>
+              label="Winners"
+              value={
+                multiWinners.length
+                  ? multiWinners.map((w) => shorten(w)).join(", ")
+                  : "Not resolved yet"
+              }
+              copyValue={multiWinners.join(", ")}
+            />
+
+            <CopyableField
+              label="Winner bids (USDC)"
+              value={formattedWinnerBids}
+              copyValue={winnerBids.join(", ")}
+            />
+
+            <CopyableField
+              label="Winner prices (USDC)"
+              value={formattedWinnerPrices}
+              copyValue={winnerPrices.join(", ")}
+            />
+
+            <CopyableField
+              label="Clearing price (USDC)"
+              value={formattedClearingPrice}
+            />
+
+            <CopyableField
+              label="Total bid (USDC)"
+              value={formattedTotalBid}
+            />
           </>
         )}
       </div>
@@ -449,20 +467,15 @@ function CopyableField({
         <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
           {label}
         </div>
-<button
-  onClick={handleCopy}
-  className="inline-flex items-center justify-center border border-[var(--line)] 
-             bg-[var(--background)] px-2 py-1 text-xs text-[var(--muted)]
-             hover:border-[var(--line-strong)] hover:text-[var(--foreground)]
-             transition min-w-[52px]"
-  title="Copy"
->
-  {copied ? (
-    <span className="text-[var(--accent)]">Copied</span>
-  ) : (
-    "⧉"
-  )}
-</button>
+        <button
+          onClick={handleCopy}
+          className="inline-flex min-w-[52px] items-center justify-center border border-[var(--line)]
+                     bg-[var(--background)] px-2 py-1 text-xs text-[var(--muted)]
+                     transition hover:border-[var(--line-strong)] hover:text-[var(--foreground)]"
+          title="Copy"
+        >
+          {copied ? <span className="text-[var(--accent)]">Copied</span> : "⧉"}
+        </button>
       </div>
       <div className="mt-1 break-words text-sm text-[var(--foreground)]">{value}</div>
     </div>

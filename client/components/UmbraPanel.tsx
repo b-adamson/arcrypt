@@ -1,45 +1,28 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { install } from "@solana/webcrypto-ed25519-polyfill";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Connection, Transaction, VersionedTransaction } from "@solana/web3.js";
-import bs58 from "bs58";
 import * as nobleEd25519 from "@noble/ed25519";
 import { sha512 } from "@noble/hashes/sha2.js";
-
 import {
-  getUmbraClient,
+  getUserAccountQuerierFunction,
+  getEncryptedBalanceQuerierFunction,
   getUserAccountX25519KeypairDeriver,
   getMasterViewingKeyX25519KeypairDeriver,
   getUserRegistrationFunction,
-  getUserAccountQuerierFunction,
-  getEncryptedBalanceQuerierFunction,
-  getPublicBalanceToEncryptedBalanceDirectDepositorFunction,
-  getEncryptedBalanceToPublicBalanceDirectWithdrawerFunction,
 } from "@umbra-privacy/sdk";
-
 import { getUserRegistrationProver } from "@umbra-privacy/web-zk-prover";
+import { address as toAddress } from "@solana/kit";
 
-import {
-  address as toAddress,
-  getTransactionDecoder,
-  getTransactionEncoder,
-} from "@solana/kit";
+import { useUmbraClient } from "@/lib/useUmbraClient";
+import bs58 from "bs58";
 
-install();
+
+
 nobleEd25519.hashes.sha512 = sha512;
-
-const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL ?? "https://api.devnet.solana.com";
-const rpcSubscriptionsUrl =
-  process.env.NEXT_PUBLIC_RPC_WS_URL ??
-  rpcUrl.replace(/^https:/, "wss:").replace(/^http:/, "ws:");
 
 const DEVNET_USDC_MINT = toAddress("4oG4sjmopf5MzvTHLE8rpVJ2uyczxfsw2K84SUTpNDx7");
 const FAUCET_URL = "https://faucet.umbraprivacy.com/";
-
-const txEncoder = getTransactionEncoder();
-const txDecoder = getTransactionDecoder();
 
 type AccountState =
   | { kind: "idle" }
@@ -70,68 +53,12 @@ function captureDeriver(base: any, seedMap: Map<string, Uint8Array>) {
   }) as any;
 }
 
-function createSkipPreflightForwarder(rpcEndpoint: string) {
-  const conn = new Connection(rpcEndpoint, "confirmed");
-
-  return {
-    forwardSequentially: async (txs: readonly any[]) => {
-      for (const tx of txs) {
-        const wire = new Uint8Array(txEncoder.encode(tx));
-        const sig = await conn.sendRawTransaction(wire, {
-          skipPreflight: true,
-          maxRetries: 0,
-        });
-        await conn.confirmTransaction(sig, "confirmed");
-      }
-      return txs.map(() => ({ signedTransaction: new Uint8Array() }));
-    },
-  } as any;
-}
-
-function createWalletAdapterSigner(wallet: any, seedMap: Map<string, Uint8Array>) {
-  const toWalletTx = (tx: any) => {
-    const wire = new Uint8Array(txEncoder.encode(tx));
-    try {
-      return VersionedTransaction.deserialize(wire);
-    } catch {
-      return Transaction.from(wire);
-    }
-  };
-
-  return {
-    address: toAddress(wallet.publicKey.toBase58()),
-
-    signMessage: async (msg: Uint8Array) => {
-      const sig = await wallet.signMessage!(msg);
-      return {
-        address: toAddress(wallet.publicKey.toBase58()),
-        message: msg,
-        signature: sig,
-      };
-    },
-
-    signTransaction: async (tx: any) => {
-      const walletTx = toWalletTx(tx);
-      const signed = await wallet.signTransaction!(walletTx);
-      const wire = signed.serialize();
-      const decoded = txDecoder.decode(wire);
-
-      const nextDecoded: any = {
-        ...decoded,
-        signatures: { ...(decoded.signatures ?? {}) },
-      };
-
-      nextDecoded.signatures[wallet.publicKey.toBase58()] = signed.signatures[0];
-      return nextDecoded;
-    },
-  } as any;
-}
-
 export default function UmbraPanel() {
   const wallet = useWallet();
   const seedMapRef = useRef(new Map<string, Uint8Array>());
 
-  const [client, setClient] = useState<any>(null);
+  const { client, depositFn, withdrawFn } = useUmbraClient();
+
   const [registered, setRegistered] = useState<boolean | null>(null);
   const [accountState, setAccountState] = useState<AccountState>({ kind: "idle" });
   const [balance, setBalance] = useState("0");
@@ -142,85 +69,16 @@ export default function UmbraPanel() {
   const [status, setStatus] = useState("Connecting...");
   const [phase, setPhase] = useState<"idle" | "register" | "deposit" | "withdraw">("idle");
 
-  const signer = useMemo(() => {
-    if (!wallet.connected || !wallet.publicKey) return null;
-    return createWalletAdapterSigner(wallet, seedMapRef.current);
-  }, [wallet]);
-
   useEffect(() => {
-    if (!signer) return;
+    seedMapRef.current.clear();
+  }, [wallet.publicKey?.toBase58()]);
 
-    setStatus("Creating Umbra client...");
-    getUmbraClient(
-      {
-        signer,
-        network: "devnet",
-        rpcUrl,
-        rpcSubscriptionsUrl,
-        deferMasterSeedSignature: true,
-      },
-      {
-        transactionForwarder: createSkipPreflightForwarder(rpcUrl),
-      masterSeedStorage: {
-  load: (async () => {
-    try {
-      const pubkey = wallet.publicKey?.toBase58();
-      if (!pubkey) return { exists: false };
-
-      const stored = sessionStorage.getItem(`umbra:seed:${pubkey}`);
-
-      if (!stored) return { exists: false };
-
-      return {
-        exists: true,
-        seed: new Uint8Array(JSON.parse(stored)),
-      };
-    } catch {
-      return { exists: false };
-    }
-  }) as any,
-
-  store: (async (seed: Uint8Array) => {
-    try {
-      const pubkey = wallet.publicKey?.toBase58();
-      if (!pubkey) return { ok: false };
-
-      sessionStorage.setItem(
-        `umbra:seed:${pubkey}`,
-        JSON.stringify(Array.from(seed)),
-      );
-
-      return { ok: true };
-    } catch {
-      return { ok: false };
-    }
-  }) as any,
-},
-      },
-    )
-      .then((nextClient) => {
-        setClient(nextClient);
-        setStatus(`Connected as ${nextClient.signer.address}`);
-      })
-      .catch((err) => {
-        console.error(err);
-        setStatus(err?.message ?? "Failed to create Umbra client.");
-      });
-  }, [signer]);
-
-  useEffect(() => {
-  seedMapRef.current.clear();
-}, [wallet.publicKey?.toBase58()]);
-
-  const userQuery = useMemo(() => client && getUserAccountQuerierFunction({ client }), [client]);
-  const balQuery = useMemo(() => client && getEncryptedBalanceQuerierFunction({ client }), [client]);
-
-  const depositFn = useMemo(
-    () => client && getPublicBalanceToEncryptedBalanceDirectDepositorFunction({ client }),
+  const userQuery = useMemo(
+    () => client && getUserAccountQuerierFunction({ client }),
     [client],
   );
-  const withdrawFn = useMemo(
-    () => client && getEncryptedBalanceToPublicBalanceDirectWithdrawerFunction({ client }),
+  const balQuery = useMemo(
+    () => client && getEncryptedBalanceQuerierFunction({ client }),
     [client],
   );
 
@@ -254,10 +112,10 @@ export default function UmbraPanel() {
 
     if (r?.state === "shared") {
       setBalance(r.balance.toString());
-      setStatus("Balance loaded.");
+      setStatus("USDC balance loaded.");
     } else {
       setBalance("0");
-      setStatus("No decrypted balance found for this mint.");
+      setStatus("No decrypted USDC balance found for this mint.");
     }
   }, [client, userQuery, balQuery]);
 
@@ -278,36 +136,37 @@ export default function UmbraPanel() {
       setProgress(25);
       setStatus("Master seed ready. Building registration...");
 
-   const register = getUserRegistrationFunction(
-  { client } as any,
-  {
-    zkProver: getUserRegistrationProver() as any,
-    keys: {
-      userAccountX25519KeypairDeriver: captureDeriver(
-        getUserAccountX25519KeypairDeriver({ client } as any),
-        seedMapRef.current,
-      ),
-      masterViewingKeyEncryptingX25519KeypairDeriver: captureDeriver(
-        getMasterViewingKeyX25519KeypairDeriver({ client } as any),
-        seedMapRef.current,
-      ),
-    },
-    callbacks: {
-      userAccountInitialisation: {
-        pre: () => setStatus("Signing account setup transaction..."),
-        post: () => setProgress((p) => Math.max(p, 50)),
-      },
-      registerX25519PublicKey: {
-        pre: () => setStatus("Signing shared-key transaction..."),
-        post: () => setProgress((p) => Math.max(p, 75)),
-      },
-      registerUserForAnonymousUsage: {
-        pre: () => setStatus("Signing anonymous-registration transaction..."),
-        post: () => setProgress((p) => Math.max(p, 95)),
-      },
-    },
-  } as any,
-);
+      const register = getUserRegistrationFunction(
+        { client } as any,
+        {
+          zkProver: getUserRegistrationProver() as any,
+          keys: {
+            userAccountX25519KeypairDeriver: captureDeriver(
+              getUserAccountX25519KeypairDeriver({ client } as any),
+              seedMapRef.current,
+            ),
+            masterViewingKeyEncryptingX25519KeypairDeriver: captureDeriver(
+              getMasterViewingKeyX25519KeypairDeriver({ client } as any),
+              seedMapRef.current,
+            ),
+          },
+          callbacks: {
+            userAccountInitialisation: {
+              pre: () => setStatus("Signing account setup transaction..."),
+              post: () => setProgress((p) => Math.max(p, 50)),
+            },
+            registerX25519PublicKey: {
+              pre: () => setStatus("Signing shared-key transaction..."),
+              post: () => setProgress((p) => Math.max(p, 75)),
+            },
+            registerUserForAnonymousUsage: {
+              pre: () => setStatus("Signing anonymous-registration transaction..."),
+              post: () => setProgress((p) => Math.max(p, 95)),
+            },
+          },
+        } as any,
+      );
+
       await register({ confidential: true, anonymous: true });
       setProgress(100);
       setStatus("Registration complete.");
@@ -326,20 +185,19 @@ export default function UmbraPanel() {
 
     setLoading(true);
     setPhase("deposit");
-    setStatus("Preparing deposit...");
+    setStatus("Preparing USDC deposit...");
 
     try {
-      const amt = BigInt(amount);
-      setStatus("Signing deposit transaction...");
+      const amt = BigInt(amount) as any;
+      setStatus("Signing USDC deposit transaction...");
       const result = await depositFn(client.signer.address, DEVNET_USDC_MINT, amt, {
-        awaitCallback: true,
         accountInfoCommitment: "confirmed",
       });
 
       setStatus(
         result.callbackStatus === "finalized"
-          ? "Deposit finalized."
-          : `Deposit sent (${result.callbackStatus}).`,
+          ? "USDC deposit finalized."
+          : `USDC deposit sent (${result.callbackStatus}).`,
       );
       await refresh();
     } catch (e: any) {
@@ -356,20 +214,19 @@ export default function UmbraPanel() {
 
     setLoading(true);
     setPhase("withdraw");
-    setStatus("Preparing withdrawal...");
+    setStatus("Preparing USDC withdrawal...");
 
     try {
-      const amt = BigInt(amount);
-      setStatus("Signing withdrawal transaction...");
+      const amt = BigInt(amount) as any;
+      setStatus("Signing USDC withdrawal transaction...");
       const result = await withdrawFn(client.signer.address, DEVNET_USDC_MINT, amt, {
-        awaitCallback: true,
         accountInfoCommitment: "confirmed",
       });
 
       setStatus(
         result.callbackStatus === "finalized"
-          ? "Withdrawal finalized."
-          : `Withdrawal sent (${result.callbackStatus}).`,
+          ? "USDC withdrawal finalized."
+          : `USDC withdrawal sent (${result.callbackStatus}).`,
       );
       await refresh();
     } catch (e: any) {
@@ -387,8 +244,8 @@ export default function UmbraPanel() {
         <div className="surface-strong w-[min(92vw,28rem)] p-6 transition-all duration-200 surface-hover">
           <div className="text-xs uppercase tracking-[0.2em] text-muted">Umbra</div>
           <div className="mt-2 text-2xl hero-title">Connecting...</div>
-          <div className="mt-3 h-1 w-full bg-[var(--surface-3)] overflow-hidden">
-            <div className="h-full w-1/3 bg-accent animate-pulse" />
+          <div className="mt-3 h-1 w-full overflow-hidden bg-[var(--surface-3)]">
+            <div className="h-full w-1/3 animate-pulse bg-accent" />
           </div>
         </div>
       </div>
@@ -400,41 +257,40 @@ export default function UmbraPanel() {
       <div className="surface-strong w-[min(92vw,32rem)] p-6 transition-all duration-200 surface-hover hover:shadow-[0_0_0_1px_var(--line-strong)]">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <h1 className="hero-title mt-2 text-3xl">{registered ? "Encryted Bid Balance" : "Register"}</h1>
+            <h1 className="hero-title mt-2 text-3xl">
+              {registered ? "Encrypted USDC Balance" : "Register"}
+            </h1>
             <p className="hero-copy mt-2 text-sm leading-6">
               Use the Umbra devnet faucet to top up dUSDC, then deposit into your encrypted balance.
             </p>
           </div>
-
         </div>
 
         {!registered ? (
           <div className="group">
             <div className="mb-6 space-y-2">
               <div className="text-xs uppercase tracking-[0.2em] text-muted">Umbra</div>
-              <p className="hero-copy text-sm leading-6">
-                Create your encrypted balance account.
-              </p>
+              <p className="hero-copy text-sm leading-6">Create your encrypted USDC account.</p>
             </div>
 
             <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.18em] text-muted">
               <span>{loading ? "Working" : "Ready"}</span>
               <span>{progress}%</span>
             </div>
-            <div className="mb-6 h-1 w-full bg-[var(--surface-3)] overflow-hidden">
+            <div className="mb-6 h-1 w-full overflow-hidden bg-[var(--surface-3)]">
               <div
                 className="h-full bg-accent transition-all duration-300"
                 style={{ width: `${progress}%` }}
               />
             </div>
 
-<button
-  onClick={handleRegister}
-  disabled={loading}
-  className="btn-primary w-full py-3 font-bold uppercase tracking-[0.18em] transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-[0_8px_24px_rgba(0,230,118,0.14)] active:translate-y-0 active:scale-[0.99] disabled:translate-y-0 disabled:scale-100 disabled:opacity-60"
->
-  {loading ? status : "Register"}
-</button>
+            <button
+              onClick={handleRegister}
+              disabled={loading}
+              className="btn-primary w-full py-3 font-bold uppercase tracking-[0.18em] transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-[0_8px_24px_rgba(0,230,118,0.14)] active:translate-y-0 active:scale-[0.99] disabled:translate-y-0 disabled:scale-100 disabled:opacity-60"
+            >
+              {loading ? status : "Register"}
+            </button>
 
             <div className="mt-4 text-sm text-muted">{status}</div>
           </div>
@@ -443,7 +299,12 @@ export default function UmbraPanel() {
             <div className="mb-3 rounded-none border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm text-muted transition-colors duration-200 hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)]">
               <div className="flex items-center justify-between gap-3">
                 <span>Umbra devnet USDC</span>
-                <a href={FAUCET_URL} target="_blank" rel="noreferrer" className="text-accent underline-offset-2 hover:underline">
+                <a
+                  href={FAUCET_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-accent underline-offset-2 hover:underline"
+                >
                   Get more
                 </a>
               </div>
@@ -452,7 +313,7 @@ export default function UmbraPanel() {
 
             <div className="mb-8 text-center">
               <div className="text-xs uppercase tracking-[0.2em] text-muted">Balance</div>
-              <div className="mt-2 text-6xl font-semibold hero-title transition-transform duration-200 group-hover:scale-[1.01]">
+              <div className="hero-title mt-2 text-6xl font-semibold transition-transform duration-200 group-hover:scale-[1.01]">
                 {balance}
               </div>
             </div>
@@ -471,22 +332,22 @@ export default function UmbraPanel() {
             </label>
 
             <div className="mb-4 grid grid-cols-2 gap-3">
-  <button
-    onClick={handleDeposit}
-    disabled={loading}
-    className="btn-primary py-3 font-bold uppercase tracking-[0.18em] transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-[0_8px_24px_rgba(0,230,118,0.14)] active:translate-y-0 active:scale-[0.99] disabled:translate-y-0 disabled:scale-100 disabled:opacity-60"
-  >
-    {phase === "deposit" && loading ? "Signing..." : "Deposit"}
-  </button>
+              <button
+                onClick={handleDeposit}
+                disabled={loading}
+                className="btn-primary py-3 font-bold uppercase tracking-[0.18em] transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-[0_8px_24px_rgba(0,230,118,0.14)] active:translate-y-0 active:scale-[0.99] disabled:translate-y-0 disabled:scale-100 disabled:opacity-60"
+              >
+                {phase === "deposit" && loading ? "Signing..." : "Deposit"}
+              </button>
 
-  <button
-    onClick={handleWithdraw}
-    disabled={loading}
-    className="btn py-3 font-bold uppercase tracking-[0.18em] transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:border-accent hover:text-accent hover:shadow-[0_8px_24px_rgba(0,230,118,0.10)] active:translate-y-0 active:scale-[0.99] disabled:translate-y-0 disabled:scale-100 disabled:opacity-60"
-  >
-    {phase === "withdraw" && loading ? "Signing..." : "Withdraw"}
-  </button>
-</div>
+              <button
+                onClick={handleWithdraw}
+                disabled={loading}
+                className="btn py-3 font-bold uppercase tracking-[0.18em] transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:border-accent hover:text-accent hover:shadow-[0_8px_24px_rgba(0,230,118,0.10)] active:translate-y-0 active:scale-[0.99] disabled:translate-y-0 disabled:scale-100 disabled:opacity-60"
+              >
+                {phase === "withdraw" && loading ? "Signing..." : "Withdraw"}
+              </button>
+            </div>
 
             <button
               onClick={refresh}
@@ -509,7 +370,9 @@ export default function UmbraPanel() {
           <div className="mt-4 grid gap-3 text-sm text-muted">
             <div className="surface px-4 py-3 transition-colors duration-200 hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)]">
               <div className="text-xs uppercase tracking-[0.16em] text-muted">Wallet</div>
-              <div className="mt-1 break-all text-foreground">{wallet.publicKey?.toBase58() ?? "n/a"}</div>
+              <div className="mt-1 break-all text-foreground">
+                {wallet.publicKey?.toBase58() ?? "n/a"}
+              </div>
             </div>
 
             <div className="surface px-4 py-3 transition-colors duration-200 hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)]">
@@ -518,10 +381,22 @@ export default function UmbraPanel() {
                 {accountState.kind === "exists" ? (
                   <div className="grid gap-1">
                     <div>Initialised: {String(accountState.isInitialised)}</div>
-                    <div>Shared key registered: {String(accountState.isUserAccountX25519KeyRegistered)}</div>
-                    <div>Anonymous commitment registered: {String(accountState.isUserCommitmentRegistered)}</div>
-                    <div>Active for anonymous usage: {String(accountState.isActiveForAnonymousUsage)}</div>
-                    <div className="break-all">X25519 public key: {accountState.x25519PublicKey || "n/a"}</div>
+                    <div>
+                      Shared key registered: {String(
+                        accountState.isUserAccountX25519KeyRegistered,
+                      )}
+                    </div>
+                    <div>
+                      Anonymous commitment registered: {String(
+                        accountState.isUserCommitmentRegistered,
+                      )}
+                    </div>
+                    <div>
+                      Active for anonymous usage: {String(accountState.isActiveForAnonymousUsage)}
+                    </div>
+                    <div className="break-all">
+                      X25519 public key: {accountState.x25519PublicKey || "n/a"}
+                    </div>
                     <div>Generation index: {accountState.generationIndex || "n/a"}</div>
                   </div>
                 ) : accountState.kind === "non_existent" ? (

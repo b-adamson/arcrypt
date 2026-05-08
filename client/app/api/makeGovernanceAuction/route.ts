@@ -21,7 +21,7 @@ export async function POST(req: Request) {
       communityMint,
       proposalName,
       proposalDescription,
-      minBidSol,
+      minBidUsdc,
       durationSecs,
       auctionType,
       assetKind,
@@ -52,28 +52,28 @@ export async function POST(req: Request) {
     const program = await createReadOnlyProgram(rpcUrl, programIdStr);
     const authorityPk = new PublicKey(authority);
 
-    const bundle = await createSPLGovernanceProposal({
-      programClient: program,
-      programId: new PublicKey(programIdStr),
-      publicKey: authorityPk,
-      authorityBase58: authorityPk.toBase58(),
-      minBidSol: String(minBidSol ?? "1"),
-      durationSecs: Number(durationSecs ?? 3600),
-      auctionType: (auctionType ?? "FirstPrice") as AuctionType,
-      assetKind: (assetKind ?? "Fungible") as AssetKind,
-      metadataUri: String(metadataUri),
-      tokenMint: tokenMint ? String(tokenMint) : undefined,
-      saleAmountToken: saleAmountToken ? String(saleAmountToken) : undefined,
-      sourceTokenAccountBase58: sourceTokenAccountBase58
-        ? String(sourceTokenAccountBase58)
-        : undefined,
-      realmAddress: String(realmAddress),
-      governanceProgramId: String(governanceProgramId),
-      governanceAddress: String(governanceAddress),
-      communityMint: String(communityMint),
-      proposalName: String(proposalName),
-      proposalDescription: String(proposalDescription ?? ""),
-    });
+  const bundle = await createSPLGovernanceProposal({
+    programClient: program,
+    programId: new PublicKey(programIdStr),
+    publicKey: authorityPk,
+    authorityBase58: authorityPk.toBase58(),
+    minBidUsdc: String(minBidUsdc ?? "1"),
+    durationSecs: Number(durationSecs ?? 3600),
+    auctionType: (auctionType ?? "FirstPrice") as AuctionType,
+    assetKind: (assetKind ?? "Fungible") as AssetKind,
+    metadataUri: String(metadataUri),
+    tokenMint: tokenMint ? String(tokenMint) : undefined,
+    saleAmountToken: saleAmountToken ? String(saleAmountToken) : undefined,
+    sourceTokenAccountBase58: sourceTokenAccountBase58
+      ? String(sourceTokenAccountBase58)
+      : undefined,
+    realmAddress: String(realmAddress),
+    governanceProgramId: String(governanceProgramId),
+    governanceAddress: String(governanceAddress),
+    communityMint: String(communityMint),
+    proposalName: String(proposalName),
+    proposalDescription: String(proposalDescription ?? ""),
+  });
 
     const blockhash = (
       await program.provider.connection.getLatestBlockhash()

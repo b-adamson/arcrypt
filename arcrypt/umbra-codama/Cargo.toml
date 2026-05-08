@@ -18,3 +18,10 @@ solana-cpi = "2.1"
 [lib]
 crate-type = ["lib"]
 path = "mod.rs"
+
+[features]
+default = []
+serde = []
+anchor = []
+anchor-idl-build = []
+fetch = []

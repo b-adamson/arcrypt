@@ -34,7 +34,7 @@ export async function POST(req: Request) {
       programId,
       publicKey: authorityPk,
       authorityBase58: authorityPk.toBase58(),
-      minBidSol: String(body.minBidSol ?? "1"),
+      minBidUsdc: String(body.minBidUsdc ?? "1"),
       durationSecs: Number(body.durationSecs ?? 3600),
       auctionType: body.auctionType,
       assetKind: body.assetKind,

@@ -27,7 +27,7 @@ export type CreateAuctionParams = {
     authorityBase58: string;
     sourceTokenAccountBase58?: string;
     makeAuctionResult?: MakeAuctionServerResponse;
-    minBidSol: string;
+    minBidUsdc: string;
     durationSecs: number;
     auctionType: AuctionType;
     assetKind: AssetKind;
@@ -112,7 +112,7 @@ export type DetermineWinnerBundle = AuctionActionBundle & {
 export type ResolvePlaceBidContextParams = {
     auctionPk: string;
     bidderPubkey: string;
-    bidAmountSol: string;
+    bidAmountUsdc: string;
     nonceHex?: string | null;
     endpoint?: string;
 };
@@ -121,9 +121,9 @@ export type BuildPlaceBidTransactionParams = {
     programId: PublicKey;
     publicKey: PublicKey;
     auctionPk: PublicKey;
-    bidAmountSol: string;
+    bidAmountUsdc: string;
     nonceHex?: string | null;
-    bidPriceSol: string;
+    bidPriceUsdc: string;
 };
 export type ResolveDetermineWinnerContextParams = {
     provider: any;

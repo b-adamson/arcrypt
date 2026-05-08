@@ -9,7 +9,7 @@
 //! - Ranking bids privately
 //! - Determining winners without revealing bids
 //!
-//! ## Privacy Model
+//! ## Privacy
 //!
 //! - All bids (`amount`, `price`) are encrypted before computation
 //! - Identity for uniform auctions is represented via `bidder_id` (plaintext index)
@@ -36,7 +36,7 @@
 //!
 //! 1. Initialize encrypted auction state and bid book
 //! 2. Submit encrypted bids
-//! 3. Update encrypted state via `place_bid` / `place_encrypted_bid`
+//! 3. Update encrypted state via `place_bid` (doesnt use umbra) / `place_encrypted_bid` (uses umbra)
 //! 4. Run winner determination circuits
 //! 5. Reveal only final outputs
 //!

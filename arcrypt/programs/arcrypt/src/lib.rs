@@ -2,9 +2,9 @@
 //!
 //! Arcrypt is a privacy-preserving sealed-bid auction program built on Solana.
 //!
-//! It enables auctions where all bids remain encrypted throughout the bidding
-//! phase and are only revealed at settlement. This prevents front-running,
-//! bid shading, and information leakage during the auction lifecycle.
+//! It enables auctions where all bids, including the escrowed balances remain encrypted throughout the bidding
+//! phase and are only revealed at settlement. This prevents front-running, bid shading, and information leakage during the auction lifecycle.
+//! We are possibly the first adopter of the UMBRA CPI client which enables confidential program balances for the first time. 
 //!
 //! ## Core Concept
 //!
@@ -21,7 +21,6 @@
 //! - First Price — highest bidder wins and pays their bid
 //! - Vickrey (Second Price) — highest bidder wins, pays second-highest bid
 //! - Uniform Price — top bidders win at a shared clearing price
-//! - Pro Rata — allocation proportional to bid size
 //!
 //! ## Asset Types
 //!
@@ -47,8 +46,9 @@
 //! The escrow and bidding process proceeds as follows:
 //!
 //! 1. Deposit  
-//!    The client encrypts their bid amount against Umbra's MXE using wSOL
-//!    and invokes Arcrypt.
+//!    The client encrypts their bid amount against Umbra's MXE using usdc
+//!    and invokes Arcrypt via deposit_encrypted_bid. Here write price to a temp account
+//!    PendingEncryptedBid
 //!
 //! 2. CPI to Umbra  
 //!    Arcrypt performs a CPI into Umbra, passing:
@@ -81,15 +81,9 @@
 //!
 //! - Bid values are encrypted before reaching the chain
 //! - Competing bids are never visible to participants
-//! - Auction logic operates on encrypted state
+//! - Auction operates on encrypted state
 //! - Only final results are revealed after computation
 //! - Escrowed balances remain confidential throughout
-//!
-//! ## Escrows
-//!
-//! - Funds are escrowed through Umbra's encrypted balance system
-//! - No plaintext token transfers occur during bidding
-//! - Settlement occurs only after winner determination
 //!
 //! ## High-Level
 //!
@@ -100,9 +94,11 @@
 //! 5. Settlement transfers assets and final payments
 //!
 //! ## Notes
-//!
-//! - Nonces must be unique per bid per user per auction
-//! - Multi-winner auctions limited to n=3 for hackathon purposes.
+//!  
+//! - Due to the early access use of UMBRA CPI we can only support one bid per auction per user
+//!   In principle this isnt an issue because it is in the nature of sealed bids that there is no reason / 
+//!   information that could develop that would cause you to change your bid. But support is planned anyway. 
+//! - Multi-winner auctions limited to n=3 for demo purposes. Change MAX_BIDs to increase. 
 //!
 //! ---
 //!
@@ -110,6 +106,7 @@
 //! to enable fully private, trust-minimised auction mechanisms on Solana. This makes Arcrypt the ultimate
 //! auction platform on any blockchain, and the first *truly* sealed one. 
 
+// anchor imports
 use anchor_lang::prelude::*;
 use arcium_anchor::prelude::*;
 use arcium_client::idl::arcium::types::{CircuitSource, OffChainCircuitSource, CallbackAccount};
@@ -125,6 +122,13 @@ use anchor_spl::token_interface::{
 use anchor_lang::prelude::InterfaceAccount;
 use anchor_spl::associated_token::AssociatedToken;
 
+// umbra imports
+use umbra_codama::instructions::{
+    TransferFromSharedBalanceToNewNetworkBalanceV13CpiBuilder,
+    TransferFromSharedBalanceToNewNetworkBalanceV13InstructionArgs,
+};
+use umbra_codama::types::{ AccountOffset, Amount, ArciumX25519Nonce, ArciumX25519PublicKey, BasisPoints, ComputationOffset, InstructionDiscriminator, PoseidonHash, RescueCiphertext, SmallMerkleTreeIndex };
+
 const COMP_DEF_OFFSET_INIT_AUCTION_STATE: u32 = comp_def_offset("init_auction_state");
 const COMP_DEF_OFFSET_PLACE_BID: u32 = comp_def_offset("place_bid");
 const COMP_DEF_OFFSET_DETERMINE_WINNER_FIRST_PRICE: u32 =
@@ -132,24 +136,25 @@ const COMP_DEF_OFFSET_DETERMINE_WINNER_FIRST_PRICE: u32 =
 const COMP_DEF_OFFSET_DETERMINE_WINNER_VICKREY: u32 = comp_def_offset("determine_winner_vickrey");
 const COMP_DEF_OFFSET_DETERMINE_WINNER_UNIFORM: u32 =
     comp_def_offset("determine_winner_uniform");
-const COMP_DEF_OFFSET_DETERMINE_WINNER_PRO_RATA: u32 =
-    comp_def_offset("determine_winner_pro_rata");
 const COMP_DEF_OFFSET_PLACE_ENCRYPTED_BID: u32 =
     comp_def_offset("place_encrypted_bid");
 
-
+// ARCRYPT ID
 declare_id!("JEJdjPBaWAteXajrhpEJCWcgUci3QUCJbCvEJxwM9ZYq");
+
 // Auction account byte offset: 8 (discriminator) + 1 + 32 + 1 + 1 + 8 + 8 + 2 + 16 = 77
 const AUCTION_HEADER_SIZE: u32 = 8 + 1 + 32 + 1 + 1 + 8 + 8 + 2 + 16;
 const ENCRYPTED_STATE_OFFSET: u32 = AUCTION_HEADER_SIZE;
 const ENCRYPTED_STATE_SIZE: u32 = 32 * 13;
+
+pub const UMBRA_PROGRAM_ID: Pubkey = pubkey!("DSuKkyqGVGgo4QtPABfxKJKygUDACbUhirnuv63mEpAJ");
+pub const PAYMENT_MINT: Pubkey = pubkey!("4oG4sjmopf5MzvTHLE8rpVJ2uyczxfsw2K84SUTpNDx7"); // umbra usdc
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace)]
 pub enum AuctionType {
     FirstPrice,
     Vickrey,
     Uniform,
-    ProRata,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace)]
@@ -252,22 +257,154 @@ pub mod arcrypt {
     Ok(())
 }
 
-pub fn init_determine_winner_pro_rata_comp_def(
-    ctx: Context<InitDetermineWinnerProRataCompDef>,
+/// Deposits a confidential bid via Umbra and prepares it for later Arcium processing.
+/// Entrypoint of the encrypted_bid mechanism using UMBRA
+/// Not related to deprecated place_bid pathway
+///
+/// # Arguments
+/// - `ctx`: Account context for the auction, bidder, Umbra CPI, and temporary bid PDA.
+/// - `computation_offset`: Arcium computation offset used to derive the queued computation account.
+/// - `encrypted_amount`: Encrypted bid amount / escrow amount.
+/// - `encrypted_price`: Encrypted price value used for bid modes that need it.
+pub fn deposit_encrypted_bid(
+    ctx: Context<DepositEncryptedBid>,
+    computation_offset: u64,
+    encrypted_amount: [u8; 32],
+    encrypted_price: [u8; 32],
 ) -> Result<()> {
-    init_comp_def(
-        ctx.accounts,
-        Some(CircuitSource::OffChain(OffChainCircuitSource {
-            source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafybeifkov6ajj5w5kzpmzlkcqmud7jiqjzsj5f47y5pklfjuwge66pi3q".to_string(),
-            hash: circuit_hash!("determine_winner_pro_rata"),
-        })),
-        None,
-    )?;
+    let auction = &ctx.accounts.auction;
+
+    require_bid_allowed(auction)?;
+    require_keys_eq!(
+        ctx.accounts.shared_vault.auction,
+        auction.key(),
+        ErrorCode::InvalidSharedVault
+    );
+
+    ctx.accounts.sign_pda_account.bump = ctx.bumps.sign_pda_account;
+
+    {
+        let temp = &mut ctx.accounts.temp_bid;
+        temp.bump = ctx.bumps.temp_bid;
+        temp.auction = auction.key();
+        temp.shared_vault = ctx.accounts.shared_vault.key();
+        temp.bidder = ctx.accounts.bidder.key();
+        temp.encrypted_amount = [0u8; 32];
+        temp.encrypted_price = encrypted_price;
+        temp.consumed = false;
+        temp.umbra_context_account = ctx.accounts.umbra_context_account.key();
+        temp.umbra_persistence_account = ctx.accounts.umbra_persistence_account.key();
+    }
+
+    let args = TransferFromSharedBalanceToNewNetworkBalanceV13InstructionArgs {
+        computation_offset: ComputationOffset {
+            first: computation_offset,
+        },
+        fee_vault_offset: AccountOffset { first: 0 },
+        mpc_callback_data_offset: AccountOffset { first: 0 },
+        fees_amount_lower_bound: Amount { first: 0 },
+        fees_amount_upper_bound: Amount { first: 0 },
+        fees_base_fees_in_spl: Amount { first: 0 },
+        fees_commission_fee_in_spl: BasisPoints { first: 0 },
+        fees_merkle_path: core::array::from_fn(|_| PoseidonHash { first: [0u8; 32] }),
+        fees_leaf_index: SmallMerkleTreeIndex { first: 0 },
+        rescue_encryption_nonce: ArciumX25519Nonce { first: 0u128 },
+        rescue_encrypted_transfer_amount: RescueCiphertext { first: encrypted_amount },
+        rescue_encryption_public_key: ArciumX25519PublicKey { first: [0u8; 32] },
+        dispatch_observer_cpi: unsafe { core::mem::zeroed() },
+        observer_output_x25519_public_key: ArciumX25519PublicKey { first: [0u8; 32] },
+        destination_discriminator: InstructionDiscriminator {
+            first: [79, 24, 114, 130, 197, 38, 79, 99],
+        },
+        priority_fees: unsafe { core::mem::zeroed() },
+        optional_data: unsafe { core::mem::zeroed() },
+        random_generation_seed: unsafe { core::mem::zeroed() },
+    };
+
+    let bidder_ai = ctx.accounts.bidder.to_account_info();
+    let umbra_program_ai = ctx.accounts.umbra_program.to_account_info();
+    let destination_program_ai = ctx.accounts.destination_program.to_account_info();
+
+    let sign_pda_ai = ctx.accounts.sign_pda_account.to_account_info();
+    let mxe_ai = ctx.accounts.mxe_account.to_account_info();
+    let mempool_ai = ctx.accounts.mempool_account.to_account_info();
+    let executing_pool_ai = ctx.accounts.executing_pool.to_account_info();
+    let computation_ai = ctx.accounts.computation_account.to_account_info();
+    let comp_def_ai = ctx.accounts.comp_def_account.to_account_info();
+    let cluster_ai = ctx.accounts.cluster_account.to_account_info();
+    let pool_ai = ctx.accounts.pool_account.to_account_info();
+    let clock_ai = ctx.accounts.clock_account.to_account_info();
+    let system_ai = ctx.accounts.system_program.to_account_info();
+    let arcium_ai = ctx.accounts.arcium_program.to_account_info();
+    let sender_token_ai = ctx.accounts.sender_token_account.to_account_info();
+    let receiver_address_ai = ctx.accounts.receiver_address.to_account_info();
+    let receiver_token_ai = ctx.accounts.receiver_token_account.to_account_info();
+    let receiver_user_ai = ctx.accounts.receiver_user_account.to_account_info();
+    let fee_schedule_ai = ctx.accounts.fee_schedule.to_account_info();
+    let fee_vault_ai = ctx.accounts.fee_vault.to_account_info();
+    let token_pool_ai = ctx.accounts.token_pool.to_account_info();
+    let mint_ai = ctx.accounts.mint.to_account_info();
+    let protocol_config_ai = ctx.accounts.protocol_config.to_account_info();
+    let computation_data_ai = ctx.accounts.computation_data.to_account_info();
+    let umbra_callback_signer_ai = ctx.accounts.umbra_callback_signer.to_account_info();
+    let umbra_context_ai = ctx.accounts.umbra_context_account.to_account_info();
+    let umbra_persistence_ai = ctx.accounts.umbra_persistence_account.to_account_info();
+
+    TransferFromSharedBalanceToNewNetworkBalanceV13CpiBuilder::new(&umbra_program_ai)
+        .sender(&bidder_ai)
+        .fee_payer(&bidder_ai)
+        .sign_pda_account(&sign_pda_ai)
+        .mxe_account(&mxe_ai)
+        .mempool_account(&mempool_ai)
+        .executing_pool(&executing_pool_ai)
+        .computation_account(&computation_ai)
+        .comp_def_account(&comp_def_ai)
+        .cluster_account(&cluster_ai)
+        .pool_account(&pool_ai)
+        .clock_account(&clock_ai)
+        .system_program(&system_ai)
+        .arcium_program(&arcium_ai)
+        .sender_token_account(&sender_token_ai)
+        .receiver_address(&receiver_address_ai)
+        .receiver_token_account(&receiver_token_ai)
+        .receiver_user_account(&receiver_user_ai)
+        .fee_schedule(&fee_schedule_ai)
+        .fee_vault(&fee_vault_ai)
+        .token_pool(&token_pool_ai)
+        .mint(&mint_ai)
+        .protocol_config(&protocol_config_ai)
+        .computation_data(&computation_data_ai)
+        .initiator(&bidder_ai)
+        .destination_program(&destination_program_ai)
+        .umbra_callback_signer(&umbra_callback_signer_ai)
+        .cpi_account1(&umbra_context_ai)
+        .cpi_account2(&umbra_persistence_ai)
+        .computation_offset(args.computation_offset)
+        .fee_vault_offset(args.fee_vault_offset)
+        .mpc_callback_data_offset(args.mpc_callback_data_offset)
+        .fees_amount_lower_bound(args.fees_amount_lower_bound)
+        .fees_amount_upper_bound(args.fees_amount_upper_bound)
+        .fees_base_fees_in_spl(args.fees_base_fees_in_spl)
+        .fees_commission_fee_in_spl(args.fees_commission_fee_in_spl)
+        .fees_merkle_path(args.fees_merkle_path)
+        .fees_leaf_index(args.fees_leaf_index)
+        .rescue_encryption_nonce(args.rescue_encryption_nonce)
+        .rescue_encrypted_transfer_amount(args.rescue_encrypted_transfer_amount)
+        .rescue_encryption_public_key(args.rescue_encryption_public_key)
+        .dispatch_observer_cpi(args.dispatch_observer_cpi)
+        .observer_output_x25519_public_key(args.observer_output_x25519_public_key)
+        .destination_discriminator(args.destination_discriminator)
+        .priority_fees(args.priority_fees)
+        .optional_data(args.optional_data)
+        .random_generation_seed(args.random_generation_seed)
+        .invoke_signed(&[])?;
+
     Ok(())
 }
 
 
 /// Executes a previously submitted encrypted bid.
+/// Perfomed via client crank
 ///
 /// Consumes a `PendingEncryptedBid` and queues the encrypted computation. Called via crank after submit_encrypted_bid
 ///
@@ -307,22 +444,21 @@ pub fn place_encrypted_bid(
     let bidder_bytes = temp.bidder.to_bytes();
     let bidder_lo = u128::from_le_bytes(bidder_bytes[0..16].try_into().unwrap());
     let bidder_hi = u128::from_le_bytes(bidder_bytes[16..32].try_into().unwrap());
-    
+
     let encrypted_price_final = if matches!(
-    auction.auction_type,
-    AuctionType::FirstPrice | AuctionType::Vickrey
-) {
-    temp.encrypted_amount
-} else {
-    temp.encrypted_price
-};
-    
+        auction.auction_type,
+        AuctionType::FirstPrice | AuctionType::Vickrey
+    ) {
+        temp.encrypted_amount
+    } else {
+        temp.encrypted_price
+    };
+
     let args = ArgBuilder::new()
         .plaintext_u128(bidder_lo)
         .plaintext_u128(bidder_hi)
-        .plaintext_u128(temp.nonce)
         .encrypted_u64(temp.encrypted_amount)
-.encrypted_u64(encrypted_price_final) // NEW
+        .encrypted_u64(encrypted_price_final)
         .plaintext_u128(auction.state_nonce)
         .account(
             auction.key(),
@@ -330,7 +466,7 @@ pub fn place_encrypted_bid(
             ENCRYPTED_STATE_SIZE,
         )
         .build();
-    
+
     queue_computation(
         ctx.accounts,
         computation_offset,
@@ -353,7 +489,7 @@ pub fn place_encrypted_bid(
 
 /// Places an encrypted bid with escrow.
 ///
-/// Transfers WSOL into the bidder's escrow PDA and submits encrypted bid data
+/// Transfers usdc into the bidder's escrow PDA and submits encrypted bid data
 /// to Arcium for off-chain computation.
 ///
 /// # Arguments
@@ -367,7 +503,7 @@ pub fn place_encrypted_bid(
 /// - For FP/Vickrey: price = amount
 ///
 /// # Effects
-/// - Transfers WSOL into escrow ATA
+/// - Transfers usdc into escrow ATA
 /// - Queues encrypted computation
 pub fn place_bid(
     ctx: Context<PlaceBid>,
@@ -384,11 +520,9 @@ pub fn place_bid(
 
     require_bid_allowed(auction)?;
     require!(escrow_amount >= auction.min_bid, ErrorCode::BidBelowMinimum);
-    use anchor_spl::token::spl_token::native_mint;
-
 require_keys_eq!(
-    ctx.accounts.wsol_mint.key(),
-    native_mint::ID,
+    ctx.accounts.payment_mint.key(),
+    PAYMENT_MINT,
     ErrorCode::WrongMint
 );
 
@@ -414,8 +548,8 @@ require_keys_eq!(
 
     if top_up > 0 {
 let cpi_accounts = TransferChecked {
-    from: ctx.accounts.bidder_wsol_ata.to_account_info(),
-    mint: ctx.accounts.wsol_mint.to_account_info(),
+    from: ctx.accounts.bidder_payment_ata.to_account_info(),
+    mint: ctx.accounts.payment_mint.to_account_info(),
     to: ctx.accounts.escrow_token_account.to_account_info(),
     authority: ctx.accounts.bidder.to_account_info(),
 };
@@ -428,7 +562,7 @@ let cpi_ctx = CpiContext::new(
 token_interface::transfer_checked(
     cpi_ctx,
     top_up,
-    ctx.accounts.wsol_mint.decimals,
+    ctx.accounts.payment_mint.decimals,
 )?;
     }
 
@@ -557,7 +691,7 @@ pub fn place_encrypted_bid_callback(
 /// via Arcium.
 ///
 /// # Arguments
-/// - `auction_type`: Pricing mechanism (FirstPrice, Vickrey, Uniform, ProRata)
+/// - `auction_type`: Pricing mechanism (FirstPrice, Vickrey, Uniform)
 /// - `asset_kind`: Fungible or NFT
 /// - `min_bid`: Minimum bid in lamports
 /// - `end_time`: Unix timestamp when auction ends
@@ -611,7 +745,7 @@ pub fn create_token_auction(
         );
     }
 
-    if matches!(auction_type, AuctionType::Uniform | AuctionType::ProRata) {
+    if matches!(auction_type, AuctionType::Uniform) {
         require!(
             sale_amount >= 3,
             ErrorCode::InsufficientSupplyForMultiWinnerAuction
@@ -656,10 +790,10 @@ pub fn create_token_auction(
     }
 
     ctx.accounts.shared_vault.bump = ctx.bumps.shared_vault;
-ctx.accounts.shared_vault.auction = ctx.accounts.auction.key();
-ctx.accounts.shared_vault.total_deposited = 0;
+    ctx.accounts.shared_vault.auction = ctx.accounts.auction.key();
+    ctx.accounts.shared_vault.total_deposited = 0;
 
-ctx.accounts.auction.shared_vault = ctx.accounts.shared_vault.key();
+    ctx.accounts.auction.shared_vault = ctx.accounts.shared_vault.key();
 
     ctx.accounts.sign_pda_account.bump = ctx.bumps.sign_pda_account;
 
@@ -732,10 +866,10 @@ pub fn create_metadata_auction(
     }
 
     ctx.accounts.shared_vault.bump = ctx.bumps.shared_vault;
-ctx.accounts.shared_vault.auction = ctx.accounts.auction.key();
-ctx.accounts.shared_vault.total_deposited = 0;
+    ctx.accounts.shared_vault.auction = ctx.accounts.auction.key();
+    ctx.accounts.shared_vault.total_deposited = 0;
 
-ctx.accounts.auction.shared_vault = ctx.accounts.shared_vault.key();
+    ctx.accounts.auction.shared_vault = ctx.accounts.shared_vault.key();
 
     ctx.accounts.sign_pda_account.bump = ctx.bumps.sign_pda_account;
 
@@ -782,8 +916,6 @@ pub fn submit_encrypted_bid(
     ctx: Context<SubmitEncryptedBid>,
     bidder: Pubkey,
     encrypted_amount: [u8; 32],
-    encrypted_price: [u8; 32], // NEW
-    nonce: u128,
 ) -> Result<()> {
     let auction = &ctx.accounts.auction;
 
@@ -793,16 +925,24 @@ pub fn submit_encrypted_bid(
         auction.key(),
         ErrorCode::InvalidSharedVault
     );
+    require_keys_eq!(
+        ctx.accounts.temp_bid.auction,
+        auction.key(),
+        ErrorCode::EscrowMismatch
+    );
+    require_keys_eq!(
+        ctx.accounts.temp_bid.shared_vault,
+        ctx.accounts.shared_vault.key(),
+        ErrorCode::InvalidSharedVault
+    );
+    require_keys_eq!(
+        ctx.accounts.temp_bid.bidder,
+        bidder,
+        ErrorCode::EscrowOwnerMismatch
+    );
 
     let temp = &mut ctx.accounts.temp_bid;
-    temp.bump = ctx.bumps.temp_bid;
-    temp.auction = auction.key();
-    temp.shared_vault = ctx.accounts.shared_vault.key();
-    temp.bidder = bidder;
-    temp.nonce = nonce;
     temp.encrypted_amount = encrypted_amount;
-    temp.encrypted_price = encrypted_price;
-    temp.consumed = false;
 
     Ok(())
 }
@@ -932,82 +1072,39 @@ pub fn determine_winner_uniform(
     Ok(())
 }
 
-// DEPRECATED
-pub fn determine_winner_pro_rata(
-    ctx: Context<DetermineWinnerProRata>,
-    computation_offset: u64,
+#[arcium_callback(encrypted_ix = "init_auction_state")]
+pub fn init_auction_state_callback(
+    ctx: Context<InitAuctionStateCallback>,
+    output: SignedComputationOutputs<InitAuctionStateOutput>,
 ) -> Result<()> {
-    let auction = &ctx.accounts.auction;
+    let o = match output.verify_output(
+        &ctx.accounts.cluster_account,
+        &ctx.accounts.computation_account,
+    ) {
+        Ok(InitAuctionStateOutput { field_0 }) => field_0,
+        Err(_) => return Err(ErrorCode::AbortedComputation.into()),
+    };
 
-    require_settlement_allowed(auction)?;
-    require!(
-        auction.auction_type == AuctionType::ProRata,
-        ErrorCode::WrongAuctionType
-    );
+    let auction_key = ctx.accounts.auction.key();
+    let authority = ctx.accounts.auction.authority;
+    let auction_type = ctx.accounts.auction.auction_type;
+    let min_bid = ctx.accounts.auction.min_bid;
+    let end_time = ctx.accounts.auction.end_time;
 
-    ctx.accounts.sign_pda_account.bump = ctx.bumps.sign_pda_account;
+    let auction = &mut ctx.accounts.auction;
+    auction.encrypted_state = o.ciphertexts;
+    auction.state_nonce = o.nonce;
 
-    let args = ArgBuilder::new()
-        .plaintext_u128(auction.state_nonce)
-        .account(
-            ctx.accounts.auction.key(),
-            ENCRYPTED_STATE_OFFSET,
-            ENCRYPTED_STATE_SIZE,
-        )
-        .build();
-
-    queue_computation(
-        ctx.accounts,
-        computation_offset,
-        args,
-        vec![DetermineWinnerProRataCallback::callback_ix(
-            computation_offset,
-            &ctx.accounts.mxe_account,
-            &[CallbackAccount {
-                pubkey: ctx.accounts.auction.key(),
-                is_writable: true,
-            }],
-        )?],
-        1,
-        0,
-    )?;
+    emit!(AuctionCreatedEvent {
+        auction: auction_key,
+        authority,
+        auction_type,
+        min_bid,
+        end_time,
+    });
 
     Ok(())
 }
-
-    #[arcium_callback(encrypted_ix = "init_auction_state")]
-    pub fn init_auction_state_callback(
-        ctx: Context<InitAuctionStateCallback>,
-        output: SignedComputationOutputs<InitAuctionStateOutput>,
-    ) -> Result<()> {
-        let o = match output.verify_output(
-            &ctx.accounts.cluster_account,
-            &ctx.accounts.computation_account,
-        ) {
-            Ok(InitAuctionStateOutput { field_0 }) => field_0,
-            Err(_) => return Err(ErrorCode::AbortedComputation.into()),
-        };
-
-        let auction_key = ctx.accounts.auction.key();
-        let authority = ctx.accounts.auction.authority;
-        let auction_type = ctx.accounts.auction.auction_type;
-        let min_bid = ctx.accounts.auction.min_bid;
-        let end_time = ctx.accounts.auction.end_time;
-
-        let auction = &mut ctx.accounts.auction;
-        auction.encrypted_state = o.ciphertexts;
-        auction.state_nonce = o.nonce;
-
-        emit!(AuctionCreatedEvent {
-            auction: auction_key,
-            authority,
-            auction_type,
-            min_bid,
-            end_time,
-        });
-
-        Ok(())
-    }
 
 #[arcium_callback(encrypted_ix = "determine_winner_first_price")]
 pub fn determine_winner_first_price_callback(
@@ -1174,10 +1271,10 @@ pub struct Auction {
     pub token_mint: Pubkey,
     pub sale_amount: u64,
 
-pub prize_vault: Pubkey,
-pub shared_vault: Pubkey,
-pub vault_authority_bump: u8,
-pub prize_decimals: u8,
+    pub prize_vault: Pubkey,
+    pub shared_vault: Pubkey,
+    pub vault_authority_bump: u8,
+    pub prize_decimals: u8,
 
     pub winner: Pubkey,
     pub payment_amount: u64,
@@ -1233,18 +1330,18 @@ pub struct PlaceBid<'info> {
     pub escrow_account: Box<Account<'info, EscrowAccount>>,
 #[account(
     mut,
-    constraint = bidder_wsol_ata.owner == bidder.key(),
-    constraint = bidder_wsol_ata.mint == wsol_mint.key()
+    constraint = bidder_payment_ata.owner == bidder.key(),
+    constraint = bidder_payment_ata.mint == payment_mint.key()
 )]
-pub bidder_wsol_ata: Box<InterfaceAccount<'info, TokenAccount>>,
+pub bidder_payment_ata: Box<InterfaceAccount<'info, TokenAccount>>,
 
-pub wsol_mint: Box<InterfaceAccount<'info, Mint>>,
+pub payment_mint: Box<InterfaceAccount<'info, Mint>>,
 pub token_program: Interface<'info, TokenInterface>,
 
 #[account(
     init_if_needed,
     payer = bidder,
-    associated_token::mint = wsol_mint,
+    associated_token::mint = payment_mint,
     associated_token::authority = escrow_account,
 )]
 pub escrow_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
@@ -1478,6 +1575,136 @@ pub struct DetermineWinnerFirstPrice<'info> {
     pub system_program: Program<'info, System>,
     pub arcium_program: Program<'info, Arcium>,
 }
+
+#[derive(Accounts)]
+#[instruction(
+    computation_offset: u64,
+    encrypted_amount: [u8; 32],
+    encrypted_price: [u8; 32]
+)]
+pub struct DepositEncryptedBid<'info> {
+    #[account(mut)]
+    pub bidder: Signer<'info>,
+
+    #[account(mut)]
+    pub auction: Box<Account<'info, Auction>>,
+
+    #[account(
+        mut,
+        seeds = [b"shared-vault", auction.key().as_ref()],
+        bump,
+        has_one = auction @ ErrorCode::InvalidSharedVault
+    )]
+    pub shared_vault: Box<Account<'info, SharedVault>>,
+
+    #[account(
+        init,
+        payer = bidder,
+        space = 8 + PendingEncryptedBid::INIT_SPACE,
+        seeds = [
+            b"pending-encrypted-bid",
+            auction.key().as_ref(),
+            bidder.key().as_ref()
+        ],
+        bump
+    )]
+    pub temp_bid: Box<Account<'info, PendingEncryptedBid>>,
+
+    #[account(
+        init_if_needed,
+        payer = bidder,
+        space = 9,
+        seeds = [&SIGN_PDA_SEED],
+        bump,
+        address = derive_sign_pda!(),
+    )]
+    pub sign_pda_account: Box<Account<'info, ArciumSignerAccount>>,
+
+    #[account(address = derive_mxe_pda!())]
+    pub mxe_account: Box<Account<'info, MXEAccount>>,
+
+    #[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    /// CHECK: validated by the address constraint and Arcium runtime.
+    pub mempool_account: UncheckedAccount<'info>,
+
+    #[account(mut, address = derive_execpool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    /// CHECK: validated by the address constraint and Arcium runtime.
+    pub executing_pool: UncheckedAccount<'info>,
+
+    #[account(mut, address = derive_comp_pda!(computation_offset, mxe_account, ErrorCode::ClusterNotSet))]
+    /// CHECK: validated by the address constraint and Arcium runtime.
+    pub computation_account: UncheckedAccount<'info>,
+
+    #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_PLACE_ENCRYPTED_BID))]
+    pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
+
+    #[account(mut, address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    /// CHECK: validated by the address constraint and Arcium runtime.
+    pub cluster_account: Box<Account<'info, Cluster>>,
+
+    #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
+    /// CHECK: validated by the address constraint and Arcium runtime.
+    pub pool_account: Box<Account<'info, FeePool>>,
+
+    #[account(mut, address = ARCIUM_CLOCK_ACCOUNT_ADDRESS)]
+    /// CHECK: validated by the address constraint and Arcium runtime.
+    pub clock_account: Box<Account<'info, ClockAccount>>,
+
+    pub system_program: Program<'info, System>,
+    pub arcium_program: Program<'info, Arcium>,
+
+    #[account(address = UMBRA_PROGRAM_ID)]
+    /// CHECK: fixed Umbra program id used for the CPI.
+    pub umbra_program: UncheckedAccount<'info>,
+
+    #[account(mut)]
+    pub sender_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    /// CHECK: Umbra callback context account, protocol-defined.
+    pub umbra_context_account: UncheckedAccount<'info>,
+
+    /// CHECK: Umbra callback persistence account, protocol-defined.
+    #[account(mut)]
+    pub umbra_persistence_account: UncheckedAccount<'info>,
+
+    /// CHECK: Umbra receiver plumbing.
+    pub receiver_address: UncheckedAccount<'info>,
+
+    /// CHECK: Umbra receiver token account.
+    #[account(mut)]
+    pub receiver_token_account: UncheckedAccount<'info>,
+
+    /// CHECK: Umbra receiver user account.
+    #[account(mut)]
+    pub receiver_user_account: UncheckedAccount<'info>,
+
+    /// CHECK: Umbra fee schedule account.
+    pub fee_schedule: UncheckedAccount<'info>,
+
+    /// CHECK: Umbra fee vault.
+    #[account(mut)]
+    pub fee_vault: UncheckedAccount<'info>,
+
+    /// CHECK: Umbra token pool.
+    pub token_pool: UncheckedAccount<'info>,
+
+    #[account(address = PAYMENT_MINT)]
+    pub mint: Box<InterfaceAccount<'info, Mint>>,
+    /// CHECK: Umbra protocol config.
+    pub protocol_config: UncheckedAccount<'info>,
+
+    /// CHECK: Umbra computation data PDA.
+    #[account(mut)]
+    pub computation_data: UncheckedAccount<'info>,
+
+    /// CHECK: Umbra callback signer PDA.
+    pub umbra_callback_signer: UncheckedAccount<'info>,
+
+    /// CHECK: this is your program's own id passed to Umbra as the callback target.
+    #[account(address = crate::ID)]
+    pub destination_program: UncheckedAccount<'info>,
+}
+
 
 #[callback_accounts("determine_winner_first_price")]
 #[derive(Accounts)]
@@ -1834,11 +2061,8 @@ pub struct InitDetermineWinnerVickreyCompDef<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(bidder: Pubkey, encrypted_amount: [u8; 32], nonce: u128)]
+#[instruction(bidder: Pubkey, encrypted_amount: [u8; 32])]
 pub struct SubmitEncryptedBid<'info> {
-    #[account(mut)]
-    pub payer: Signer<'info>,
-
     #[account(mut)]
     pub auction: Box<Account<'info, Auction>>,
 
@@ -1851,18 +2075,28 @@ pub struct SubmitEncryptedBid<'info> {
     pub shared_vault: Box<Account<'info, SharedVault>>,
 
     #[account(
-        init,
-        payer = payer,
-        space = 8 + PendingEncryptedBid::INIT_SPACE,
+        mut,
         seeds = [
             b"pending-encrypted-bid",
             auction.key().as_ref(),
-            bidder.as_ref(),
-            &nonce.to_le_bytes()
+            bidder.key().as_ref()
         ],
-        bump
+        bump,
+        constraint = temp_bid.auction == auction.key() @ ErrorCode::EscrowMismatch,
+        constraint = temp_bid.shared_vault == shared_vault.key() @ ErrorCode::InvalidSharedVault,
+        constraint = temp_bid.bidder == bidder.key() @ ErrorCode::EscrowOwnerMismatch
     )]
     pub temp_bid: Box<Account<'info, PendingEncryptedBid>>,
+
+    /// CHECK: bidder identity forwarded by Umbra; used only for PDA verification and state writes.
+    pub bidder: UncheckedAccount<'info>,
+
+    /// CHECK: Umbra callback context account, protocol-defined.
+    pub umbra_context_account: UncheckedAccount<'info>,
+
+    /// CHECK: Umbra callback persistence account, protocol-defined.
+    #[account(mut)]
+    pub umbra_persistence_account: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -1916,10 +2150,9 @@ pub struct MarkPoolCreated<'info> {
 /// - FirstPrice: winner pays bid
 /// - Vickrey: winner pays second price
 /// - Uniform: multi-winner clearing price
-/// - ProRata: proportional distribution (Deprecated)
 ///
 /// # Effects
-/// - Moves WSOL from escrow
+/// - Moves usdc from escrow
 /// - Transfers prize tokens
 /// - Marks winners as paid
 pub fn finalize_token_winner_payout(ctx: Context<FinalizeTokenWinnerPayout>) -> Result<()> {
@@ -1938,21 +2171,19 @@ pub fn finalize_token_winner_payout(ctx: Context<FinalizeTokenWinnerPayout>) -> 
         ErrorCode::AuctionNotEnded
     );
   
-    use anchor_spl::token::spl_token::native_mint;
-
 require_keys_eq!(
-    ctx.accounts.wsol_mint.key(),
-    native_mint::ID,
+    ctx.accounts.payment_mint.key(),
+    PAYMENT_MINT,
     ErrorCode::WrongMint
 );
 
-    let winner_wallet_key = ctx.accounts.winner_wallet.key();
-    let escrow = &ctx.accounts.winner_escrow;
+        let winner_wallet_key = ctx.accounts.winner_wallet.key();
+        let escrow = &ctx.accounts.winner_escrow;
 
-require!(
-    ctx.accounts.escrow_token_account.amount >= escrow.deposited_amount,
-    ErrorCode::EscrowInsufficient
-);
+    require!(
+        ctx.accounts.escrow_token_account.amount >= escrow.deposited_amount,
+        ErrorCode::EscrowInsufficient
+    );
 
     require_keys_eq!(escrow.auction, auction.key(), ErrorCode::EscrowMismatch);
     require_keys_eq!(escrow.bidder, winner_wallet_key, ErrorCode::EscrowOwnerMismatch);
@@ -1969,28 +2200,28 @@ require!(
             let payment_amount = auction.payment_amount;
             let sale_amount = auction.sale_amount;
 
-let auction_key = auction.key(); 
+            let auction_key = auction.key(); 
 
-let seeds = &[
-    b"escrow",
-    auction_key.as_ref(),
-    winner_wallet_key.as_ref(),
-    &[escrow.bump],
-];
+            let seeds = &[
+                b"escrow",
+                auction_key.as_ref(),
+                winner_wallet_key.as_ref(),
+                &[escrow.bump],
+            ];
 
-let signer_seeds: &[&[&[u8]]] = &[seeds];
+            let signer_seeds: &[&[&[u8]]] = &[seeds];
 
 settle_token_escrow(
     &ctx.accounts.escrow_token_account.to_account_info(),
-    &ctx.accounts.creator_wsol_ata.to_account_info(),
-    &ctx.accounts.winner_wsol_ata.to_account_info(),
+    &ctx.accounts.creator_payment_ata.to_account_info(),
+    &ctx.accounts.winner_payment_ata.to_account_info(),
     &ctx.accounts.winner_escrow.to_account_info(),
     &ctx.accounts.token_program.to_account_info(),
     signer_seeds,
     escrow.deposited_amount,
     payment_amount,
-    &ctx.accounts.wsol_mint.to_account_info(),
-    ctx.accounts.wsol_mint.decimals,
+    &ctx.accounts.payment_mint.to_account_info(),
+    ctx.accounts.payment_mint.decimals,
 )?;
 
             let auction_key = auction.key();
@@ -2025,28 +2256,28 @@ settle_token_escrow(
             let payment_amount = auction.payment_amount;
             let sale_amount = auction.sale_amount;
 
-let auction_key = auction.key(); 
+            let auction_key = auction.key(); 
 
-let seeds = &[
-    b"escrow",
-    auction_key.as_ref(),
-    winner_wallet_key.as_ref(),
-    &[escrow.bump],
-];
+            let seeds = &[
+                b"escrow",
+                auction_key.as_ref(),
+                winner_wallet_key.as_ref(),
+                &[escrow.bump],
+            ];
 
-let signer_seeds: &[&[&[u8]]] = &[seeds];
+            let signer_seeds: &[&[&[u8]]] = &[seeds];
 
 settle_token_escrow(
     &ctx.accounts.escrow_token_account.to_account_info(),
-    &ctx.accounts.creator_wsol_ata.to_account_info(),
-    &ctx.accounts.winner_wsol_ata.to_account_info(),
+    &ctx.accounts.creator_payment_ata.to_account_info(),
+    &ctx.accounts.winner_payment_ata.to_account_info(),
     &ctx.accounts.winner_escrow.to_account_info(),
     &ctx.accounts.token_program.to_account_info(),
     signer_seeds,
     escrow.deposited_amount,
     payment_amount,
-    &ctx.accounts.wsol_mint.to_account_info(),
-    ctx.accounts.wsol_mint.decimals,
+    &ctx.accounts.payment_mint.to_account_info(),
+    ctx.accounts.payment_mint.decimals,
 )?;
 
             let auction_key = auction.key();
@@ -2091,167 +2322,80 @@ settle_token_escrow(
                 ErrorCode::AuctionAlreadySettled
             );
 
-let clearing_price = auction.clearing_price;
-let amounts = auction.winner_bids;
-let prices = auction.winner_prices;
+            let clearing_price = auction.clearing_price;
+            let amounts = auction.winner_bids;
+            let prices = auction.winner_prices;
 
-// ---------- per-user ----------
-let user_amount = amounts[winner_index];
-let user_price = prices[winner_index];
+            // ---------- per-user ----------
+            let user_amount = amounts[winner_index];
+            let user_price = prices[winner_index];
 
-require!(
-    user_amount >= user_price,
-    ErrorCode::BidTooSmall
-);
+            require!(
+                user_amount >= user_price,
+                ErrorCode::BidTooSmall
+            );
 
-// quantity = escrow / bid_price
-let user_quantity = (user_amount as u128)
-    .checked_div(user_price as u128)
-    .ok_or(ErrorCode::LamportOverflow)?;
+            // quantity = escrow / bid_price
+            let user_quantity = (user_amount as u128)
+                .checked_div(user_price as u128)
+                .ok_or(ErrorCode::LamportOverflow)?;
 
-// payment = quantity * clearing_price
-let payment_amount = user_quantity
-    .checked_mul(clearing_price as u128)
-    .ok_or(ErrorCode::LamportOverflow)? as u64;
+            // payment = quantity * clearing_price
+            let payment_amount = user_quantity
+                .checked_mul(clearing_price as u128)
+                .ok_or(ErrorCode::LamportOverflow)? as u64;
 
-// ---------- total value ----------
-let mut total_value: u128 = 0;
+            // ---------- total value ----------
+            let mut total_value: u128 = 0;
 
+            for i in 0..3 {
+                let q = (amounts[i] as u128)
+                    .checked_div(prices[i] as u128)
+                    .ok_or(ErrorCode::LamportOverflow)?;
 
+                let v = q
+                    .checked_mul(clearing_price as u128)
+                    .ok_or(ErrorCode::LamportOverflow)?;
 
-for i in 0..3 {
-    let q = (amounts[i] as u128)
-        .checked_div(prices[i] as u128)
-        .ok_or(ErrorCode::LamportOverflow)?;
+                total_value = total_value
+                    .checked_add(v)
+                    .ok_or(ErrorCode::LamportOverflow)?;
+            }
 
-    let v = q
-        .checked_mul(clearing_price as u128)
-        .ok_or(ErrorCode::LamportOverflow)?;
+            // ---------- user value ----------
+            let user_value = user_quantity
+                .checked_mul(clearing_price as u128)
+                .ok_or(ErrorCode::LamportOverflow)?;
 
-    total_value = total_value
-        .checked_add(v)
-        .ok_or(ErrorCode::LamportOverflow)?;
-}
+            // ---------- token allocation ----------
+            let payout_amount = ((auction.sale_amount as u128)
+                .checked_mul(user_value)
+                .ok_or(ErrorCode::LamportOverflow)?)
+                .checked_div(total_value)
+                .ok_or(ErrorCode::LamportOverflow)? as u64;
 
-// ---------- user value ----------
-let user_value = user_quantity
-    .checked_mul(clearing_price as u128)
-    .ok_or(ErrorCode::LamportOverflow)?;
+            let auction_key = auction.key(); 
 
-// ---------- token allocation ----------
-let payout_amount = ((auction.sale_amount as u128)
-    .checked_mul(user_value)
-    .ok_or(ErrorCode::LamportOverflow)?)
-    .checked_div(total_value)
-    .ok_or(ErrorCode::LamportOverflow)? as u64;
-
-let auction_key = auction.key(); 
-
-let seeds = &[
-    b"escrow",
-    auction_key.as_ref(),
-    winner_wallet_key.as_ref(),
-    &[escrow.bump],
-];
-
-let signer_seeds: &[&[&[u8]]] = &[seeds];
-
-settle_token_escrow(
-    &ctx.accounts.escrow_token_account.to_account_info(),
-    &ctx.accounts.creator_wsol_ata.to_account_info(),
-    &ctx.accounts.winner_wsol_ata.to_account_info(),
-    &ctx.accounts.winner_escrow.to_account_info(),
-    &ctx.accounts.token_program.to_account_info(),
-    signer_seeds,
-    escrow.deposited_amount,
-    payment_amount,
-    &ctx.accounts.wsol_mint.to_account_info(),
-    ctx.accounts.wsol_mint.decimals,
-)?;
-
-            let auction_key = auction.key();
-            let signer_seeds: &[&[&[u8]]] = &[&[
-                b"vault-authority",
+            let seeds = &[
+                b"escrow",
                 auction_key.as_ref(),
-                &[auction.vault_authority_bump],
-            ]];
+                winner_wallet_key.as_ref(),
+                &[escrow.bump],
+            ];
 
-            pay_winner(
-                ctx.accounts.token_program.to_account_info(),
-                ctx.accounts.prize_mint.to_account_info(),
-                ctx.accounts.prize_vault.to_account_info(),
-                ctx.accounts.vault_authority.to_account_info(),
-                ctx.accounts.winner_ata.to_account_info(),
-                payout_amount,
-                auction.prize_decimals,
-                signer_seeds,
-            )?;
-
-            auction.winner_paid_multi[winner_index] = true;
-        }
-
-        AuctionType::ProRata => {
-            require!(
-                auction.bid_count >= 3,
-                ErrorCode::NotEnoughBidsForSettlement
-            );
-            require!(auction.total_bid > 0, ErrorCode::NoBids);
-
-            let winner_index = if winner_wallet_key == auction.winners[0] {
-                0
-            } else if winner_wallet_key == auction.winners[1] {
-                1
-            } else if winner_wallet_key == auction.winners[2] {
-                2
-            } else {
-                return err!(ErrorCode::InvalidSettlementWinner);
-            };
-
-            require!(
-                !auction.winner_paid_multi[winner_index],
-                ErrorCode::AuctionAlreadySettled
-            );
-
-            let payment_amount = auction.winner_bids[winner_index];
-
-            let total_bid = auction.total_bid as u128;
-            let sale_amount = auction.sale_amount as u128;
-
-            let share0 = ((sale_amount * auction.winner_bids[0] as u128) / total_bid) as u64;
-            let share1 = ((sale_amount * auction.winner_bids[1] as u128) / total_bid) as u64;
-            let share2 = ((sale_amount * auction.winner_bids[2] as u128) / total_bid) as u64;
-
-            let remainder = auction.sale_amount - (share0 + share1 + share2);
-
-            let payout_amount = match winner_index {
-                0 => share0 + remainder,
-                1 => share1,
-                2 => share2,
-                _ => unreachable!(),
-            };
-
-let auction_key = auction.key();
-
-let seeds = &[
-    b"escrow",
-    auction_key.as_ref(),
-    winner_wallet_key.as_ref(),
-    &[escrow.bump],
-];
-
-let signer_seeds: &[&[&[u8]]] = &[seeds];
+            let signer_seeds: &[&[&[u8]]] = &[seeds];
 
 settle_token_escrow(
     &ctx.accounts.escrow_token_account.to_account_info(),
-    &ctx.accounts.creator_wsol_ata.to_account_info(),
-    &ctx.accounts.winner_wsol_ata.to_account_info(),
+    &ctx.accounts.creator_payment_ata.to_account_info(),
+    &ctx.accounts.winner_payment_ata.to_account_info(),
     &ctx.accounts.winner_escrow.to_account_info(),
     &ctx.accounts.token_program.to_account_info(),
     signer_seeds,
     escrow.deposited_amount,
     payment_amount,
-    &ctx.accounts.wsol_mint.to_account_info(),
-    ctx.accounts.wsol_mint.decimals,
+    &ctx.accounts.payment_mint.to_account_info(),
+    ctx.accounts.payment_mint.decimals,
 )?;
 
             let auction_key = auction.key();
@@ -2281,7 +2425,7 @@ settle_token_escrow(
 
 /// Finalizes payout for metadata-only auctions.
 ///
-/// Only transfers WSOL (no token payout).
+/// Only transfers usdc (no token payout).
 ///
 /// # Effects
 /// - Pays creator
@@ -2304,13 +2448,11 @@ pub fn finalize_metadata_winner_payout(
         ErrorCode::AuctionNotEnded
     );
 
-    use anchor_spl::token::spl_token::native_mint;
-
-    require_keys_eq!(
-        ctx.accounts.wsol_mint.key(),
-        native_mint::ID,
-        ErrorCode::WrongMint
-    );
+require_keys_eq!(
+    ctx.accounts.payment_mint.key(),
+    PAYMENT_MINT,
+    ErrorCode::WrongMint
+);
 
     let winner_wallet_key = ctx.accounts.winner_wallet.key();
     let escrow = &ctx.accounts.winner_escrow;
@@ -2333,36 +2475,33 @@ pub fn finalize_metadata_winner_payout(
             require!(!auction.winner_paid, ErrorCode::AuctionAlreadySettled);
 
             let payment_amount = auction.payment_amount;
-let auction_key = auction.key(); 
+            let auction_key = auction.key(); 
 
-let seeds = &[
-    b"escrow",
-    auction_key.as_ref(),
-    winner_wallet_key.as_ref(),
-    &[escrow.bump],
-];
+            let seeds = &[
+                b"escrow",
+                auction_key.as_ref(),
+                winner_wallet_key.as_ref(),
+                &[escrow.bump],
+            ];
 
-let signer_seeds: &[&[&[u8]]] = &[seeds];
-
-            settle_token_escrow(
-                &ctx.accounts.escrow_token_account.to_account_info(),
-                &ctx.accounts.creator_wsol_ata.to_account_info(),
-                &ctx.accounts.winner_wsol_ata.to_account_info(),
-                &ctx.accounts.winner_escrow.to_account_info(),
-                &ctx.accounts.token_program.to_account_info(),
-                signer_seeds,
-                escrow.deposited_amount,
-                payment_amount,
-                &ctx.accounts.wsol_mint.to_account_info(),
-                ctx.accounts.wsol_mint.decimals,
-            )?;
+            let signer_seeds: &[&[&[u8]]] = &[seeds];
+settle_token_escrow(
+    &ctx.accounts.escrow_token_account.to_account_info(),
+    &ctx.accounts.creator_payment_ata.to_account_info(),
+    &ctx.accounts.winner_payment_ata.to_account_info(),
+    &ctx.accounts.winner_escrow.to_account_info(),
+    &ctx.accounts.token_program.to_account_info(),
+    signer_seeds,
+    escrow.deposited_amount,
+    payment_amount,
+    &ctx.accounts.payment_mint.to_account_info(),
+    ctx.accounts.payment_mint.decimals,
+)?;
 
             auction.winner_paid = true;
         }
-
         _ => return err!(ErrorCode::WrongAuctionType),
     }
-
     Ok(())
 }
 
@@ -2374,18 +2513,16 @@ let signer_seeds: &[&[&[u8]]] = &[seeds];
 /// - Caller must NOT be a winner
 ///
 /// # Effects
-/// - Transfers WSOL back to bidder
+/// - Transfers usdc back to bidder
 /// - Closes escrow account
 pub fn claim_refund(ctx: Context<ClaimRefund>) -> Result<()> {
     let auction = &ctx.accounts.auction;
 
     require!(auction.status != AuctionStatus::Open, ErrorCode::AuctionNotClosed);
     require!(Clock::get()?.unix_timestamp >= auction.end_time, ErrorCode::AuctionNotEnded);
-    use anchor_spl::token::spl_token::native_mint;
-
 require_keys_eq!(
-    ctx.accounts.wsol_mint.key(),
-    native_mint::ID,
+    ctx.accounts.payment_mint.key(),
+    PAYMENT_MINT,
     ErrorCode::WrongMint
 );
 
@@ -2395,7 +2532,7 @@ require_keys_eq!(
         AuctionType::FirstPrice | AuctionType::Vickrey => {
             require_keys_neq!(bidder_key, auction.winner, ErrorCode::WinnerCannotClaimRefund);
         }
-        AuctionType::Uniform | AuctionType::ProRata => {
+        AuctionType::Uniform => {
             require_keys_neq!(bidder_key, auction.winners[0], ErrorCode::WinnerCannotClaimRefund);
             require_keys_neq!(bidder_key, auction.winners[1], ErrorCode::WinnerCannotClaimRefund);
             require_keys_neq!(bidder_key, auction.winners[2], ErrorCode::WinnerCannotClaimRefund);
@@ -2403,33 +2540,30 @@ require_keys_eq!(
     }
     let escrow = &ctx.accounts.escrow_account;
 
-require_keys_eq!(escrow.auction, auction.key(), ErrorCode::EscrowMismatch);
-require_keys_eq!(escrow.bidder, bidder_key, ErrorCode::EscrowOwnerMismatch);
+    require_keys_eq!(escrow.auction, auction.key(), ErrorCode::EscrowMismatch);
+    require_keys_eq!(escrow.bidder, bidder_key, ErrorCode::EscrowOwnerMismatch);
 
-let amount = escrow.deposited_amount;
-require!(
-    ctx.accounts.escrow_token_account.amount >= amount,
-    ErrorCode::EscrowInsufficient
-);
-require!(amount > 0, ErrorCode::NoFundsInEscrow);
+    let amount = escrow.deposited_amount;
+    require!(
+        ctx.accounts.escrow_token_account.amount >= amount,
+        ErrorCode::EscrowInsufficient
+    );
+    require!(amount > 0, ErrorCode::NoFundsInEscrow);
 
-let auction_key = auction.key();
-
-let seeds = &[
-    b"escrow",
-    auction_key.as_ref(),
-    bidder_key.as_ref(),
-    &[escrow.bump],
-];
-
-let signer_seeds: &[&[&[u8]]] = &[seeds];
-
+    let auction_key = auction.key();
+    let seeds = &[
+        b"escrow",
+        auction_key.as_ref(),
+        bidder_key.as_ref(),
+        &[escrow.bump],
+    ];
+    let signer_seeds: &[&[&[u8]]] = &[seeds];
 let cpi_ctx = CpiContext::new_with_signer(
     ctx.accounts.token_program.to_account_info(),
     TransferChecked {
         from: ctx.accounts.escrow_token_account.to_account_info(),
-        mint: ctx.accounts.wsol_mint.to_account_info(),
-        to: ctx.accounts.bidder_wsol_ata.to_account_info(),
+        mint: ctx.accounts.payment_mint.to_account_info(),
+        to: ctx.accounts.bidder_payment_ata.to_account_info(),
         authority: ctx.accounts.escrow_account.to_account_info(),
     },
     signer_seeds,
@@ -2438,22 +2572,17 @@ let cpi_ctx = CpiContext::new_with_signer(
 token_interface::transfer_checked(
     cpi_ctx,
     amount,
-    ctx.accounts.wsol_mint.decimals,
+    ctx.accounts.payment_mint.decimals,
 )?;
-
-    Ok(())
+        Ok(())
 }
-
-
 
 #[derive(Accounts)]
 pub struct ClaimRefund<'info> {
     #[account(mut)]
     pub bidder: Signer<'info>,
-
     #[account(mut)]
     pub auction: Box<Account<'info, Auction>>,
-
     #[account(
         mut,
         seeds = [b"escrow", auction.key().as_ref(), bidder.key().as_ref()],
@@ -2461,27 +2590,23 @@ pub struct ClaimRefund<'info> {
         close = bidder,
     )]
     pub escrow_account: Account<'info, EscrowAccount>,
-   #[account(
+#[account(
     mut,
-    constraint = bidder_wsol_ata.owner == bidder.key(),
-    constraint = bidder_wsol_ata.mint == wsol_mint.key()
+    constraint = bidder_payment_ata.owner == bidder.key(),
+    constraint = bidder_payment_ata.mint == payment_mint.key()
 )]
-pub bidder_wsol_ata: InterfaceAccount<'info, TokenAccount>,
+pub bidder_payment_ata: InterfaceAccount<'info, TokenAccount>,
 
 #[account(
     mut,
-    associated_token::mint = wsol_mint,
+    associated_token::mint = payment_mint,
     associated_token::authority = escrow_account,
 )]
 pub escrow_token_account: InterfaceAccount<'info, TokenAccount>,
 
-pub wsol_mint: InterfaceAccount<'info, Mint>,
+pub payment_mint: InterfaceAccount<'info, Mint>,
 pub token_program: Interface<'info, TokenInterface>,
 }
-// =======================
-// 1) NEW COMP-DEF INIT FUNCTIONS
-// =======================
-
 
 #[init_computation_definition_accounts("determine_winner_uniform", payer)]
 #[derive(Accounts)]
@@ -2503,81 +2628,38 @@ pub struct InitDetermineWinnerUniformCompDef<'info> {
     pub system_program: Program<'info, System>,
 }
 
-#[init_computation_definition_accounts("determine_winner_pro_rata", payer)]
-#[derive(Accounts)]
-pub struct InitDetermineWinnerProRataCompDef<'info> {
-    #[account(mut)]
-    pub payer: Signer<'info>,
-    #[account(mut, address = derive_mxe_pda!())]
-    pub mxe_account: Box<Account<'info, MXEAccount>>,
-    #[account(mut)]
-    /// CHECK: comp_def_account, checked by arcium program.
-    pub comp_def_account: UncheckedAccount<'info>,
-    #[account(mut, address = derive_mxe_lut_pda!(mxe_account.lut_offset_slot))]
-    /// CHECK: address_lookup_table, checked by arcium program.
-    pub address_lookup_table: UncheckedAccount<'info>,
-    #[account(address = LUT_PROGRAM_ID)]
-    /// CHECK: lut_program is the Address Lookup Table program.
-    pub lut_program: UncheckedAccount<'info>,
-    pub arcium_program: Program<'info, Arcium>,
-    pub system_program: Program<'info, System>,
-}
-
-
-// =======================
-// 2) NEW QUEUE/SETTLEMENT ACCOUNTS
-// =======================
-
 #[queue_computation_accounts("determine_winner_uniform", settler)]
 #[derive(Accounts)]
 #[instruction(computation_offset: u64)]
 pub struct DetermineWinnerUniform<'info> {
     #[account(mut)]
     pub settler: Signer<'info>,
-
     #[account(mut)]
     pub auction: Box<Account<'info, Auction>>,
-
-    #[account(
-        init_if_needed,
-        space = 9,
-        payer = settler,
-        seeds = [&SIGN_PDA_SEED],
-        bump,
-        address = derive_sign_pda!(),
-    )]
+    #[account( init_if_needed, space = 9, payer = settler, seeds = [&SIGN_PDA_SEED], bump, address = derive_sign_pda!())]
     pub sign_pda_account: Box<Account<'info, ArciumSignerAccount>>,
-
     #[account(address = derive_mxe_pda!())]
     pub mxe_account: Box<Account<'info, MXEAccount>>,
-
     #[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
     /// CHECK: mempool_account is validated by the address constraint and Arcium runtime.
     pub mempool_account: UncheckedAccount<'info>,
-
     #[account(mut, address = derive_execpool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
     /// CHECK: executing_pool is validated by the address constraint and Arcium runtime.
     pub executing_pool: UncheckedAccount<'info>,
-
     #[account(mut, address = derive_comp_pda!(computation_offset, mxe_account, ErrorCode::ClusterNotSet))]
     /// CHECK: computation_account is validated by the address constraint and Arcium runtime.
     pub computation_account: UncheckedAccount<'info>,
-
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_DETERMINE_WINNER_UNIFORM))]
     pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
-
     #[account(mut, address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
     /// CHECK: cluster_account is validated by the address constraint and Arcium runtime.
     pub cluster_account: Box<Account<'info, Cluster>>,
-
     #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
     /// CHECK: fee pool account is validated by the address constraint and Arcium runtime.
     pub pool_account: Box<Account<'info, FeePool>>,
-
     #[account(mut, address = ARCIUM_CLOCK_ACCOUNT_ADDRESS)]
     /// CHECK: clock account is validated by the address constraint and Arcium runtime.
     pub clock_account: Box<Account<'info, ClockAccount>>,
-
     pub system_program: Program<'info, System>,
     pub arcium_program: Program<'info, Arcium>,
 }
@@ -2587,79 +2669,6 @@ pub struct DetermineWinnerUniform<'info> {
 pub struct DetermineWinnerUniformCallback<'info> {
     pub arcium_program: Program<'info, Arcium>,
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_DETERMINE_WINNER_UNIFORM))]
-    pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
-    #[account(address = derive_mxe_pda!())]
-    pub mxe_account: Account<'info, MXEAccount>,
-    /// CHECK: computation_account, checked by arcium program via constraints in the callback context.
-    pub computation_account: UncheckedAccount<'info>,
-    #[account(address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-    pub cluster_account: Account<'info, Cluster>,
-    #[account(address = ::anchor_lang::solana_program::sysvar::instructions::ID)]
-    /// CHECK: instructions_sysvar, checked by the account constraint
-    pub instructions_sysvar: AccountInfo<'info>,
-    #[account(mut)]
-    pub auction: Box<Account<'info, Auction>>,
-}
-
-#[queue_computation_accounts("determine_winner_pro_rata", settler)]
-#[derive(Accounts)]
-#[instruction(computation_offset: u64)]
-pub struct DetermineWinnerProRata<'info> {
-    #[account(mut)]
-    pub settler: Signer<'info>,
-
-    #[account(mut)]
-    pub auction: Box<Account<'info, Auction>>,
-
-    #[account(
-        init_if_needed,
-        space = 9,
-        payer = settler,
-        seeds = [&SIGN_PDA_SEED],
-        bump,
-        address = derive_sign_pda!(),
-    )]
-    pub sign_pda_account: Box<Account<'info, ArciumSignerAccount>>,
-
-    #[account(address = derive_mxe_pda!())]
-    pub mxe_account: Box<Account<'info, MXEAccount>>,
-
-    #[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-    /// CHECK: mempool_account is validated by the address constraint and Arcium runtime.
-    pub mempool_account: UncheckedAccount<'info>,
-
-    #[account(mut, address = derive_execpool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-    /// CHECK: executing_pool is validated by the address constraint and Arcium runtime.
-    pub executing_pool: UncheckedAccount<'info>,
-
-    #[account(mut, address = derive_comp_pda!(computation_offset, mxe_account, ErrorCode::ClusterNotSet))]
-    /// CHECK: computation_account is validated by the address constraint and Arcium runtime.
-    pub computation_account: UncheckedAccount<'info>,
-
-    #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_DETERMINE_WINNER_PRO_RATA))]
-    pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
-
-    #[account(mut, address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
-    /// CHECK: cluster_account is validated by the address constraint and Arcium runtime.
-    pub cluster_account: Box<Account<'info, Cluster>>,
-
-    #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
-    /// CHECK: fee pool account is validated by the address constraint and Arcium runtime.
-    pub pool_account: Box<Account<'info, FeePool>>,
-
-    #[account(mut, address = ARCIUM_CLOCK_ACCOUNT_ADDRESS)]
-    /// CHECK: clock account is validated by the address constraint and Arcium runtime.
-    pub clock_account: Box<Account<'info, ClockAccount>>,
-
-    pub system_program: Program<'info, System>,
-    pub arcium_program: Program<'info, Arcium>,
-}
-
-#[callback_accounts("determine_winner_pro_rata")]
-#[derive(Accounts)]
-pub struct DetermineWinnerProRataCallback<'info> {
-    pub arcium_program: Program<'info, Arcium>,
-    #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_DETERMINE_WINNER_PRO_RATA))]
     pub comp_def_account: Account<'info, ComputationDefinitionAccount>,
     #[account(address = derive_mxe_pda!())]
     pub mxe_account: Account<'info, MXEAccount>,
@@ -2721,16 +2730,16 @@ pub fn determine_winner_uniform_callback(
 
     auction.status = AuctionStatus::Resolved;
     auction.winners = [winner1_pk, winner2_pk, winner3_pk];
-auction.winner_bids = [
-    winner1_bid.field_1, 
-    winner2_bid.field_1,
-    winner3_bid.field_1,
-];
-auction.winner_prices = [
-    winner1_bid.field_2,
-    winner2_bid.field_2,
-    winner3_bid.field_2,
-];
+    auction.winner_bids = [
+        winner1_bid.field_1, 
+        winner2_bid.field_1,
+        winner3_bid.field_1,
+    ];
+    auction.winner_prices = [
+        winner1_bid.field_2,
+        winner2_bid.field_2,
+        winner3_bid.field_2,
+    ];
     auction.clearing_price = clearing_price;
     auction.total_bid = winner1_bid
         .field_1
@@ -2743,105 +2752,27 @@ auction.winner_prices = [
     auction.payment_amount = 0;
     auction.winner_paid = false;
 
-emit!(MultiWinnerAuctionResolvedEvent {
-    auction: auction_key,
-    auction_type,
-    winners: [winner1, winner2, winner3],
-    winner_bids: [
-        winner1_bid.field_1,
-        winner2_bid.field_1,
-        winner3_bid.field_1
-    ],
-    winner_prices: [
-        winner1_bid.field_2,
-        winner2_bid.field_2,
-        winner3_bid.field_2
-    ],
-    clearing_price,
-    total_bid: auction.total_bid,
-});
+    emit!(MultiWinnerAuctionResolvedEvent {
+        auction: auction_key,
+        auction_type,
+        winners: [winner1, winner2, winner3],
+        winner_bids: [
+            winner1_bid.field_1,
+            winner2_bid.field_1,
+            winner3_bid.field_1
+        ],
+        winner_prices: [
+            winner1_bid.field_2,
+            winner2_bid.field_2,
+            winner3_bid.field_2
+        ],
+        clearing_price,
+        total_bid: auction.total_bid,
+    });
 
     Ok(())
 }
 
-#[arcium_callback(encrypted_ix = "determine_winner_pro_rata")]
-pub fn determine_winner_pro_rata_callback(
-    ctx: Context<DetermineWinnerProRataCallback>,
-    output: SignedComputationOutputs<DetermineWinnerProRataOutput>,
-) -> Result<()> {
-    let o = match output.verify_output(
-        &ctx.accounts.cluster_account,
-        &ctx.accounts.computation_account,
-    ) {
-        Ok(DetermineWinnerProRataOutput { field_0 }) => field_0,
-        Err(_) => return Err(ErrorCode::AbortedComputation.into()),
-    };
-
-    let DetermineWinnerProRataOutputStruct0 {
-        field_0: winner1_bid,
-        field_1: winner2_bid,
-        field_2: winner3_bid,
-        field_3: total_bid,
-        ..
-    } = o;
-
-    let mut winner1 = [0u8; 32];
-    winner1[..16].copy_from_slice(&winner1_bid.field_0.field_0.to_le_bytes());
-    winner1[16..].copy_from_slice(&winner1_bid.field_0.field_1.to_le_bytes());
-    let winner1_pk = Pubkey::new_from_array(winner1);
-
-    let mut winner2 = [0u8; 32];
-    winner2[..16].copy_from_slice(&winner2_bid.field_0.field_0.to_le_bytes());
-    winner2[16..].copy_from_slice(&winner2_bid.field_0.field_1.to_le_bytes());
-    let winner2_pk = Pubkey::new_from_array(winner2);
-
-    let mut winner3 = [0u8; 32];
-    winner3[..16].copy_from_slice(&winner3_bid.field_0.field_0.to_le_bytes());
-    winner3[16..].copy_from_slice(&winner3_bid.field_0.field_1.to_le_bytes());
-    let winner3_pk = Pubkey::new_from_array(winner3);
-
-    let auction_key = ctx.accounts.auction.key();
-    let auction_type = ctx.accounts.auction.auction_type;
-    let auction = &mut ctx.accounts.auction;
-
-    require_not_resolved(auction)?;
-    require!(auction.auction_type == AuctionType::ProRata, ErrorCode::WrongAuctionType);
-
-    auction.status = AuctionStatus::Resolved;
-    auction.winners = [winner1_pk, winner2_pk, winner3_pk];
-    auction.winner_bids = [
-        winner1_bid.field_1,
-        winner2_bid.field_1,
-        winner3_bid.field_1,
-    ];
-    auction.total_bid = total_bid;
-    auction.clearing_price = 0;
-    auction.winner_paid_multi = [false; 3];
-
-    auction.winner = Pubkey::default();
-    auction.payment_amount = 0;
-    auction.winner_paid = false;
-
-emit!(MultiWinnerAuctionResolvedEvent {
-    auction: auction_key,
-    auction_type,
-    winners: [winner1, winner2, winner3],
-    winner_bids: [
-        winner1_bid.field_1,
-        winner2_bid.field_1,
-        winner3_bid.field_1
-    ],
-    winner_prices: [
-        winner1_bid.field_2,
-        winner2_bid.field_2,
-        winner3_bid.field_2
-    ],
-    clearing_price: 0,
-    total_bid,
-});
-
-    Ok(())
-}
 
 /// Allows creator to reclaim unsold tokens if no bids were placed.
 ///
@@ -3026,26 +2957,26 @@ pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
     #[account(
     mut,
-    associated_token::mint = wsol_mint,
+    associated_token::mint = payment_mint,
     associated_token::authority = winner_escrow,
 )]
 pub escrow_token_account: InterfaceAccount<'info, TokenAccount>,
 
 #[account(
     mut,
-    constraint = creator_wsol_ata.owner == creator.key(),
-    constraint = creator_wsol_ata.mint == wsol_mint.key()
+    constraint = creator_payment_ata.owner == creator.key(),
+    constraint = creator_payment_ata.mint == payment_mint.key()
 )]
-pub creator_wsol_ata: InterfaceAccount<'info, TokenAccount>,
+pub creator_payment_ata: InterfaceAccount<'info, TokenAccount>,
 
 #[account(
     mut,
-    constraint = winner_wsol_ata.owner == winner_wallet.key(),
-    constraint = winner_wsol_ata.mint == wsol_mint.key()
+    constraint = winner_payment_ata.owner == winner_wallet.key(),
+    constraint = winner_payment_ata.mint == payment_mint.key()
 )]
-pub winner_wsol_ata: InterfaceAccount<'info, TokenAccount>,
+pub winner_payment_ata: InterfaceAccount<'info, TokenAccount>,
 
-pub wsol_mint: InterfaceAccount<'info, Mint>,
+pub payment_mint: Box<InterfaceAccount<'info, Mint>>,
 pub token_program: Interface<'info, TokenInterface>,
 }
 
@@ -3073,28 +3004,28 @@ pub struct FinalizeTokenWinnerPayout<'info> {
 
     pub prize_mint: Box<InterfaceAccount<'info, Mint>>,
 
-    #[account(
-        mut,
-        associated_token::mint = wsol_mint,
-        associated_token::authority = winner_escrow,
-    )]
-    pub escrow_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+pub payment_mint: Box<InterfaceAccount<'info, Mint>>,
 
-    #[account(
-        mut,
-        constraint = creator_wsol_ata.owner == creator.key(),
-        constraint = creator_wsol_ata.mint == wsol_mint.key()
-    )]
-    pub creator_wsol_ata: Box<InterfaceAccount<'info, TokenAccount>>,
+#[account(
+    mut,
+    associated_token::mint = payment_mint,
+    associated_token::authority = winner_escrow,
+)]
+pub escrow_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    #[account(
-        mut,
-        constraint = winner_wsol_ata.owner == winner_wallet.key(),
-        constraint = winner_wsol_ata.mint == wsol_mint.key()
-    )]
-    pub winner_wsol_ata: Box<InterfaceAccount<'info, TokenAccount>>,
+#[account(
+    mut,
+    constraint = creator_payment_ata.owner == creator.key(),
+    constraint = creator_payment_ata.mint == payment_mint.key()
+)]
+pub creator_payment_ata: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub wsol_mint: Box<InterfaceAccount<'info, Mint>>,
+#[account(
+    mut,
+    constraint = winner_payment_ata.owner == winner_wallet.key(),
+    constraint = winner_payment_ata.mint == payment_mint.key()
+)]
+pub winner_payment_ata: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
@@ -3262,7 +3193,7 @@ pub enum ErrorCode {
     #[msg("Pending encrypted bid already consumed")]
     TempBidAlreadyConsumed,
     #[msg("Escrow must be >= price")]
-BidTooSmall,
+    BidTooSmall,
 }
 
 fn require_not_resolved(auction: &Auction) -> Result<()> {
@@ -3289,8 +3220,6 @@ fn require_settlement_allowed(auction: &Auction) -> Result<()> {
 /// Transfers funds from escrow:
 /// - Pays creator
 /// - Refunds winner remainder
-///
-/// Used during settlement.
 fn settle_token_escrow<'info>(
     escrow_token: &AccountInfo<'info>,
     creator_token: &AccountInfo<'info>,
@@ -3341,8 +3270,6 @@ fn settle_token_escrow<'info>(
 }
 
 /// Transfers prize tokens from vault to winner.
-///
-/// Uses PDA signer (`vault_authority`).
 pub fn pay_winner<'info>(
     token_program: AccountInfo<'info>,
     mint: AccountInfo<'info>,
@@ -3436,8 +3363,9 @@ pub struct PendingEncryptedBid {
     pub auction: Pubkey,
     pub shared_vault: Pubkey,
     pub bidder: Pubkey,
-    pub nonce: u128,
     pub encrypted_amount: [u8; 32],
+    pub encrypted_price: [u8; 32],
     pub consumed: bool,
-    pub encrypted_price: [u8; 32], 
+    pub umbra_context_account: Pubkey,
+    pub umbra_persistence_account: Pubkey,
 }

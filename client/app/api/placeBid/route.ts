@@ -6,14 +6,14 @@ import { createPlaceBid } from "@arcrypt/sdk";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { auctionPk, bidderPubkey, bidAmountSol, bidPriceSol, nonceHex } = body ?? {};
+const { auctionPk, bidderPubkey, bidAmountUsdc, bidPriceUsdc, nonceHex } = body ?? {};
 
-    if (!auctionPk || !bidderPubkey || typeof bidAmountSol === "undefined") {
-      return NextResponse.json(
-        { error: "auctionPk, bidderPubkey, and bidAmountSol are required" },
-        { status: 400 }
-      );
-    }
+if (!auctionPk || !bidderPubkey || typeof bidAmountUsdc === "undefined") {
+  return NextResponse.json(
+    { error: "auctionPk, bidderPubkey, and bidAmountUsdc are required" },
+    { status: 400 }
+  );
+}
 
     const programIdStr = process.env.PROGRAM_ID;
     const rpcUrl = process.env.RPC_URL;
@@ -28,15 +28,15 @@ export async function POST(req: Request) {
     const program = await createReadOnlyProgram(rpcUrl, programIdStr);
     const bidderPk = new PublicKey(bidderPubkey);
 
-    const bundle = await createPlaceBid({
-      programClient: program,
-      programId: new PublicKey(programIdStr),
-      bidPriceSol,
-      publicKey: bidderPk,
-      auctionPk: new PublicKey(auctionPk),
-      bidAmountSol: String(bidAmountSol),
-      nonceHex: nonceHex ?? null,
-    });
+   const bundle = await createPlaceBid({
+  programClient: program,
+  programId: new PublicKey(programIdStr),
+  bidPriceUsdc,
+  publicKey: bidderPk,
+  auctionPk: new PublicKey(auctionPk),
+  bidAmountUsdc: String(bidAmountUsdc),
+  nonceHex: nonceHex ?? null,
+});
 
     const tx = bundle.transaction;
     tx.feePayer = bidderPk;

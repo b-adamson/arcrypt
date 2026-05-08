@@ -17,7 +17,7 @@
         "- Caller must NOT be a winner",
         "",
         "# Effects",
-        "- Transfers WSOL back to bidder",
+        "- Transfers usdc back to bidder",
         "- Closes escrow account"
       ],
       "discriminator": [
@@ -68,7 +68,7 @@
           }
         },
         {
-          "name": "bidder_wsol_ata",
+          "name": "bidder_payment_ata",
           "writable": true
         },
         {
@@ -119,7 +119,7 @@
               },
               {
                 "kind": "account",
-                "path": "wsol_mint"
+                "path": "payment_mint"
               }
             ],
             "program": {
@@ -162,7 +162,7 @@
           }
         },
         {
-          "name": "wsol_mint"
+          "name": "payment_mint"
         },
         {
           "name": "token_program"
@@ -414,7 +414,7 @@
         "via Arcium.",
         "",
         "# Arguments",
-        "- `auction_type`: Pricing mechanism (FirstPrice, Vickrey, Uniform, ProRata)",
+        "- `auction_type`: Pricing mechanism (FirstPrice, Vickrey, Uniform)",
         "- `asset_kind`: Fungible or NFT",
         "- `min_bid`: Minimum bid in lamports",
         "- `end_time`: Unix timestamp when auction ends",
@@ -727,6 +727,265 @@
       ]
     },
     {
+      "name": "deposit_encrypted_bid",
+      "docs": [
+        "Deposits a confidential bid via Umbra and prepares it for later Arcium processing.",
+        "Entrypoint of the encrypted_bid mechanism using UMBRA",
+        "Not related to deprecated place_bid pathway",
+        "",
+        "# Arguments",
+        "- `ctx`: Account context for the auction, bidder, Umbra CPI, and temporary bid PDA.",
+        "- `computation_offset`: Arcium computation offset used to derive the queued computation account.",
+        "- `encrypted_amount`: Encrypted bid amount / escrow amount.",
+        "- `encrypted_price`: Encrypted price value used for bid modes that need it."
+      ],
+      "discriminator": [
+        189,
+        226,
+        70,
+        89,
+        52,
+        29,
+        36,
+        221
+      ],
+      "accounts": [
+        {
+          "name": "bidder",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "auction",
+          "writable": true,
+          "relations": [
+            "shared_vault"
+          ]
+        },
+        {
+          "name": "shared_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  104,
+                  97,
+                  114,
+                  101,
+                  100,
+                  45,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "auction"
+              }
+            ]
+          }
+        },
+        {
+          "name": "temp_bid",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  110,
+                  100,
+                  105,
+                  110,
+                  103,
+                  45,
+                  101,
+                  110,
+                  99,
+                  114,
+                  121,
+                  112,
+                  116,
+                  101,
+                  100,
+                  45,
+                  98,
+                  105,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "auction"
+              },
+              {
+                "kind": "account",
+                "path": "bidder"
+              }
+            ]
+          }
+        },
+        {
+          "name": "sign_pda_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  65,
+                  114,
+                  99,
+                  105,
+                  117,
+                  109,
+                  83,
+                  105,
+                  103,
+                  110,
+                  101,
+                  114,
+                  65,
+                  99,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "mxe_account"
+        },
+        {
+          "name": "mempool_account",
+          "writable": true
+        },
+        {
+          "name": "executing_pool",
+          "writable": true
+        },
+        {
+          "name": "computation_account",
+          "writable": true
+        },
+        {
+          "name": "comp_def_account"
+        },
+        {
+          "name": "cluster_account",
+          "writable": true
+        },
+        {
+          "name": "pool_account",
+          "writable": true,
+          "address": "G2sRWJvi3xoyh5k2gY49eG9L8YhAEWQPtNb1zb1GXTtC"
+        },
+        {
+          "name": "clock_account",
+          "writable": true,
+          "address": "7EbMUTLo5DjdzbN7s8BXeZwXzEwNQb1hScfRvWg8a6ot"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "arcium_program",
+          "address": "Arcj82pX7HxYKLR92qvgZUAd7vGS1k4hQvAFcPATFdEQ"
+        },
+        {
+          "name": "umbra_program",
+          "address": "DSuKkyqGVGgo4QtPABfxKJKygUDACbUhirnuv63mEpAJ"
+        },
+        {
+          "name": "sender_token_account",
+          "writable": true
+        },
+        {
+          "name": "umbra_context_account"
+        },
+        {
+          "name": "umbra_persistence_account",
+          "writable": true
+        },
+        {
+          "name": "receiver_address"
+        },
+        {
+          "name": "receiver_token_account",
+          "writable": true
+        },
+        {
+          "name": "receiver_user_account",
+          "writable": true
+        },
+        {
+          "name": "fee_schedule"
+        },
+        {
+          "name": "fee_vault",
+          "writable": true
+        },
+        {
+          "name": "token_pool"
+        },
+        {
+          "name": "mint",
+          "address": "4oG4sjmopf5MzvTHLE8rpVJ2uyczxfsw2K84SUTpNDx7"
+        },
+        {
+          "name": "protocol_config"
+        },
+        {
+          "name": "computation_data",
+          "writable": true
+        },
+        {
+          "name": "umbra_callback_signer"
+        },
+        {
+          "name": "destination_program",
+          "address": "JEJdjPBaWAteXajrhpEJCWcgUci3QUCJbCvEJxwM9ZYq"
+        }
+      ],
+      "args": [
+        {
+          "name": "computation_offset",
+          "type": "u64"
+        },
+        {
+          "name": "encrypted_amount",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "encrypted_price",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "determine_winner_first_price",
       "docs": [
         "Triggers winner computation for a First Price auction.",
@@ -888,167 +1147,6 @@
                   "type": {
                     "defined": {
                       "name": "DetermineWinnerFirstPriceOutput"
-                    }
-                  }
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "determine_winner_pro_rata",
-      "discriminator": [
-        113,
-        52,
-        159,
-        79,
-        86,
-        104,
-        96,
-        207
-      ],
-      "accounts": [
-        {
-          "name": "settler",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "auction",
-          "writable": true
-        },
-        {
-          "name": "sign_pda_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  65,
-                  114,
-                  99,
-                  105,
-                  117,
-                  109,
-                  83,
-                  105,
-                  103,
-                  110,
-                  101,
-                  114,
-                  65,
-                  99,
-                  99,
-                  111,
-                  117,
-                  110,
-                  116
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "mxe_account"
-        },
-        {
-          "name": "mempool_account",
-          "writable": true
-        },
-        {
-          "name": "executing_pool",
-          "writable": true
-        },
-        {
-          "name": "computation_account",
-          "writable": true
-        },
-        {
-          "name": "comp_def_account"
-        },
-        {
-          "name": "cluster_account",
-          "writable": true
-        },
-        {
-          "name": "pool_account",
-          "writable": true,
-          "address": "G2sRWJvi3xoyh5k2gY49eG9L8YhAEWQPtNb1zb1GXTtC"
-        },
-        {
-          "name": "clock_account",
-          "writable": true,
-          "address": "7EbMUTLo5DjdzbN7s8BXeZwXzEwNQb1hScfRvWg8a6ot"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        },
-        {
-          "name": "arcium_program",
-          "address": "Arcj82pX7HxYKLR92qvgZUAd7vGS1k4hQvAFcPATFdEQ"
-        }
-      ],
-      "args": [
-        {
-          "name": "computation_offset",
-          "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "determine_winner_pro_rata_callback",
-      "discriminator": [
-        99,
-        186,
-        9,
-        171,
-        31,
-        121,
-        105,
-        243
-      ],
-      "accounts": [
-        {
-          "name": "arcium_program",
-          "address": "Arcj82pX7HxYKLR92qvgZUAd7vGS1k4hQvAFcPATFdEQ"
-        },
-        {
-          "name": "comp_def_account"
-        },
-        {
-          "name": "mxe_account"
-        },
-        {
-          "name": "computation_account"
-        },
-        {
-          "name": "cluster_account"
-        },
-        {
-          "name": "instructions_sysvar",
-          "address": "Sysvar1nstructions1111111111111111111111111"
-        },
-        {
-          "name": "auction",
-          "writable": true
-        }
-      ],
-      "args": [
-        {
-          "name": "output",
-          "type": {
-            "defined": {
-              "name": "SignedComputationOutputs",
-              "generics": [
-                {
-                  "kind": "type",
-                  "type": {
-                    "defined": {
-                      "name": "DetermineWinnerProRataOutput"
                     }
                   }
                 }
@@ -1403,7 +1501,7 @@
       "docs": [
         "Finalizes payout for metadata-only auctions.",
         "",
-        "Only transfers WSOL (no token payout).",
+        "Only transfers usdc (no token payout).",
         "",
         "# Effects",
         "- Pays creator",
@@ -1515,7 +1613,7 @@
               },
               {
                 "kind": "account",
-                "path": "wsol_mint"
+                "path": "payment_mint"
               }
             ],
             "program": {
@@ -1558,15 +1656,15 @@
           }
         },
         {
-          "name": "creator_wsol_ata",
+          "name": "creator_payment_ata",
           "writable": true
         },
         {
-          "name": "winner_wsol_ata",
+          "name": "winner_payment_ata",
           "writable": true
         },
         {
-          "name": "wsol_mint"
+          "name": "payment_mint"
         },
         {
           "name": "token_program"
@@ -1588,10 +1686,9 @@
         "- FirstPrice: winner pays bid",
         "- Vickrey: winner pays second price",
         "- Uniform: multi-winner clearing price",
-        "- ProRata: proportional distribution (Deprecated)",
         "",
         "# Effects",
-        "- Moves WSOL from escrow",
+        "- Moves usdc from escrow",
         "- Transfers prize tokens",
         "- Marks winners as paid"
       ],
@@ -1654,6 +1751,9 @@
           "name": "prize_mint"
         },
         {
+          "name": "payment_mint"
+        },
+        {
           "name": "escrow_token_account",
           "writable": true,
           "pda": {
@@ -1701,7 +1801,7 @@
               },
               {
                 "kind": "account",
-                "path": "wsol_mint"
+                "path": "payment_mint"
               }
             ],
             "program": {
@@ -1744,15 +1844,12 @@
           }
         },
         {
-          "name": "creator_wsol_ata",
+          "name": "creator_payment_ata",
           "writable": true
         },
         {
-          "name": "winner_wsol_ata",
+          "name": "winner_payment_ata",
           "writable": true
-        },
-        {
-          "name": "wsol_mint"
         },
         {
           "name": "vault_authority",
@@ -2044,51 +2141,6 @@
       "args": []
     },
     {
-      "name": "init_determine_winner_pro_rata_comp_def",
-      "discriminator": [
-        241,
-        132,
-        197,
-        29,
-        70,
-        108,
-        40,
-        164
-      ],
-      "accounts": [
-        {
-          "name": "payer",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "mxe_account",
-          "writable": true
-        },
-        {
-          "name": "comp_def_account",
-          "writable": true
-        },
-        {
-          "name": "address_lookup_table",
-          "writable": true
-        },
-        {
-          "name": "lut_program",
-          "address": "AddressLookupTab1e1111111111111111111111111"
-        },
-        {
-          "name": "arcium_program",
-          "address": "Arcj82pX7HxYKLR92qvgZUAd7vGS1k4hQvAFcPATFdEQ"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": []
-    },
-    {
       "name": "init_determine_winner_uniform_comp_def",
       "discriminator": [
         223,
@@ -2301,7 +2353,7 @@
       "docs": [
         "Places an encrypted bid with escrow.",
         "",
-        "Transfers WSOL into the bidder's escrow PDA and submits encrypted bid data",
+        "Transfers usdc into the bidder's escrow PDA and submits encrypted bid data",
         "to Arcium for off-chain computation.",
         "",
         "# Arguments",
@@ -2315,7 +2367,7 @@
         "- For FP/Vickrey: price = amount",
         "",
         "# Effects",
-        "- Transfers WSOL into escrow ATA",
+        "- Transfers usdc into escrow ATA",
         "- Queues encrypted computation"
       ],
       "discriminator": [
@@ -2366,11 +2418,11 @@
           }
         },
         {
-          "name": "bidder_wsol_ata",
+          "name": "bidder_payment_ata",
           "writable": true
         },
         {
-          "name": "wsol_mint"
+          "name": "payment_mint"
         },
         {
           "name": "token_program"
@@ -2423,7 +2475,7 @@
               },
               {
                 "kind": "account",
-                "path": "wsol_mint"
+                "path": "payment_mint"
               }
             ],
             "program": {
@@ -2665,6 +2717,7 @@
       "name": "place_encrypted_bid",
       "docs": [
         "Executes a previously submitted encrypted bid.",
+        "Perfomed via client crank",
         "",
         "Consumes a `PendingEncryptedBid` and queues the encrypted computation. Called via crank after submit_encrypted_bid",
         "",
@@ -3076,11 +3129,6 @@
       ],
       "accounts": [
         {
-          "name": "payer",
-          "writable": true,
-          "signer": true
-        },
-        {
           "name": "auction",
           "writable": true,
           "relations": [
@@ -3154,13 +3202,19 @@
               {
                 "kind": "arg",
                 "path": "bidder"
-              },
-              {
-                "kind": "arg",
-                "path": "nonce"
               }
             ]
           }
+        },
+        {
+          "name": "bidder"
+        },
+        {
+          "name": "umbra_context_account"
+        },
+        {
+          "name": "umbra_persistence_account",
+          "writable": true
         },
         {
           "name": "system_program",
@@ -3180,19 +3234,6 @@
               32
             ]
           }
-        },
-        {
-          "name": "encrypted_price",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
-        },
-        {
-          "name": "nonce",
-          "type": "u128"
         }
       ]
     }
@@ -3940,9 +3981,6 @@
           },
           {
             "name": "Uniform"
-          },
-          {
-            "name": "ProRata"
           }
         ]
       }
@@ -4290,182 +4328,6 @@
     },
     {
       "name": "DetermineWinnerFirstPriceOutputStruct00",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "field_0",
-            "type": "u128"
-          },
-          {
-            "name": "field_1",
-            "type": "u128"
-          }
-        ]
-      }
-    },
-    {
-      "name": "DetermineWinnerProRataOutput",
-      "docs": [
-        "The output of the callback instruction. Provided as a struct with ordered fields",
-        "as anchor does not support tuples and tuple structs yet."
-      ],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "field_0",
-            "type": {
-              "defined": {
-                "name": "DetermineWinnerProRataOutputStruct0"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "DetermineWinnerProRataOutputStruct0",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "field_0",
-            "type": {
-              "defined": {
-                "name": "DetermineWinnerProRataOutputStruct00"
-              }
-            }
-          },
-          {
-            "name": "field_1",
-            "type": {
-              "defined": {
-                "name": "DetermineWinnerProRataOutputStruct01"
-              }
-            }
-          },
-          {
-            "name": "field_2",
-            "type": {
-              "defined": {
-                "name": "DetermineWinnerProRataOutputStruct02"
-              }
-            }
-          },
-          {
-            "name": "field_3",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "DetermineWinnerProRataOutputStruct00",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "field_0",
-            "type": {
-              "defined": {
-                "name": "DetermineWinnerProRataOutputStruct000"
-              }
-            }
-          },
-          {
-            "name": "field_1",
-            "type": "u64"
-          },
-          {
-            "name": "field_2",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "DetermineWinnerProRataOutputStruct000",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "field_0",
-            "type": "u128"
-          },
-          {
-            "name": "field_1",
-            "type": "u128"
-          }
-        ]
-      }
-    },
-    {
-      "name": "DetermineWinnerProRataOutputStruct01",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "field_0",
-            "type": {
-              "defined": {
-                "name": "DetermineWinnerProRataOutputStruct010"
-              }
-            }
-          },
-          {
-            "name": "field_1",
-            "type": "u64"
-          },
-          {
-            "name": "field_2",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "DetermineWinnerProRataOutputStruct010",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "field_0",
-            "type": "u128"
-          },
-          {
-            "name": "field_1",
-            "type": "u128"
-          }
-        ]
-      }
-    },
-    {
-      "name": "DetermineWinnerProRataOutputStruct02",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "field_0",
-            "type": {
-              "defined": {
-                "name": "DetermineWinnerProRataOutputStruct020"
-              }
-            }
-          },
-          {
-            "name": "field_1",
-            "type": "u64"
-          },
-          {
-            "name": "field_2",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "DetermineWinnerProRataOutputStruct020",
       "type": {
         "kind": "struct",
         "fields": [
@@ -5293,11 +5155,16 @@
             "type": "pubkey"
           },
           {
-            "name": "nonce",
-            "type": "u128"
+            "name": "encrypted_amount",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           },
           {
-            "name": "encrypted_amount",
+            "name": "encrypted_price",
             "type": {
               "array": [
                 "u8",
@@ -5310,13 +5177,12 @@
             "type": "bool"
           },
           {
-            "name": "encrypted_price",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
+            "name": "umbra_context_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "umbra_persistence_account",
+            "type": "pubkey"
           }
         ]
       }

@@ -3,25 +3,21 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Buffer } from "buffer";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { LAMPORTS_PER_SOL, PublicKey, Connection, Transaction } from "@solana/web3.js";
-import { createAnchorProgramInBrowser, createReadOnlyProgram, assertProviderReady } from "../../lib/anchorClient";
+import {
+  PublicKey,
+  Transaction,
+  VersionedTransaction,
+} from "@solana/web3.js";
+import {
+  createAnchorProgramInBrowser,
+  createReadOnlyProgram,
+  assertProviderReady,
+} from "../../lib/anchorClient";
 import AuctionBidForm from "../../components/AuctionBidForm";
 import AuctionResultCard from "../../components/AuctionResultCard";
 import AuctionWinConfetti from "../../components/AuctionWinConfetti";
 import { useRouter } from "next/navigation";
-import Balance from "../../components/Balance";
-import {
-  getMint,
-} from "@solana/spl-token";
-import { SystemProgram } from "@solana/web3.js";
-import {
-  NATIVE_MINT,
-  createAssociatedTokenAccountInstruction,
-  createSyncNativeInstruction,
-  getAssociatedTokenAddressSync,
-} from "@solana/spl-token";
-import { TransactionInstruction } from "@solana/web3.js";
-import { VersionedTransaction } from "@solana/web3.js";
+import { address as toAddress } from "@solana/kit";
 import {
   enumKey,
   getAuctionType,
@@ -30,31 +26,34 @@ import {
   isWinnerOfAuction,
   deriveEscrowPda,
 } from "@/lib/utils";
+import { getMint } from "@solana/spl-token";
 
+import { useUmbraClient } from "@/lib/useUmbraClient";
+
+const USDC_MINT = "4oG4sjmopf5MzvTHLE8rpVJ2uyczxfsw2K84SUTpNDx7";
 
 export default function BidPageClient({ auctionPk }: { auctionPk: string | null }) {
   const auctionPkStr = auctionPk;
 
   const { wallet, publicKey, connected } = useWallet();
+  const { client: umbraClient, withdrawFn } = useUmbraClient();
 
   const [programClient, setProgramClient] = useState<any | null>(null);
   const [readOnlyProgram, setReadOnlyProgram] = useState<any | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [bidTokens, setBidTokens] = useState("1");
-  const [bidPriceSol, setBidPriceSol] = useState("1");
-  const [bidAmountSolInput, setBidAmountSolInput] = useState("1"); // for FP/Vickrey
+const [bidPriceUsdc, setBidPriceUsdc] = useState("1");
+const [bidAmountUsdc, setBidAmountUsdc] = useState("1");
 
-const derivedAmountSol =
-  Number(bidTokens || 0) * Number(bidPriceSol || 0);
+const derivedAmountUsdc =
+  Number(bidTokens || 0) * Number(bidPriceUsdc || 0);
 
   const [bidNonceHex, setBidNonceHex] = useState<string | null>(null);
   const [auctionData, setAuctionData] = useState<any | null>(null);
   const [auctionEnded, setAuctionEnded] = useState(false);
   const [tokenDecimals, setTokenDecimals] = useState<number | null>(null);
   const refreshedAtZeroRef = useRef(false);
-  const [umbraClient, setUmbraClient] = useState<any | null>(null);
-  const [umbraReady, setUmbraReady] = useState(false);
-  const [umbraStatus, setUmbraStatus] = useState<string>("Not set up");
+const [balanceRefreshKey, setBalanceRefreshKey] = useState(0);
   const [escrowExists, setEscrowExists] = useState<boolean | null>(null);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -71,70 +70,32 @@ const derivedAmountSol =
   const resolvedWinnerBase58 = resolvedWinnerKeys[0] ?? null;
   const bidCount = auctionData ? getBidCount(auctionData) : 0;
   const hasNoBids = auctionData ? bidCount === 0 : false;
-const router = useRouter();
-  const canDetermineWinner =
-    !!auctionData &&
-    auctionEnded &&
-    auctionStatus === "closed" &&
-    !hasNoBids;
+  const router = useRouter();
+  const canDetermineWinner = !!auctionData && auctionEnded && !isResolved && !hasNoBids;
 
-  const bidAmountSol =
-    auctionType === "uniform"
-      ? derivedAmountSol.toString()
-      : bidAmountSolInput;
+    console.log("auctionStatus:", auctionStatus);
+
+const bidAmountUsdcFinal =
+  auctionType === "uniform"
+    ? derivedAmountUsdc.toString()
+    : bidAmountUsdc;
 
   const canReclaimUnsold = !!auctionData && auctionEnded && !isResolved && isCreator && hasNoBids;
 
   const canClaimRefund = !!auctionData && auctionEnded && isResolved && publicKey && !winnerNow && escrowExists === true;
 
-  const swapUrl =
+const swapUrl =
   auctionData?.raydiumPoolCreated
-    ? `https://raydium.io/swap/?inputMint=So11111111111111111111111111111111111111112&outputMint=${
+    ? `https://raydium.io/swap/?inputMint=${USDC_MINT}&outputMint=${
         auctionData.tokenMint ?? auctionData.token_mint
       }`
     : null;
 
-const outcomeText = !auctionData
-  ? "Loading..."
-  : !connected
-    ? auctionEnded
-      ? "Auction ended — connect wallet to see results"
-      : "Connect wallet to see outcome"
-    : !auctionEnded
-      ? "Auction in progress"
-      : !isResolved && hasNoBids
-        ? "Auction ended — creator can reclaim unsold item"
-        : isResolved
-          ? winnerNow
-            ? winnerClaimed
-              ? "You won the auction — settled"
-              : "You won the auction"
-            : isCreator
-              ? "Auction resolved — settlement pending"
-              : canClaimRefund
-                ? "You lost the auction — refund available"
-                : "You lost the auction — no refund to claim"
-          : "Auction ended — winner pending";
+const outcomeText = !auctionData ? "Loading..." : !connected ? (auctionEnded ? "Auction ended — connect wallet to see results" : "Connect wallet to see outcome") : !auctionEnded ? "Auction in progress" : !isResolved && hasNoBids ? "Auction ended — creator can reclaim unsold item" : isResolved ? (winnerNow ? (winnerClaimed ? "You won the auction — settled" : "You won the auction") : isCreator ? "Auction resolved — settlement pending" : canClaimRefund ? "You lost the auction — refund available" : "You lost the auction — no refund to claim") : "Auction ended — winner pending";
 
+const determineWinnerKind = auctionType === "firstprice" ? "first" : auctionType === "vickrey" ? "vickrey" : auctionType === "uniform" ? "uniform" : null;
 
-
-const determineWinnerKind =
-  auctionType === "firstprice"
-    ? "first"
-    : auctionType === "vickrey"
-      ? "vickrey"
-      : auctionType === "uniform"
-        ? "uniform"
-        : null;
-
-  const determineWinnerLabel =
-    determineWinnerKind === "first"
-      ? "Determine first-price winner"
-      : determineWinnerKind === "vickrey"
-        ? "Determine Vickrey winner"
-        : determineWinnerKind === "uniform"
-          ? "Determine uniform winner"
-          : "Determine pro-rata winner";
+const determineWinnerLabel = determineWinnerKind === "first" ? "Determine first-price winner" : determineWinnerKind === "vickrey" ? "Determine Vickrey winner" : determineWinnerKind === "uniform" ? "Determine uniform winner" : "Determine pro-rata winner";
 
   const panelClass = "mt-6 overflow-hidden border border-[var(--line)] bg-[var(--surface)] p-6 shadow-none";
 
@@ -359,15 +320,21 @@ async function safeSendTx(program: any, tx: Transaction) {
   }
 }
 
-  async function callPlaceBid(auctionPk: string, bidderPubkey: string, bidAmountSol: string, bidPriceSol: string, nonceHex: string | null) {
+async function callPlaceBid(
+  auctionPk: string,
+  bidderPubkey: string,
+  bidAmountUsdc: string,
+  bidPriceUsdc: string,
+  nonceHex: string | null
+) {
     const res = await fetch("/api/placeBid", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
 body: JSON.stringify({
   auctionPk,
   bidderPubkey,
-  bidAmountSol,
-  bidPriceSol, 
+  bidAmountUsdc,
+  bidPriceUsdc,
   nonceHex,
 }),
     });
@@ -388,135 +355,93 @@ body: JSON.stringify({
 
   }
 
-  async function handlePlaceBid() {
-    setStatus("Preparing placeBid...");
-      if (isSubmitting) return;
+async function handlePlaceBid() {
+  setStatus("Preparing bid...");
+  if (isSubmitting) return;
   setIsSubmitting(true);
-    try {
-      if (!programClient || !publicKey) {
-        throw new Error("Connect wallet and ensure program client ready");
-      }
-      if (!auctionPkStr) {
-        throw new Error("Select or create an auction first (auction PDA)");
-      }
-      if (auctionType === "uniform") {
-  if (Number(bidAmountSol) < Number(bidPriceSol)) {
+
+  try {
+    if (!programClient || !publicKey) {
+      throw new Error("Connect wallet and ensure program client ready");
+    }
+    if (!auctionPkStr) {
+      throw new Error("Select or create an auction first (auction PDA)");
+    }
+    if (!umbraClient || !withdrawFn) {
+      throw new Error("Umbra client not ready");
+    }
+
+    const program = programClient;
+    assertProviderReady(program);
+
+const withdrawAmount = BigInt(bidAmountUsdcFinal.trim());
+
+    if (withdrawAmount <= 0n) {
+      throw new Error("Bid amount must be greater than 0");
+    }
+
+    setStatus("Awaiting UMBRA deposit callback from Arcium...");
+await withdrawFn(
+  toAddress(publicKey.toBase58()),
+  toAddress(USDC_MINT),
+  withdrawAmount as any,
+  {
+    accountInfoCommitment: "confirmed",
+  }
+);
+
+    setBalanceRefreshKey((v) => v + 1);
+
+    setStatus("Encrypted balance updated, building placeBid tx...");
+
+if (auctionType === "uniform") {
+  if (Number(bidAmountUsdcFinal) < Number(bidPriceUsdc)) {
     throw new Error("Amount must be >= price");
   }
 }
 
-      const program = programClient;
-      assertProviderReady(program);
-
 const finalPrice =
-  auctionType === "uniform"
-    ? bidPriceSol
-    : bidAmountSol;
+  auctionType === "uniform" ? bidPriceUsdc : bidAmountUsdcFinal;
 
 const srv = await callPlaceBid(
   auctionPkStr,
   publicKey.toBase58(),
-  bidAmountSol,
-  finalPrice, 
+  bidAmountUsdcFinal,
+  finalPrice,
   bidNonceHex ?? null
 );
 
-      if (srv?.error) {
-        throw new Error(srv.error);
-      }
+    if (srv?.error) {
+      throw new Error(srv.error);
+    }
 
- const tx = Transaction.from(Buffer.from(srv.txBase64, "base64"));
+    const tx = Transaction.from(Buffer.from(srv.txBase64, "base64"));
 
-const connection = program.provider.connection;
+    setStatus("Signing and sending placeBid tx...");
+    const sig = await safeSendTx(program, tx);
 
-const lamports = Math.floor(Number(bidAmountSol) * LAMPORTS_PER_SOL);
-
-const ata = getAssociatedTokenAddressSync(NATIVE_MINT, publicKey);
-
-let wrapIxs: TransactionInstruction[] = [];
-
-const ataInfo = await connection.getAccountInfo(ata);
-
-let currentBalance = 0;
-
-if (ataInfo) {
-  try {
-    const bal = await connection.getTokenAccountBalance(ata);
-    currentBalance = Number(bal.value.amount);
-  } catch {}
-}
-
-const needed = lamports - currentBalance;
-
-if (!ataInfo) {
-  wrapIxs.push(
-    createAssociatedTokenAccountInstruction(
-      publicKey,
-      ata,
-      publicKey,
-      NATIVE_MINT
-    )
-  );
-}
-
-if (needed > 0) {
-  wrapIxs.push(
-    SystemProgram.transfer({
-      fromPubkey: publicKey,
-      toPubkey: ata,
-      lamports: needed,
-    })
-  );
-
-  wrapIxs.push(createSyncNativeInstruction(ata));
-}
-tx.instructions = [...wrapIxs, ...tx.instructions];
-
-      setStatus("Signing and sending placeBid tx...");
-      console.log("placeBid triggered");
-      const sig = await safeSendTx(program, tx);
-
-      setAuctionData((prev: any) => {
-  if (!prev) return prev;
-
-  const current = Number(prev?.bidCount ?? prev?.bid_count ?? 0);
-
-  return {
-    ...prev,
-    bidCount: current + 1,
-    bid_count: current + 1, // keep both for safety
-  };
-});
-
-setStatus(
-  sig === "already-processed"
-    ? "Transaction already processed (confirmed)"
-    : "placeBid tx sent: " + sig
-);
-
-    } catch (err: any) {
-      console.error("placeBid failed:", err);
-      setStatus("placeBid failed: " + (err?.message ?? String(err)));
-    } finally {
-    setIsSubmitting(false);
-  }
-  }
-
-  async function callAuctionActions(body: {
-    kind: "determineWinner" | "settlement";
-    auctionPk: string;
-    publicKey: string;
-    which?: "first" | "vickrey" | "uniform";
-    action?: "auto" | "reclaimUnsold" | "claimRefund" | "settleWinner";
-  }) {
-    const res = await fetch("/api/auctionAction", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+    setAuctionData((prev: any) => {
+      if (!prev) return prev;
+      const current = Number(prev?.bidCount ?? prev?.bid_count ?? 0);
+      return {
+        ...prev,
+        bidCount: current + 1,
+        bid_count: current + 1,
+      };
     });
 
-    return res.json();
+    setStatus(
+      sig === "already-processed"
+        ? "Transaction already processed (confirmed)"
+        : "placeBid tx sent: " + sig
+    );
+  } catch (err: any) {
+    console.error("placeBid failed:", err);
+    setStatus("placeBid failed: " + (err?.message ?? String(err)));
+  } finally {
+    setIsSubmitting(false);
   }
+}
 
 async function handleFinalizeAll() {
   try {
@@ -535,20 +460,19 @@ async function handleFinalizeAll() {
     );
 
     setStatus("Building transactions...");
-
-    const res = await fetch("/api/finalizeAuction", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        auctionPk: auctionPkStr,
-        publicKey: publicKey.toBase58(),
-        tokenMint: auctionData.tokenMint ?? auctionData.token_mint,
-        wsolAmount: paymentAmount,
-        tokenAmount: liquidityTokens,
-      }),
-    });
+const res = await fetch("/api/finalizeAuction", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    auctionPk: auctionPkStr,
+    publicKey: publicKey.toBase58(),
+    tokenMint: auctionData.tokenMint ?? auctionData.token_mint,
+    usdcAmount: paymentAmount,
+    tokenAmount: liquidityTokens,
+  }),
+});
 
     const json = await res.json();
 
@@ -591,7 +515,7 @@ for (let i = 0; i < signedTxs.length; i++) {
 
     if (i === 0) {
       settlementSucceeded = true;
-      setStatus("SOL claimed successfully...");
+      setStatus("USDC claimed successfully...");
     }
 
   } catch (err: any) {
@@ -632,6 +556,22 @@ setStatus("All done: " + sigs.join(", "));
     setStatus("Failed: " + err.message);
   }
 }
+
+ async function callAuctionActions(body: {
+    kind: "determineWinner" | "settlement";
+    auctionPk: string;
+    publicKey: string;
+    which?: "first" | "vickrey" | "uniform";
+    action?: "auto" | "reclaimUnsold" | "claimRefund" | "settleWinner";
+  }) {
+    const res = await fetch("/api/auctionAction", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    return res.json();
+  }
 
   async function handleSettleAuction(action: "auto" | "reclaimUnsold" | "claimRefund" | "settleWinner" = "auto") {
     setStatus("Preparing settlement...");
@@ -805,21 +745,17 @@ await refreshAuctionState();
 )}
 
         <div className="mt-6">
-          <Balance/>
+
   
 <AuctionBidForm
+  refreshKey={balanceRefreshKey}
   auctionType={auctionType}
-
-  // uniform
   bidTokens={bidTokens}
-  bidPriceSol={bidPriceSol}
+  bidPriceUsdc={bidPriceUsdc}
   onBidTokensChange={setBidTokens}
-  onBidPriceSolChange={setBidPriceSol}
-
-  // single winner
-  bidAmountSol={bidAmountSolInput}
-  onBidAmountSolChange={setBidAmountSolInput}
-
+  onBidPriceUsdcChange={setBidPriceUsdc}
+  bidAmountUsdc={bidAmountUsdc}
+  onBidAmountUsdcChange={setBidAmountUsdc}
   disabled={isBidDisabled}
   isSubmitting={isSubmitting}
   auctionEnded={auctionEnded}

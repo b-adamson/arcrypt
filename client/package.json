@@ -48,6 +48,7 @@
     "ipfs-http-client": "^60.0.1",
     "js-sha256": "^0.11.1",
     "latest": "^0.2.0",
+    "lucide-react": "^1.14.0",
     "multiformats": "^13.4.1",
     "next": "^16.2.1",
     "react": "19.2.0",

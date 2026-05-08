@@ -79,16 +79,13 @@ export default function AuctionClient() {
     };
 
     const wallet = useWallet();
-// const { publicKey, connected, signAllTransactions } = wallet;
 
-// const [programClient, setProgramClient] = useState<any | null>(null);
-    
     const [selectedTreasuryAccount, setSelectedTreasuryAccount] = useState("");
     const [showRawInstructions, setShowRawInstructions] = useState(false);
     const [rawInstructions, setRawInstructions] = useState<RawIxView[]>([]);
       const [programClient, setProgramClient] = useState<any | null>(null);
       const [status, setStatus] = useState<string | null>(null);
-      const [minBidSol, setMinBidSol] = useState<string>("1");
+     const [minBidUsdc, setMinBidUsdc] = useState<string>("1");
       const [auctionType, setAuctionType] = useState<AuctionType>("Uniform");
       const [durationSecs, setDurationSecs] = useState<number>(60 * 60);
       const [auctionSeedHex, setAuctionSeedHex] = useState<string | null>(null);
@@ -360,7 +357,7 @@ if (!finalMetadataUri) {
             communityMint: realmCommunityMint,
             proposalName,
             proposalDescription,
-            minBidSol,
+            minBidUsdc,
             durationSecs,
             auctionType,
             assetKind,
@@ -483,7 +480,7 @@ async function handleMakeAuction(
       body: JSON.stringify({
         authority: publicKey.toBase58(),
         metadataUri,
-        minBidSol,
+        minBidUsdc,
         durationSecs,
         auctionType,
         assetKind,
@@ -601,7 +598,7 @@ async function handleMakeAuction(
           </div>
 
 <AuctionCreateForm
-  minBidSol={minBidSol}
+  minBidUsdc={minBidUsdc}
   saleAmountToken={saleAmountToken}
   tokenMint={tokenMint}
   durationSecs={durationSecs}
@@ -618,16 +615,16 @@ async function handleMakeAuction(
   onMetadataNameChange={setMetadataName}
   onMetadataDescriptionChange={setMetadataDescription}
   onMetadataImageChange={setMetadataImageFile}
-  onMinBidSolChange={setMinBidSol}
+  onMinBidUsdcChange={setMinBidUsdc}
   onSaleAmountTokenChange={setSaleAmountToken}
   onTokenMintChange={setTokenMint}
   onDurationSecsChange={setDurationSecs}
   onAuctionTypeChange={setAuctionType}
-onSubmit={(metadataUri) =>
-  handleCreateGovernanceProposal(
-    metadataUri,
-    tokenMint
-  )
+  onSubmit={(metadataUri) =>
+    handleCreateGovernanceProposal(
+      metadataUri,
+      tokenMint
+    )
 }
 />
 
@@ -694,7 +691,7 @@ onSubmit={(metadataUri) =>
     </section>
   ) : (
 <AuctionCreateForm
-  minBidSol={minBidSol}
+  minBidUsdc={minBidUsdc}
   saleAmountToken={saleAmountToken}
   tokenMint={tokenMint}
   durationSecs={durationSecs}
@@ -711,7 +708,7 @@ onSubmit={(metadataUri) =>
   onMetadataNameChange={setMetadataName}
   onMetadataDescriptionChange={setMetadataDescription}
   onMetadataImageChange={setMetadataImageFile}
-  onMinBidSolChange={setMinBidSol}
+  onMinBidUsdcChange={setMinBidUsdc}
   onSaleAmountTokenChange={setSaleAmountToken}
   onTokenMintChange={setTokenMint}
   onDurationSecsChange={setDurationSecs}

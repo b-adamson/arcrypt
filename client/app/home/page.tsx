@@ -296,7 +296,7 @@ const scrollTo =
               title={
                 <>
                   <span className="block">The fairest way to</span>
-                  <span className="block text-accent">launch without MEV</span>
+                  <span className="block text-accent">launch without rugs</span>
                 </>
               }
               subtitle={
