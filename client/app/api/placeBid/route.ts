@@ -29,14 +29,14 @@ if (!auctionPk || !bidderPubkey || typeof bidAmountUsdc === "undefined") {
     const bidderPk = new PublicKey(bidderPubkey);
 
    const bundle = await createPlaceBid({
-  programClient: program,
-  programId: new PublicKey(programIdStr),
-  bidPriceUsdc,
-  publicKey: bidderPk,
-  auctionPk: new PublicKey(auctionPk),
-  bidAmountUsdc: String(bidAmountUsdc),
-  nonceHex: nonceHex ?? null,
-});
+    programClient: program,
+    programId: new PublicKey(programIdStr),
+    bidPriceUsdc,
+    publicKey: bidderPk,
+    auctionPk: new PublicKey(auctionPk),
+    bidAmountUsdc: String(bidAmountUsdc),
+    nonceHex: nonceHex ?? null,
+  });
 
     const tx = bundle.transaction;
     tx.feePayer = bidderPk;

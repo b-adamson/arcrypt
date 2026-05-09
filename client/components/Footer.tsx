@@ -13,35 +13,35 @@ export default function Footer() {
           <Link href="/docs" className={linkStyle}>Docs</Link>
           <Link href="/docs#faq" className={linkStyle}>FAQ</Link>
         </div>
-<div className={sectionStyle}>
-  <span className="text-white font-medium">Social</span>
+        <div className={sectionStyle}>
+          <span className="text-white font-medium">Social</span>
 
-  <a
-    href="https://github.com/b-adamson/arcrypt"
-    target="_blank"
-    rel="noopener noreferrer"
-    className={linkStyle}
-  >
-    GitHub
-  </a>
+          <a
+            href="https://github.com/b-adamson/arcrypt"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={linkStyle}
+          >
+            GitHub
+          </a>
 
-  <a
-    href="https://t.me/+NGbdEEbM-AYyNDZk"
-    target="_blank"
-    rel="noopener noreferrer"
-    className={linkStyle}
-  >
-    Telegram
-  </a>
-    <a
-    href="https://x.com/arcrypt_bid"
-    target="_blank"
-    rel="noopener noreferrer"
-    className={linkStyle}
-  >
-    X 
-  </a>
-</div>
+          <a
+            href="https://t.me/+NGbdEEbM-AYyNDZk"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={linkStyle}
+          >
+            Telegram
+          </a>
+            <a
+            href="https://x.com/arcrypt_bid"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={linkStyle}
+          >
+            X 
+          </a>
+        </div>
         <div className={sectionStyle}>
           <span className="text-white font-medium">Ecosystem</span>
           <a
@@ -61,17 +61,17 @@ export default function Footer() {
             Solana Docs
           </a>
             <a
-    href="https://sdk.umbraprivacy.com/sdk"
-    target="_blank"
-    rel="noopener noreferrer"
-    className={linkStyle}
-  >
-    UMBRA Docs
-  </a>
+            href="https://sdk.umbraprivacy.com/sdk"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={linkStyle}
+          >
+            UMBRA Docs
+          </a>
         </div>
 
         <div className="flex flex-col justify-between">
-          {/* Logo */}
+
           <Link href="/" className="block w-32 h-10 relative overflow-hidden">
             <Image
               src="/logo/GRADIENT_TRANSPARENT.png"

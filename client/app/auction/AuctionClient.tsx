@@ -83,75 +83,65 @@ export default function AuctionClient() {
     const [selectedTreasuryAccount, setSelectedTreasuryAccount] = useState("");
     const [showRawInstructions, setShowRawInstructions] = useState(false);
     const [rawInstructions, setRawInstructions] = useState<RawIxView[]>([]);
-      const [programClient, setProgramClient] = useState<any | null>(null);
-      const [status, setStatus] = useState<string | null>(null);
-     const [minBidUsdc, setMinBidUsdc] = useState<string>("1");
-      const [auctionType, setAuctionType] = useState<AuctionType>("Uniform");
-      const [durationSecs, setDurationSecs] = useState<number>(60 * 60);
-      const [auctionSeedHex, setAuctionSeedHex] = useState<string | null>(null);
-      const [auctionData, setAuctionData] = useState<any | null>(null);
-      const [auctionEnded, setAuctionEnded] = useState(false);
-      const [isWinner, setIsWinner] = useState(false);
-      const [auctionPkStr, setAuctionPkStr] = useState<string | null>(null);
+    const [programClient, setProgramClient] = useState<any | null>(null);
+    const [status, setStatus] = useState<string | null>(null);
+    const [minBidUsdc, setMinBidUsdc] = useState<string>("1");
+    const [auctionType, setAuctionType] = useState<AuctionType>("Uniform");
+    const [durationSecs, setDurationSecs] = useState<number>(60 * 60);
+    const [auctionSeedHex, setAuctionSeedHex] = useState<string | null>(null);
+    const [auctionData, setAuctionData] = useState<any | null>(null);
+    const [auctionEnded, setAuctionEnded] = useState(false);
+    const [isWinner, setIsWinner] = useState(false);
+    const [auctionPkStr, setAuctionPkStr] = useState<string | null>(null);
     const [saleAmountToken, setSaleAmountToken] = useState<string>("100.0");
     const [tokenDecimals, setTokenDecimals] = useState<number>(6);
     const [tokenMint, setTokenMint] = useState<string>("");
-    
     const [assetKind, setAssetKind] = useState<AssetKind>("Fungible");
     const [metadataName, setMetadataName] = useState("");
     const [metadataDescription, setMetadataDescription] = useState("");
-    
     const [governanceProgramId, setGovernanceProgramId] = useState("");
-    
     const [treasuryGroups, setTreasuryGroups] = useState<TreasuryGroup[]>([]);
     const [selectedTreasuryGroup, setSelectedTreasuryGroup] = useState("");
-    
     const [realmCommunityMint, setRealmCommunityMint] = useState("");
     const [metadataImageFile, setMetadataImageFile] = useState<File | null>(null);
-    
-
-      const [activePanel, setActivePanel] = useState<"sealed" | "governance">("sealed");
-    
-    
-    
+    const [activePanel, setActivePanel] = useState<"sealed" | "governance">("sealed");
     const [loadingTreasuries, setLoadingTreasuries] = useState(false);
     
-    function getAllowedAuctionTypes(kind: AssetKind): AuctionType[] {
-      if (kind === "Fungible") return ["FirstPrice", "Vickrey", "Uniform"];
-      return ["FirstPrice", "Vickrey"];
-    }
+  function getAllowedAuctionTypes(kind: AssetKind): AuctionType[] {
+    if (kind === "Fungible") return ["FirstPrice", "Vickrey", "Uniform"];
+    return ["FirstPrice", "Vickrey"];
+  }
+  
+  function normalizeAuctionType(kind: AssetKind, current: AuctionType): AuctionType {
+    const allowed = getAllowedAuctionTypes(kind);
+    return allowed.includes(current) ? current : allowed[0];
+  }
     
-    function normalizeAuctionType(kind: AssetKind, current: AuctionType): AuctionType {
-      const allowed = getAllowedAuctionTypes(kind);
-      return allowed.includes(current) ? current : allowed[0];
+  function handleAssetKindChange(nextKind: AssetKind) {
+    setAssetKind(nextKind);
+
+    if (nextKind === "Fungible") {
+      setAuctionType("Uniform");
+    } else {
+      setAuctionType((current) =>
+        normalizeAuctionType(nextKind, current)
+      );
     }
-    
-function handleAssetKindChange(nextKind: AssetKind) {
-  setAssetKind(nextKind);
 
-  if (nextKind === "Fungible") {
-    setAuctionType("Uniform");
-  } else {
-    setAuctionType((current) =>
-      normalizeAuctionType(nextKind, current)
-    );
-  }
+    if (nextKind === "Nft") {
+      setSaleAmountToken("1");
+    }
 
-  if (nextKind === "Nft") {
-    setSaleAmountToken("1");
+    if (nextKind === "MetadataOnly") {
+      setTokenMint("");
+      setSaleAmountToken("");
+    }
   }
-
-  if (nextKind === "MetadataOnly") {
-    setTokenMint("");
-    setSaleAmountToken("");
-  }
-}
     
     function deserializeTxFromBase64(txBase64: string): Transaction {
       return Transaction.from(Buffer.from(txBase64, "base64"));
     }
-      // const searchParams = useSearchParams();
-    
+
       const [mode, setMode] = useState<Mode>(() =>
         searchParams.get("panel") === "governance" ? "proposal" : "auction"
       );
@@ -510,245 +500,293 @@ async function handleMakeAuction(
 
   return (
 <main className="px-6 py-10">
-
-
   <div
     className={`
       w-full mx-auto
-       ${mode === "auction" ? "max-w-4xl" : "max-w-none"}
+      ${mode === "auction" ? "max-w-4xl" : "max-w-none"}
     `}
   >
+    {mode === "proposal" ? (
+      <section className="relative overflow-hidden rounded-[32px] border border-white/10 bg-gradient-to-br from-fuchsia-500/10 via-white/[0.03] to-cyan-400/5 p-5 shadow-[0_30px_100px_rgba(0,0,0,0.45)] backdrop-blur-xl md:p-8">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-fuchsia-400/70 to-transparent" />
+        <div className="absolute -right-24 -top-20 h-56 w-56 rounded-full bg-fuchsia-500/10 blur-3xl" />
+        <div className="absolute -left-24 bottom-0 h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
 
-  {mode === "proposal" ? (
-    <section className="relative overflow-hidden rounded-[32px] border border-white/10 bg-gradient-to-br from-fuchsia-500/10 via-white/[0.03] to-cyan-400/5 p-5 shadow-[0_30px_100px_rgba(0,0,0,0.45)] backdrop-blur-xl md:p-8">
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-fuchsia-400/70 to-transparent" />
-      <div className="absolute -right-24 -top-20 h-56 w-56 rounded-full bg-fuchsia-500/10 blur-3xl" />
-      <div className="absolute -left-24 bottom-0 h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
+        <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-[28px] border border-white/10 bg-black/20 p-4 md:p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/35">
+                  Step 1
+                </div>
 
-      <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-[28px] border border-white/10 bg-black/20 p-4 md:p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/35">
-                Step 1
-              </div>
-              <div className="mt-1 text-lg font-semibold text-white">
-                Configure governance proposal
-              </div>
-            </div>
-          </div>
-
-          <GovernanceProposalPanel
-            proposalName={proposalName}
-            proposalDescription={proposalDescription}
-            realmAddress={realmAddress}
-            governanceProgramId={governanceProgramId}
-            governanceAddress={governanceAddress}
-            treasuryGroups={treasuryGroups}
-            selectedTreasuryGroup={selectedTreasuryGroup}
-            selectedTreasuryAccount={selectedTreasuryAccount}
-            loadingTreasuries={loadingTreasuries}
-            realmCommunityMint={realmCommunityMint}
-            onProposalNameChange={setProposalName}
-            onProposalDescriptionChange={setProposalDescription}
-            onRealmAddressChange={setRealmAddress}
-            onGovernanceProgramIdChange={setGovernanceProgramId}
-            onSelectedTreasuryGroupChange={(nativeTreasury) => {
-              setSelectedTreasuryGroup(nativeTreasury);
-              const group = treasuryGroups.find((g) => g.nativeTreasury === nativeTreasury);
-              setGovernanceAddress(group?.governance ?? "");
-              const firstAccount = group?.tokenAccounts?.find((a) => BigInt(a.amount) > 0n) ?? null;
-              setSelectedTreasuryAccount(firstAccount?.pubkey ?? "");
-              if (firstAccount) {
-                setTokenMint(firstAccount.mint);
-                setTokenDecimals(firstAccount.decimals);
-              }
-            }}
-            onSelectedTreasuryAccountChange={(pubkey) => {
-              setSelectedTreasuryAccount(pubkey);
-              const group = treasuryGroups.find((g) => g.nativeTreasury === selectedTreasuryGroup);
-              const row = group?.tokenAccounts.find((a) => a.pubkey === pubkey);
-              if (row) {
-                setTokenMint(row.mint);
-                setTokenDecimals(row.decimals);
-              }
-            }}
-            onLoadTreasuries={async () => {
-              try {
-                await loadRealmTreasuryAccounts();
-              } catch (e: any) {
-                setStatus(e?.message ?? String(e));
-              }
-            }}
-            onUseRealms={() => setGovernanceProgramId(REALMS_PROGRAM_ID)}
-          />
-        </div>
-
-        <div className="rounded-[28px] border border-white/10 bg-black/20 p-4 md:p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/35">
-                Step 2
-              </div>
-              <div className="mt-1 text-lg font-semibold text-white">
-                Configure auction for proposal
+                <div className="mt-1 text-lg font-semibold text-white">
+                  Configure governance proposal
+                </div>
               </div>
             </div>
-          </div>
 
-<AuctionCreateForm
-  minBidUsdc={minBidUsdc}
-  saleAmountToken={saleAmountToken}
-  tokenMint={tokenMint}
-  durationSecs={durationSecs}
-  auctionType={auctionType}
-  assetKind={assetKind}
-  metadataName={metadataName}
-  metadataDescription={metadataDescription}
-  metadataImageFile={metadataImageFile}
-  auctionPkStr={auctionPkStr}
-  disabled={!connected}
-  lockTokenMint={true}
-  getAllowedAuctionTypes={getAllowedAuctionTypes}
-  onAssetKindChange={handleAssetKindChange}
-  onMetadataNameChange={setMetadataName}
-  onMetadataDescriptionChange={setMetadataDescription}
-  onMetadataImageChange={setMetadataImageFile}
-  onMinBidUsdcChange={setMinBidUsdc}
-  onSaleAmountTokenChange={setSaleAmountToken}
-  onTokenMintChange={setTokenMint}
-  onDurationSecsChange={setDurationSecs}
-  onAuctionTypeChange={setAuctionType}
-  onSubmit={(metadataUri, tokenOverride, saleAmountOverride) =>
-    handleCreateGovernanceProposal(
-      metadataUri,
-      tokenOverride?.mint ?? tokenMint,
-      saleAmountOverride
-    )
-  }
-/>
+            <GovernanceProposalPanel
+              proposalName={proposalName}
+              proposalDescription={proposalDescription}
+              realmAddress={realmAddress}
+              governanceProgramId={governanceProgramId}
+              governanceAddress={governanceAddress}
+              treasuryGroups={treasuryGroups}
+              selectedTreasuryGroup={selectedTreasuryGroup}
+              selectedTreasuryAccount={selectedTreasuryAccount}
+              loadingTreasuries={loadingTreasuries}
+              realmCommunityMint={realmCommunityMint}
+              onProposalNameChange={setProposalName}
+              onProposalDescriptionChange={setProposalDescription}
+              onRealmAddressChange={setRealmAddress}
+              onGovernanceProgramIdChange={setGovernanceProgramId}
+              onSelectedTreasuryGroupChange={(nativeTreasury) => {
+                setSelectedTreasuryGroup(nativeTreasury);
 
-          <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/55">
-            This auction will be created through the proposal, not directly from the wallet.
-          </div>
-        </div>
-      </div>
+                const group = treasuryGroups.find(
+                  (g) => g.nativeTreasury === nativeTreasury
+                );
 
-      <div className="mt-5">
-        {rawInstructions.length > 0 ? (
-          <div>
-            <button
-              type="button"
-              onClick={() => setShowRawInstructions((v) => !v)}
-              style={{
-                background: "#1b1b1b",
-                color: "#fff",
-                border: "1px solid #333",
-                padding: "10px 12px",
-                borderRadius: 10,
-                cursor: "pointer",
+                setGovernanceAddress(group?.governance ?? "");
+
+                const firstAccount =
+                  group?.tokenAccounts?.find(
+                    (a) => BigInt(a.amount) > 0n
+                  ) ?? null;
+
+                setSelectedTreasuryAccount(firstAccount?.pubkey ?? "");
+
+                if (firstAccount) {
+                  setTokenMint(firstAccount.mint);
+                  setTokenDecimals(firstAccount.decimals);
+                }
               }}
-            >
-              {showRawInstructions ? "Hide raw tx bytes" : "Show raw tx bytes"}
-            </button>
+              onSelectedTreasuryAccountChange={(pubkey) => {
+                setSelectedTreasuryAccount(pubkey);
 
-            {showRawInstructions && (
-              <div style={{ marginTop: 12 }}>
-                {rawInstructions.map((ix, idx) => (
-                  <div key={idx} style={{ marginBottom: 12 }}>
-                    <div>
-                      <strong>{ix.label}</strong>
-                    </div>
+                const group = treasuryGroups.find(
+                  (g) => g.nativeTreasury === selectedTreasuryGroup
+                );
 
-                    <textarea
-                      readOnly
-                      value={ix.dataBase64}
-                      style={{
-                        width: "100%",
-                        background: "#111",
-                        color: "#fff",
-                        border: "1px solid #333",
-                        borderRadius: 8,
-                        padding: 8,
-                        fontFamily: "monospace",
-                      }}
-                    />
+                const row = group?.tokenAccounts.find(
+                  (a) => a.pubkey === pubkey
+                );
 
-                    <button onClick={() => navigator.clipboard.writeText(ix.dataBase64)}>
-                      Copy
-                    </button>
-                  </div>
-                ))}
+                if (row) {
+                  setTokenMint(row.mint);
+                  setTokenDecimals(row.decimals);
+                }
+              }}
+              onLoadTreasuries={async () => {
+                try {
+                  await loadRealmTreasuryAccounts();
+                } catch (e: any) {
+                  setStatus(e?.message ?? String(e));
+                }
+              }}
+              onUseRealms={() =>
+                setGovernanceProgramId(REALMS_PROGRAM_ID)
+              }
+            />
+          </div>
+
+          <div className="rounded-[28px] border border-white/10 bg-black/20 p-4 md:p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/35">
+                  Step 2
+                </div>
+
+                <div className="mt-1 text-lg font-semibold text-white">
+                  Configure auction for proposal
+                </div>
               </div>
-            )}
+            </div>
+
+            <AuctionCreateForm
+              minBidUsdc={minBidUsdc}
+              saleAmountToken={saleAmountToken}
+              tokenMint={tokenMint}
+              durationSecs={durationSecs}
+              auctionType={auctionType}
+              assetKind={assetKind}
+              metadataName={metadataName}
+              metadataDescription={metadataDescription}
+              metadataImageFile={metadataImageFile}
+              auctionPkStr={auctionPkStr}
+              disabled={!connected}
+              lockTokenMint={true}
+              getAllowedAuctionTypes={getAllowedAuctionTypes}
+              onAssetKindChange={handleAssetKindChange}
+              onMetadataNameChange={setMetadataName}
+              onMetadataDescriptionChange={setMetadataDescription}
+              onMetadataImageChange={setMetadataImageFile}
+              onMinBidUsdcChange={setMinBidUsdc}
+              onSaleAmountTokenChange={setSaleAmountToken}
+              onTokenMintChange={setTokenMint}
+              onDurationSecsChange={setDurationSecs}
+              onAuctionTypeChange={setAuctionType}
+              onSubmit={(
+                metadataUri,
+                tokenOverride,
+                saleAmountOverride
+              ) =>
+                handleCreateGovernanceProposal(
+                  metadataUri,
+                  tokenOverride?.mint ?? tokenMint,
+                  saleAmountOverride
+                )
+              }
+            />
+
+            <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/55">
+              This auction will be created through the proposal, not directly
+              from the wallet.
+            </div>
           </div>
-        ) : (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/50">
-            Raw tx bytes will appear after you create the governance proposal.
-          </div>
-        )}
-      </div>
-    </section>
-  ) : (
-<AuctionCreateForm
-  minBidUsdc={minBidUsdc}
-  saleAmountToken={saleAmountToken}
-  tokenMint={tokenMint}
-  durationSecs={durationSecs}
-  auctionType={auctionType}
-  assetKind={assetKind}
-  metadataName={metadataName}
-  metadataDescription={metadataDescription}
-  metadataImageFile={metadataImageFile}
-  auctionPkStr={auctionPkStr}
-  disabled={!connected}
-  lockTokenMint={false}
-  getAllowedAuctionTypes={getAllowedAuctionTypes}
-  onAssetKindChange={handleAssetKindChange}
-  onMetadataNameChange={setMetadataName}
-  onMetadataDescriptionChange={setMetadataDescription}
-  onMetadataImageChange={setMetadataImageFile}
-  onMinBidUsdcChange={setMinBidUsdc}
-  onSaleAmountTokenChange={setSaleAmountToken}
-  onTokenMintChange={setTokenMint}
-  onDurationSecsChange={setDurationSecs}
-  onAuctionTypeChange={setAuctionType}
-onSubmit={(metadataUri, tokenOverride, saleAmountOverride) =>
-  handleMakeAuction(metadataUri, tokenOverride, saleAmountOverride)
-}
-/>
-  )}
+        </div>
 
-  {auctionData ? (
-<AuctionResultCard
-  auctionData={auctionData}
-  auctionEnded={auctionEnded}
-  winnerBase58={isWinner ? publicKey?.toBase58() : undefined}
-  tokenDecimals={tokenDecimals}
-  connection={programClient?.provider.connection ?? null}
-/>
-  ) : null}
+        <div className="mt-5">
+          {rawInstructions.length > 0 ? (
+            <div>
+              <button
+                type="button"
+                onClick={() =>
+                  setShowRawInstructions((v) => !v)
+                }
+                style={{
+                  background: "#1b1b1b",
+                  color: "#fff",
+                  border: "1px solid #333",
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  cursor: "pointer",
+                }}
+              >
+                {showRawInstructions
+                  ? "Hide raw tx bytes"
+                  : "Show raw tx bytes"}
+              </button>
 
-  
+              {showRawInstructions && (
+                <div style={{ marginTop: 12 }}>
+                  {rawInstructions.map((ix, idx) => (
+                    <div
+                      key={idx}
+                      style={{ marginBottom: 12 }}
+                    >
+                      <div>
+                        <strong>{ix.label}</strong>
+                      </div>
 
-<div className="mt-8 mb-10 flex justify-center">
-  <button
-    type="button"
-    onClick={() =>
-      setMode((m) => (m === "proposal" ? "auction" : "proposal"))
-    }
-    className="rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-bold uppercase tracking-[0.18em] text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.06] hover:shadow-[0_8px_24px_rgba(0,230,118,0.10)] active:translate-y-0 active:scale-[0.99]"
-  >
-    {mode === "proposal"
-      ? "Hide advanced governance"
-      : "Show advanced governance"}
-  </button>
-</div>
+                      <textarea
+                        readOnly
+                        value={ix.dataBase64}
+                        style={{
+                          width: "100%",
+                          background: "#111",
+                          color: "#fff",
+                          border: "1px solid #333",
+                          borderRadius: 8,
+                          padding: 8,
+                          fontFamily: "monospace",
+                        }}
+                      />
 
+                      <button
+                        onClick={() =>
+                          navigator.clipboard.writeText(
+                            ix.dataBase64
+                          )
+                        }
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/50">
+              Raw tx bytes will appear after you create the governance
+              proposal.
+            </div>
+          )}
+        </div>
+      </section>
+    ) : (
+      <AuctionCreateForm
+        minBidUsdc={minBidUsdc}
+        saleAmountToken={saleAmountToken}
+        tokenMint={tokenMint}
+        durationSecs={durationSecs}
+        auctionType={auctionType}
+        assetKind={assetKind}
+        metadataName={metadataName}
+        metadataDescription={metadataDescription}
+        metadataImageFile={metadataImageFile}
+        auctionPkStr={auctionPkStr}
+        disabled={!connected}
+        lockTokenMint={false}
+        getAllowedAuctionTypes={getAllowedAuctionTypes}
+        onAssetKindChange={handleAssetKindChange}
+        onMetadataNameChange={setMetadataName}
+        onMetadataDescriptionChange={setMetadataDescription}
+        onMetadataImageChange={setMetadataImageFile}
+        onMinBidUsdcChange={setMinBidUsdc}
+        onSaleAmountTokenChange={setSaleAmountToken}
+        onTokenMintChange={setTokenMint}
+        onDurationSecsChange={setDurationSecs}
+        onAuctionTypeChange={setAuctionType}
+        onSubmit={(
+          metadataUri,
+          tokenOverride,
+          saleAmountOverride
+        ) =>
+          handleMakeAuction(
+            metadataUri,
+            tokenOverride,
+            saleAmountOverride
+          )
+        }
+      />
+    )}
 
-  <div style={{ marginTop: 12, color: "#333" }}>
-    <strong>Status:</strong> {status}
-  </div>
+    {auctionData ? (
+      <AuctionResultCard
+        auctionData={auctionData}
+        auctionEnded={auctionEnded}
+        winnerBase58={
+          isWinner ? publicKey?.toBase58() : undefined
+        }
+        tokenDecimals={tokenDecimals}
+        connection={
+          programClient?.provider.connection ?? null
+        }
+      />
+    ) : null}
+
+    <div className="mt-8 mb-10 flex justify-center">
+      <button
+        type="button"
+        onClick={() =>
+          setMode((m) =>
+            m === "proposal" ? "auction" : "proposal"
+          )
+        }
+        className="rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-bold uppercase tracking-[0.18em] text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.06] hover:shadow-[0_8px_24px_rgba(0,230,118,0.10)] active:translate-y-0 active:scale-[0.99]"
+      >
+        {mode === "proposal"
+          ? "Hide advanced governance"
+          : "Show advanced governance"}
+      </button>
+    </div>
+
+    <div style={{ marginTop: 12, color: "#333" }}>
+      <strong>Status:</strong> {status}
+    </div>
   </div>
 </main>
   );

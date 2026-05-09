@@ -735,7 +735,7 @@ const scrollTo =
                       }}
                       aria-hidden="true"
                     >
-{`AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+Pw==`}
+                    {`AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+Pw==`}
                     </pre>
                   </div>
                 </div>
@@ -768,9 +768,9 @@ const scrollTo =
                       }}
                       aria-hidden="true"
                     >
-{`npm install @arcrypt/sdk
+                      {`npm install @arcrypt/sdk
 
-cargo install arcrypt-sdk`}
+                      cargo install arcrypt-sdk`}
                     </pre>
                   </div>
                 </div>

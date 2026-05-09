@@ -185,6 +185,32 @@ async function buildAuctionCore(params) {
         rawInstructions: [ixToRawView("createTokenAuction", auctionIx)],
     };
 }
+/**
+ * Builds and returns the governance proposal flow for creating an auction.
+ *
+ * Params:
+ * - programClient: Anchor program client.
+ * - programId: Auction program ID.
+ * - publicKey: Wallet public key.
+ * - authorityBase58: Auction authority wallet.
+ * - sourceTokenAccountBase58: Optional source token account.
+ * - makeAuctionResult: Optional precomputed server context.
+ * - minBidUsdc: Minimum bid amount in USDC.
+ * - durationSecs: Auction duration in seconds.
+ * - auctionType: Auction pricing model.
+ * - assetKind: Auctioned asset type.
+ * - metadataUri: Metadata URI.
+ * - tokenMint: Token mint for SPL/NFT auctions.
+ * - saleAmountToken: Amount to sell for fungible auctions.
+ * - realmAddress: Realm address.
+ * - governanceProgramId: Governance program ID.
+ * - governanceAddress: Governance account.
+ * - communityMint: Realm community mint.
+ * - proposalName: Proposal title.
+ * - proposalDescription: Proposal description.
+ *
+ * Returns: Proposal, insert, sign-off, and combined transactions.
+ */
 export async function createSPLGovernanceProposal(params) {
     const { programClient, programId, publicKey, authorityBase58, sourceTokenAccountBase58, makeAuctionResult, minBidUsdc, durationSecs, auctionType, assetKind, metadataUri, tokenMint, saleAmountToken, realmAddress, governanceProgramId, governanceAddress, communityMint, proposalName, proposalDescription, } = params;
     if (assetKind === "MetadataOnly") {
@@ -279,9 +305,6 @@ function auctionTypeKey(auction) {
 function auctionAssetKindKey(auction) {
     return enumKey(auction?.assetKind ?? auction?.asset_kind).toLowerCase();
 }
-function auctionBidCount(auction) {
-    return Number(auction?.bidCount ?? auction?.bid_count ?? 0);
-}
 function auctionResolvedWinnerKeys(auction) {
     const type = auctionTypeKey(auction);
     if (type === "firstprice" || type === "vickrey") {
@@ -338,6 +361,14 @@ function resolveWinnerTargetForSettlement(auction, walletBase58) {
     }
     return winners.includes(walletBase58) ? walletBase58 : winners[0] ?? null;
 }
+/**
+ * Builds and returns a bid transaction.
+ *
+ * Params:
+ * - params: Bid build inputs.
+ *
+ * Returns: Bid bundle with encrypted payload and escrow PDA.
+ */
 export async function buildPlaceBidTransaction(params) {
     const { programClient, programId, publicKey, auctionPk, bidAmountUsdc, nonceHex, bidPriceUsdc, } = params;
     if (!programClient || !publicKey) {
@@ -423,6 +454,14 @@ export async function buildPlaceBidTransaction(params) {
         escrowPda,
     };
 }
+/**
+ * Builds and returns a winner-determination transaction.
+ *
+ * Params:
+ * - params: Winner-determination inputs.
+ *
+ * Returns: Winner-determination bundle.
+ */
 export async function buildDetermineWinnerTransaction(params) {
     const { programClient, publicKey, auctionPk, which, srv } = params;
     if (!programClient || !publicKey)
@@ -465,6 +504,14 @@ export async function buildDetermineWinnerTransaction(params) {
         rawInstructions: [ixToRawView(methodName, ix)],
     };
 }
+/**
+ * Builds the reclaim-unsold transaction for the auction creator.
+ *
+ * Params:
+ * - params: Reclaim inputs.
+ *
+ * Returns: Single-transaction action bundle.
+ */
 export async function buildReclaimUnsoldTransaction(params) {
     const { programClient, programId, publicKey, auctionPk, auctionData } = params;
     if (!programClient || !publicKey)
@@ -511,6 +558,14 @@ export async function buildReclaimUnsoldTransaction(params) {
         .instruction();
     return txBundleFromInstruction(ix);
 }
+/**
+ * Builds the refund-claim transaction for a bidder.
+ *
+ * Params:
+ * - params: Refund inputs.
+ *
+ * Returns: Single-transaction action bundle.
+ */
 export async function buildClaimRefundTransaction(params) {
     const { programClient, programId, publicKey, auctionPk, auctionData } = params;
     if (!programClient || !publicKey)
@@ -534,6 +589,14 @@ export async function buildClaimRefundTransaction(params) {
         .instruction();
     return txBundleFromInstruction(ix);
 }
+/**
+ * Builds the settlement transaction for the winning bidder or creator. You will need to loop through these for uniform for each winner
+ *
+ * Params:
+ * - params: Settlement inputs.
+ *
+ * Returns: Single-transaction action bundle.
+ */
 export async function buildSettleWinnerTransaction(params) {
     const { programClient, programId, publicKey, auctionPk, auctionData, targetWinnerBase58, } = params;
     if (!programClient || !publicKey)
@@ -605,6 +668,14 @@ export async function buildSettleWinnerTransaction(params) {
         .instruction();
     return txBundleFromInstruction(ix);
 }
+/**
+ * Backwards-compatible auction creation wrapper.
+ *
+ * Params:
+ * - params: Auction creation inputs.
+ *
+ * Returns: Auction bundle with one transaction.
+ */
 export async function createAuction(params) {
     const core = await buildAuctionCore(params);
     const tx = new Transaction().add(core.auctionIx);
@@ -614,6 +685,14 @@ export async function createAuction(params) {
         transactions: [tx],
     };
 }
+/**
+ * Backwards-compatible bid creation wrapper.
+ *
+ * Params:
+ * - params: Bid build inputs.
+ *
+ * Returns: Bid bundle with encrypted payload and escrow PDA.
+ */
 export async function createPlaceBid(params) {
     const { programClient, programId, publicKey, auctionPk, bidAmountUsdc, nonceHex, bidPriceUsdc } = params;
     const arciumEnv = getArciumEnv();
@@ -684,6 +763,14 @@ export async function createPlaceBid(params) {
         srv: {},
     };
 }
+/**
+ * Backwards-compatible winner-determination wrapper.
+ *
+ * Params:
+ * - params: Winner-determination inputs.
+ *
+ * Returns: Winner-determination bundle.
+ */
 export async function createDetermineWinner(params) {
     const { programClient, programId, publicKey, auctionPk, which } = params;
     if (!programClient || !publicKey) {
@@ -756,6 +843,14 @@ export async function createDetermineWinner(params) {
         rawInstructions: [ixToRawView(methodName, ix)],
     };
 }
+/**
+ * Builds the best settlement transaction for the current wallet.
+ *
+ * Params:
+ * - params: Auction settlement inputs.
+ *
+ * Returns: Selected settlement bundle and chosen action.
+ */
 export async function createSettlement(params) {
     const { programClient, programId, publicKey, auctionPk, auctionData, escrowExists } = params;
     if (!auctionData)

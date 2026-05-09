@@ -111,7 +111,7 @@ mod circuits {
     // INIT
     // -------------------------
     #[instruction]
-    pub fn init_auction() -> (Enc<Mxe, AuctionState>, Enc<Mxe, BidBook>) {
+    pub fn init_auction_state() -> (Enc<Mxe, AuctionState>, Enc<Mxe, BidBook>) {
         let mut flat = [0u64; FLAT_SIZE];
 
         for i in 0..MAX_BIDS {
@@ -190,7 +190,7 @@ mod circuits {
 
     // --------------------------------------
     // PLACE BID 
-    // Legacy, uses `Shared` as this is 
+    // Uses `Shared` as this is 
     // called by a client invoked anchor ix
     // --------------------------------------
     #[instruction]
@@ -256,7 +256,6 @@ mod circuits {
         let mut amounts = [0u64; MAX_BIDS];
         let mut ids = [0u64; MAX_BIDS];
 
-        // Arcis requires masking instead of control flow (no continue/break)
         for i in 0..MAX_BIDS {
             let price = flat[3 * i];
             let amount = flat[3 * i + 1];

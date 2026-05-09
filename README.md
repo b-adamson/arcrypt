@@ -135,7 +135,9 @@ solana airdrop 1000 <YOUR_WALLET_PUBKEY> --url http://localhost:8899
 The website is in `client/`.
 
 ```bash
-cd client
+cd sdk
+npm run build
+cd ../client
 npm install
 npm run dev
 ```

@@ -43,26 +43,24 @@ export default function BidPageClient({ auctionPk }: { auctionPk: string | null 
   const activeProgram = programClient ?? readOnlyProgram;
   const [status, setStatus] = useState<string | null>(null);
   const [bidTokens, setBidTokens] = useState("1");
-const [bidPriceUsdc, setBidPriceUsdc] = useState("1");
-const [bidAmountUsdc, setBidAmountUsdc] = useState("1");
+  const [bidPriceUsdc, setBidPriceUsdc] = useState("1");
+  const [bidAmountUsdc, setBidAmountUsdc] = useState("1");
 
 
-const [isRefreshing, setIsRefreshing] = useState(false);
-const autoFinalizeAttemptedRef = useRef<string | null>(null);
-const derivedAmountUsdc =
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const autoFinalizeAttemptedRef = useRef<string | null>(null);
+  const derivedAmountUsdc =
   Number(bidTokens || 0) * Number(bidPriceUsdc || 0);
 
   const [bidNonceHex, setBidNonceHex] = useState<string | null>(null);
   const [auctionData, setAuctionData] = useState<any | null>(null);
   const [auctionEnded, setAuctionEnded] = useState(false);
   const [tokenDecimals, setTokenDecimals] = useState<number | null>(null);
-
-const [balanceRefreshKey, setBalanceRefreshKey] = useState(0);
+  const [balanceRefreshKey, setBalanceRefreshKey] = useState(0);
   const [escrowExists, setEscrowExists] = useState<boolean | null>(null);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const walletBase58 = publicKey?.toBase58() ?? "";
-
   const auctionStatus = auctionData ? enumKey(auctionData.status).toLowerCase() : "";
   const isResolved = auctionStatus === "resolved";
   const winnerNow = auctionData && publicKey ? isWinnerOfAuction(auctionData, walletBase58) : false;
@@ -75,57 +73,49 @@ const [balanceRefreshKey, setBalanceRefreshKey] = useState(0);
   const bidCount = auctionData ? getBidCount(auctionData) : 0;
   const hasNoBids = auctionData ? bidCount === 0 : false;
   const router = useRouter();
-  // const canDetermineWinner = !!auctionData && auctionEnded && !isResolved && !hasNoBids;
-  // const determineWinnerKind = auctionType === "firstprice" ? "first" : auctionType === "vickrey" ? "vickrey" : auctionType === "uniform" ? "uniform" : null;
 
-useEffect(() => {
-  if (!auctionData || !auctionPkStr || !activeProgram) return;
+  useEffect(() => {
+    if (!auctionData || !auctionPkStr || !activeProgram) return;
 
-  const endTime = Number(auctionData.endTime ?? auctionData.end_time ?? 0);
-  const now = Math.floor(Date.now() / 1000);
-  const statusKey = enumKey(auctionData.status).toLowerCase();
-  const ended = now >= endTime || statusKey === "closed" || statusKey === "resolved";
+    const endTime = Number(auctionData.endTime ?? auctionData.end_time ?? 0);
+    const now = Math.floor(Date.now() / 1000);
+    const statusKey = enumKey(auctionData.status).toLowerCase();
+    const ended = now >= endTime || statusKey === "closed" || statusKey === "resolved";
 
-  if (!ended) return;
+    if (!ended) return;
 
-  const attemptKey = `${auctionPkStr}:${statusKey}:${endTime}:${bidCount}`;
-  if (autoFinalizeAttemptedRef.current === attemptKey) return;
+    const attemptKey = `${auctionPkStr}:${statusKey}:${endTime}:${bidCount}`;
+    if (autoFinalizeAttemptedRef.current === attemptKey) return;
 
-  autoFinalizeAttemptedRef.current = attemptKey;
-  void handleRefreshAuction();
-}, [auctionData, auctionPkStr, activeProgram, bidCount]);
+    autoFinalizeAttemptedRef.current = attemptKey;
+    void handleRefreshAuction();
+  }, [auctionData, auctionPkStr, activeProgram, bidCount]);
 
-const bidAmountUsdcFinal =
-  auctionType === "uniform"
-    ? derivedAmountUsdc.toString()
-    : bidAmountUsdc;
-
+  const bidAmountUsdcFinal =
+    auctionType === "uniform"
+      ? derivedAmountUsdc.toString()
+      : bidAmountUsdc;
   const canReclaimUnsold = !!auctionData && auctionEnded && !isResolved && isCreator && hasNoBids;
-
   const canClaimRefund = !!auctionData && auctionEnded && isResolved && publicKey && !winnerNow && escrowExists === true;
-const assetKind = auctionData ? enumKey(auctionData.assetKind ?? auctionData.asset_kind) : "";
-const isTokenAuction = assetKind === "fungible";
-const raydiumPoolCreated = Boolean(
-  auctionData?.raydiumPoolCreated ?? auctionData?.raydium_pool_created
-);
+  const assetKind = auctionData ? enumKey(auctionData.assetKind ?? auctionData.asset_kind) : "";
+  const isTokenAuction = assetKind === "fungible";
+  const raydiumPoolCreated = Boolean(
+    auctionData?.raydiumPoolCreated ?? auctionData?.raydium_pool_created
+  );
+  const isBidDisabled = !connected || !auctionPkStr || auctionEnded || isSubmitting;
 
-const swapUrl =
-  raydiumPoolCreated && isTokenAuction
-    ? `https://raydium.io/swap/?inputMint=${USDC_MINT}&outputMint=${
-        auctionData.tokenMint ?? auctionData.token_mint
-      }`
-    : null;
+  const swapUrl =
+    raydiumPoolCreated && isTokenAuction
+      ? `https://raydium.io/swap/?inputMint=${USDC_MINT}&outputMint=${
+          auctionData.tokenMint ?? auctionData.token_mint
+        }`
+      : null;
 
-const outcomeText = !auctionData ? "Loading..." : !connected ? (auctionEnded ? "Auction ended — connect wallet to see results" : "Connect wallet to see outcome") : !auctionEnded ? "Auction in progress" : !isResolved && hasNoBids ? "Auction ended — creator can reclaim unsold item" : isResolved ? (winnerNow ? (winnerClaimed ? "You won the auction — settled" : "You won the auction") : isCreator ? "Auction resolved — settlement pending" : canClaimRefund ? "You lost the auction — refund available" : "You lost the auction — no refund to claim") : "Auction ended — winner pending";
-
+  const outcomeText = !auctionData ? "Loading..." : !connected ? (auctionEnded ? "Auction ended — connect wallet to see results" : "Connect wallet to see outcome") : !auctionEnded ? "Auction in progress" : !isResolved && hasNoBids ? "Auction ended — creator can reclaim unsold item" : isResolved ? (winnerNow ? (winnerClaimed ? "You won the auction — settled" : "You won the auction") : isCreator ? "Auction resolved — settlement pending" : canClaimRefund ? "You lost the auction — refund available" : "You lost the auction — no refund to claim") : "Auction ended — winner pending";
   const panelClass = "mt-6 overflow-hidden border border-[var(--line)] bg-[var(--surface)] p-6 shadow-none";
-
   const buttonBase = "inline-flex items-center justify-center border px-4 py-3 text-sm font-semibold transition duration-200 ease-out focus:outline-none focus:ring-1 focus:ring-[var(--accent)]/50 disabled:cursor-not-allowed disabled:opacity-40";
-
   const buttonPrimary = `${buttonBase} border-[var(--accent)] bg-[var(--accent)] text-black hover:opacity-95 hover:-translate-y-0.5`;
-
   const buttonSecondary = `${buttonBase} border-[var(--line)] bg-[var(--background)] text-[var(--foreground)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)] hover:-translate-y-0.5`;
-
   const outcomeBadgeClass = "inline-flex items-center border border-[var(--line)] bg-[var(--background)] px-3 py-1 text-xs font-medium text-[var(--foreground)]";
 
  useEffect(() => {
@@ -337,16 +327,16 @@ async function callPlaceBid(
     const res = await fetch("/api/placeBid", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-body: JSON.stringify({
-  auctionPk,
-  bidderPubkey,
-  bidAmountUsdc,
-  bidPriceUsdc,
-  nonceHex,
-}),
+        body: JSON.stringify({
+          auctionPk,
+          bidderPubkey,
+          bidAmountUsdc,
+          bidPriceUsdc,
+          nonceHex,
+        }),
     });
     return res.json();
-  }
+}
 
 async function refreshAuctionState() {
   if (!activeProgram || !auctionPkStr) return null;
@@ -373,16 +363,15 @@ async function refreshAuctionState() {
       throw new Error("Missing auction or program client");
     }
 
-const program = activeProgram;
-const connection = program.provider.connection;
+    const program = activeProgram;
+    const connection = program.provider.connection;
 
-let auction = await refreshAuctionState();
-if (!auction) {
-  throw new Error("Auction not found on chain yet.");
-}
+    let auction = await refreshAuctionState();
+    if (!auction) {
+      throw new Error("Auction not found on chain yet.");
+    }
 
-const auctionPkObj = new PublicKey(auctionPkStr);
-const statusKey = enumKey(auction.status).toLowerCase();
+    const statusKey = enumKey(auction.status).toLowerCase();
     const endTime = Number(auction.endTime ?? auction.end_time ?? 0);
     const now = Math.floor(Date.now() / 1000);
     const bidCountNow = Number(auction.bidCount ?? auction.bid_count ?? 0);
@@ -403,6 +392,7 @@ const statusKey = enumKey(auction.status).toLowerCase();
         const srv = await callAuctionActions({
           kind: "determineWinner",
           auctionPk: auctionPkStr,
+          publicKey: publicKey?.toBase58() ?? "",
           which,
         });
 
@@ -414,8 +404,8 @@ const statusKey = enumKey(auction.status).toLowerCase();
       }
     }
 
-auction = (await refreshAuctionState()) ?? auction;
-const refreshedStatus = enumKey(auction.status).toLowerCase();
+    auction = (await refreshAuctionState()) ?? auction;
+    const refreshedStatus = enumKey(auction.status).toLowerCase();
 
     if (refreshedStatus !== "resolved") {
       setStatus("Auction refreshed.");
@@ -574,42 +564,43 @@ async function handlePlaceBid() {
     const program = programClient;
     assertProviderReady(program);
 
-const withdrawAmount = BigInt(bidAmountUsdcFinal.trim());
+    const withdrawAmount = BigInt(bidAmountUsdcFinal.trim());
 
     if (withdrawAmount <= 0n) {
       throw new Error("Bid amount must be greater than 0");
     }
 
     setStatus("Awaiting UMBRA deposit callback from Arcium...");
-await withdrawFn(
-  toAddress(publicKey.toBase58()),
-  toAddress(USDC_MINT),
-  withdrawAmount as any,
-  {
-    accountInfoCommitment: "confirmed",
-  }
-);
+
+    await withdrawFn(
+      toAddress(publicKey.toBase58()),
+      toAddress(USDC_MINT),
+      withdrawAmount as any,
+      {
+        accountInfoCommitment: "confirmed",
+      }
+    );
 
     setBalanceRefreshKey((v) => v + 1);
 
     setStatus("Encrypted balance updated, building placeBid tx...");
 
-if (auctionType === "uniform") {
-  if (Number(bidAmountUsdcFinal) < Number(bidPriceUsdc)) {
-    throw new Error("Amount must be >= price");
-  }
-}
+    if (auctionType === "uniform") {
+      if (Number(bidAmountUsdcFinal) < Number(bidPriceUsdc)) {
+        throw new Error("Amount must be >= price");
+      }
+    }
 
-const finalPrice =
-  auctionType === "uniform" ? bidPriceUsdc : bidAmountUsdcFinal;
+    const finalPrice =
+      auctionType === "uniform" ? bidPriceUsdc : bidAmountUsdcFinal;
 
-const srv = await callPlaceBid(
-  auctionPkStr,
-  publicKey.toBase58(),
-  bidAmountUsdcFinal,
-  finalPrice,
-  bidNonceHex ?? null
-);
+    const srv = await callPlaceBid(
+      auctionPkStr,
+      publicKey.toBase58(),
+      bidAmountUsdcFinal,
+      finalPrice,
+      bidNonceHex ?? null
+    );
 
     if (srv?.error) {
       throw new Error(srv.error);
@@ -701,210 +692,175 @@ const srv = await callPlaceBid(
         }
       }
 
-//  async function handleDetermineWinner(
-//   which: "first" | "vickrey" | "uniform",
-//   auto = false
-// ) {
-//   setStatus(auto ? "Determining winner..." : "Preparing determine winner...");
-//   setIsAutoDetermining(true);
-
-//   try {
-//     if (!auctionPkStr) {
-//       throw new Error("Select/create auction first");
-//     }
-
-//     const connection =
-//       programClient?.provider.connection ?? readOnlyProgram?.provider.connection;
-
-//     if (!connection) {
-//       throw new Error("Connection not ready");
-//     }
-
-//     const srv = await callAuctionActions({
-//       kind: "determineWinner",
-//       auctionPk: auctionPkStr,
-//       which,
-//     });
-
-//     if (srv?.error) {
-//       throw new Error(srv.error);
-//     }
-
-//     const tx = Transaction.from(Buffer.from(srv.txBase64, "base64"));
-
-//     setStatus("Sending determineWinner tx...");
-//     const sig = await connection.sendRawTransaction(tx.serialize());
-//     await connection.confirmTransaction(sig, "confirmed");
-
-//     setStatus(
-//       sig
-//         ? "determineWinner tx sent: " + sig
-//         : "determineWinner completed"
-//     );
-
-//     await refreshAuctionState();
-//   } catch (err: any) {
-//     console.error("determineWinner failed:", err);
-//     setStatus(
-//       (auto ? "Auto-determine failed: " : "determineWinner failed: ") +
-//         (err?.message ?? String(err))
-//     );
-//   } finally {
-//     setIsAutoDetermining(false);
-//   }
-// }
-  
-
-  const isBidDisabled =
-    !connected ||
-    !auctionPkStr ||
-    auctionEnded ||
-    isSubmitting;
 
   return (
-    <main className="page-shell min-h-screen px-5 py-5 md:px-8 md:py-8">
-      
-      <AuctionWinConfetti show={showWinConfetti} />
-<div className="mx-auto max-w-6xl">
+<main className="page-shell min-h-screen px-5 py-5 md:px-8 md:py-8">
+  <AuctionWinConfetti show={showWinConfetti} />
 
-  <div className="mb-6">
-    <button
-      onClick={() => router.push("/market")}
-      className="inline-flex items-center gap-2 border border-[var(--line)] px-4 py-2 text-sm font-medium hover:bg-[var(--surface-2)] transition"
-    >
-      ← Back to projects
-    </button>
-  </div>
+  <div className="mx-auto max-w-6xl">
+    <div className="mb-6">
+      <button
+        onClick={() => router.push("/market")}
+        className="inline-flex items-center gap-2 border border-[var(--line)] px-4 py-2 text-sm font-medium hover:bg-[var(--surface-2)] transition"
+      >
+        ← Back to projects
+      </button>
+    </div>
 
-        {auctionData ? (
-          <div className="fixed right-4 top-4 z-50 border border-[var(--line)] bg-[var(--background)] px-5 py-4 shadow-none backdrop-blur-md">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
-              Time left
-            </div>
-            <div className="mt-1 text-4xl font-bold tabular-nums text-[var(--foreground)]">
-              {formatTimeLeft(timeLeft)}
-            </div>
-            <div className="mt-1 text-xs text-[var(--muted)]">{auctionEnded ? "Auction ended" : "Live"}</div>
+    {auctionData ? (
+      <div className="fixed right-4 top-4 z-50 border border-[var(--line)] bg-[var(--background)] px-5 py-4 shadow-none backdrop-blur-md">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+          Time left
+        </div>
+
+        <div className="mt-1 text-4xl font-bold tabular-nums text-[var(--foreground)]">
+          {formatTimeLeft(timeLeft)}
+        </div>
+
+        <div className="mt-1 text-xs text-[var(--muted)]">
+          {auctionEnded ? "Auction ended" : "Live"}
+        </div>
+      </div>
+    ) : null}
+
+    {auctionData ? (
+      <AuctionResultCard
+        auctionData={auctionData}
+        auctionEnded={auctionEnded}
+        isWinner={winnerNow}
+        winnerBase58={resolvedWinnerBase58}
+        tokenDecimals={tokenDecimals ?? undefined}
+        bidCount={bidCount}
+        connection={
+          programClient?.provider.connection ??
+          readOnlyProgram?.provider.connection ??
+          null
+        }
+      />
+    ) : null}
+
+    {auctionData?.raydiumPoolCreated && isTokenAuction && (
+      <div className="mt-6 border border-[var(--line)] bg-[var(--surface)] p-5">
+        <h3 className="text-lg font-semibold text-[var(--foreground)]">
+          Liquidity Pool Created
+        </h3>
+
+        <div className="mt-3 space-y-3 text-sm">
+          <div>
+            <span className="text-[var(--muted)]">Trade on Raydium:</span>
+
+            <br />
+
+            <a
+              href={swapUrl!}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-500 underline break-all"
+            >
+              {swapUrl}
+            </a>
           </div>
+        </div>
+      </div>
+    )}
+
+    <div className="mt-6">
+      <AuctionBidForm
+        refreshKey={balanceRefreshKey}
+        auctionType={auctionType}
+        bidTokens={bidTokens}
+        bidPriceUsdc={bidPriceUsdc}
+        onBidTokensChange={setBidTokens}
+        onBidPriceUsdcChange={setBidPriceUsdc}
+        bidAmountUsdc={bidAmountUsdc}
+        onBidAmountUsdcChange={setBidAmountUsdc}
+        disabled={isBidDisabled}
+        isSubmitting={isSubmitting}
+        auctionEnded={auctionEnded}
+        onSubmit={handlePlaceBid}
+      />
+    </div>
+
+    {!connected && (
+      <div className="mb-6 border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm">
+        <strong>Wallet not connected.</strong> Connect your wallet to interact
+        with this auction and view full results.
+      </div>
+    )}
+
+    <div className={panelClass}>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-lg font-semibold text-[var(--foreground)]">
+            Auction actions
+          </h3>
+
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Refresh, refund, or reclaim depending on auction state.
+          </p>
+        </div>
+
+        <span className={outcomeBadgeClass}>
+          {auctionEnded ? "Ended" : "Live"}
+        </span>
+      </div>
+
+      <div className="border border-[var(--line)] bg-[var(--background)] px-4 py-3">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+          Outcome
+        </div>
+
+        <div className="mt-1 text-sm text-[var(--foreground)]">
+          {outcomeText}
+        </div>
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-3">
+        {canReclaimUnsold ? (
+          <button
+            onClick={() => handleSettleAuction("reclaimUnsold")}
+            className={buttonPrimary}
+          >
+            Reclaim unsold item
+          </button>
         ) : null}
 
-        {auctionData ? (
-<AuctionResultCard
-  auctionData={auctionData}
-  auctionEnded={auctionEnded}
-  isWinner={winnerNow}
-  winnerBase58={resolvedWinnerBase58}
-  tokenDecimals={tokenDecimals ?? undefined}
-  bidCount={bidCount}
-  connection={programClient?.provider.connection ?? readOnlyProgram?.provider.connection ?? null}
-/>
-        ) : null}
-
-{auctionData?.raydiumPoolCreated && isTokenAuction && (
-  <div className="mt-6 border border-[var(--line)] bg-[var(--surface)] p-5">
-    <h3 className="text-lg font-semibold text-[var(--foreground)]">
-      Liquidity Pool Created
-    </h3>
-
-    <div className="mt-3 space-y-3 text-sm">
-      <div>
-        <span className="text-[var(--muted)]">Trade on Raydium:</span>
-        <br />
-        <a
-          href={swapUrl!}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-500 underline break-all"
+        <button
+          onClick={handleRefreshAuction}
+          disabled={isRefreshing}
+          className={buttonPrimary}
         >
-          {swapUrl}
-        </a>
+          {isRefreshing ? "Refreshing..." : "Refresh"}
+        </button>
+
+        {auctionEnded &&
+        isResolved &&
+        isCreator &&
+        isTokenAuction &&
+        !raydiumPoolCreated ? (
+          <button
+            onClick={handleClaimPayoutAndCreatePool}
+            className={buttonPrimary}
+          >
+            Claim payout and create pool
+          </button>
+        ) : null}
+
+        {canClaimRefund ? (
+          <button
+            onClick={() => handleSettleAuction("claimRefund")}
+            className={buttonSecondary}
+          >
+            Claim refund
+          </button>
+        ) : null}
       </div>
     </div>
-  </div>
-)}
 
-
-        <div className="mt-6">
-
-  
-<AuctionBidForm
-  refreshKey={balanceRefreshKey}
-  auctionType={auctionType}
-  bidTokens={bidTokens}
-  bidPriceUsdc={bidPriceUsdc}
-  onBidTokensChange={setBidTokens}
-  onBidPriceUsdcChange={setBidPriceUsdc}
-  bidAmountUsdc={bidAmountUsdc}
-  onBidAmountUsdcChange={setBidAmountUsdc}
-  disabled={isBidDisabled}
-  isSubmitting={isSubmitting}
-  auctionEnded={auctionEnded}
-  onSubmit={handlePlaceBid}
-/>
-        </div>
-
-        {!connected && (
-  <div className="mb-6 border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm">
-    <strong>Wallet not connected.</strong> Connect your wallet to interact with this auction and view full results.
-  </div>
-)}
-
-        <div className={panelClass}>
-  <div className="mb-4 flex items-center justify-between gap-3">
-    <div>
-      <h3 className="text-lg font-semibold text-[var(--foreground)]">Auction actions</h3>
-      <p className="mt-1 text-sm text-[var(--muted)]">
-        Refresh, refund, or reclaim depending on auction state.
-      </p>
+    <div className="mt-4 border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--muted)]">
+      {status}
     </div>
-    <span className={outcomeBadgeClass}>{auctionEnded ? "Ended" : "Live"}</span>
   </div>
-
-  <div className="border border-[var(--line)] bg-[var(--background)] px-4 py-3">
-    <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
-      Outcome
-    </div>
-    <div className="mt-1 text-sm text-[var(--foreground)]">{outcomeText}</div>
-  </div>
-
-  <div className="mt-5 flex flex-wrap gap-3">
-    {canReclaimUnsold ? (
-      <button
-        onClick={() => handleSettleAuction("reclaimUnsold")}
-        className={buttonPrimary}
-      >
-        Reclaim unsold item
-      </button>
-    ) : null}
-
-<button onClick={handleRefreshAuction} disabled={isRefreshing} className={buttonPrimary}>
-  {isRefreshing ? "Refreshing..." : "Refresh"}
-</button>
-
-  {auctionEnded &&
-  isResolved &&
-  isCreator &&
-  isTokenAuction &&
-  !raydiumPoolCreated ? (
-    <button onClick={handleClaimPayoutAndCreatePool} className={buttonPrimary}>
-      Claim payout and create pool
-    </button>
-  ) : null}
-
-    {canClaimRefund ? (
-      <button
-        onClick={() => handleSettleAuction("claimRefund")}
-        className={buttonSecondary}
-      >
-        Claim refund
-      </button>
-    ) : null}
-  </div>
-</div>
-        <div className="mt-4 border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--muted)]">
-          {status}
-        </div>
-      </div>
-    </main>
+</main>
   );
 }

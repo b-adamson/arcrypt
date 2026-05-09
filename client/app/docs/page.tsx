@@ -27,35 +27,35 @@ export default function DocsPage() {
             <h3 id="what-is-ARCRYPT" className="mb-3 text-xl font-semibold text-[var(--foreground)]">
               What is ARCRYPT
             </h3>
-<p className="whitespace-pre-line text-[var(--muted)]">
-  <strong className="text-[var(--foreground)]">
-    ARCRYPT is a private auction platform on Solana designed to maximize value without exposing bids.
-  </strong>
+            <p className="whitespace-pre-line text-[var(--muted)]">
+              <strong className="text-[var(--foreground)]">
+                ARCRYPT is a private auction platform on Solana designed to maximize value without exposing bids.
+              </strong>
 
-  {"\n\n"}<strong className="text-[var(--foreground)]">
-    Launch or List tokens, NFTs, or DAO treasury assets in fully sealed auctions where no participant can see competing bids.
-  </strong> By eliminating front-running and MEV, ARCRYPT ensures fair competition. <strong className="text-[var(--foreground)]">
-    The highest bidder is incentivised to pay what your asset is truly worth.
-  </strong>
+              {"\n\n"}<strong className="text-[var(--foreground)]">
+                Launch or List tokens, NFTs, or DAO treasury assets in fully sealed auctions where no participant can see competing bids.
+              </strong> By eliminating front-running and MEV, ARCRYPT ensures fair competition. <strong className="text-[var(--foreground)]">
+                The highest bidder is incentivised to pay what your asset is truly worth.
+              </strong>
 
-  {"\n\n"}
-    NFTs launched on the Arcrypt marktplace go directly to the highest bidder. <strong className="text-[var(--foreground)]">
-     Tokens launched on Arcrypt go through a uniform FDV based auciton, and the bids generate liquidity for an automatically generated Raydium swap pool once the auction closes.
-  </strong> <strong className="text-[var(--foreground)]">
-    This enables token launches in just a few clicks with 100% resistance to rug pulls.
-  </strong>
+              {"\n\n"}
+                NFTs launched on the Arcrypt marktplace go directly to the highest bidder. <strong className="text-[var(--foreground)]">
+                Tokens launched on Arcrypt go through a uniform FDV based auciton, and the bids generate liquidity for an automatically generated Raydium swap pool once the auction closes.
+              </strong> <strong className="text-[var(--foreground)]">
+                This enables token launches in just a few clicks with 100% resistance to rug pulls.
+              </strong>
 
-  {"\n\n"}ARCRYPT leverages state of the art cryptography and MPC technology to keep your money entirely hidden from the chain.{" "}
-  <strong className="text-[var(--foreground)]">
-    Not only do we encrypt your bid, we hide the account that holds your bid - using CPI calls with the Umbra program. This makes it the first truly sealed auction platform made with Arcium.
-  </strong>
+              {"\n\n"}ARCRYPT leverages state of the art cryptography and MPC technology to keep your money entirely hidden from the chain.{" "}
+              <strong className="text-[var(--foreground)]">
+                Not only do we encrypt your bid, we hide the account that holds your bid - using CPI calls with the Umbra program. This makes it the first truly sealed auction platform made with Arcium.
+              </strong>
 
-  {"\n\n"}Selling assets is harder than it looks. OTC deals rely on negotiation and often do not result in the best price. Public auctions expose bids in real time, inviting bots, MEV, and front-running that distort true price discovery.
+              {"\n\n"}Selling assets is harder than it looks. OTC deals rely on negotiation and often do not result in the best price. Public auctions expose bids in real time, inviting bots, MEV, and front-running that distort true price discovery.
 
-  {"\n\n"}<strong className="text-[var(--foreground)]">
-    ARCRYPT solves this with sealed, private auctions - removing information leakage and ensuring bidders compete based on true value, not strategy or manipulation.
-  </strong> While it can integrate directly with DAOs to auction treasury assets through proposals, you don’t need to be a DAO to use it. Anyone can auction tokens, NFTs, or other on-chain assets they own, and optionally list them on the ARCRYPT marketplace to reach a wider pool of serious bidders without sacrificing privacy.
-</p>
+              {"\n\n"}<strong className="text-[var(--foreground)]">
+                ARCRYPT solves this with sealed, private auctions - removing information leakage and ensuring bidders compete based on true value, not strategy or manipulation.
+              </strong> While it can integrate directly with DAOs to auction treasury assets through proposals, you don’t need to be a DAO to use it. Anyone can auction tokens, NFTs, or other on-chain assets they own, and optionally list them on the ARCRYPT marketplace to reach a wider pool of serious bidders without sacrificing privacy.
+            </p>
 
             <h3 id="mission" className="mt-6 mb-3 text-xl font-semibold text-[var(--foreground)]">
               The Mission
@@ -148,11 +148,11 @@ export default function DocsPage() {
               <p><strong className="text-[var(--foreground)]"> Escrow deposit mechanism flowchart:</strong></p>
             </div>
             <Image
-  src="/flowchart.png"
-  alt="Auction flow diagram"
-  width={800}
-  height={500}
-/>
+              src="/flowchart.png"
+              alt="Auction flow diagram"
+              width={800}
+              height={500}
+            />
           </section>
 
           <section id="rules" className="mb-16 scroll-mt-32">
@@ -172,50 +172,50 @@ export default function DocsPage() {
             <h3 id="auction-types" className="mb-2 text-lg font-semibold text-[var(--foreground)] scroll-mt-20 ">
               Auction types
             </h3>
-<ul className="mb-4 ml-5 list-disc space-y-2 text-[var(--muted)]">
-  <li>
-    <strong className="text-[var(--foreground)]">First-price auction:</strong>{" "}
-    the highest bidder wins and pays exactly what they submitted.
-  </li>
+          <ul className="mb-4 ml-5 list-disc space-y-2 text-[var(--muted)]">
+            <li>
+              <strong className="text-[var(--foreground)]">First-price auction:</strong>{" "}
+              the highest bidder wins and pays exactly what they submitted.
+            </li>
 
-  <li>
-    <strong className="text-[var(--foreground)]">Vickrey (second-price) auction:</strong>{" "}
-    the highest bidder wins but pays the second-highest bid, meaning incentive is bid your true value: nothing less and nothing more. 
-  </li>
+            <li>
+              <strong className="text-[var(--foreground)]">Vickrey (second-price) auction:</strong>{" "}
+              the highest bidder wins but pays the second-highest bid, meaning incentive is bid your true value: nothing less and nothing more. 
+            </li>
 
-  <li>
-    <strong className="text-[var(--foreground)]">Uniform-price auction:</strong>{" "}
-    used for selling tokens.
-    {"\n\n"}
-    Bidders submit:
-    <ul className="ml-5 list-disc">
-      <li><strong>Amount</strong> (how many units they want)</li>
-      <li><strong>Max price per unit</strong></li>
-    </ul>
-    {"\n\n"}
-    Winners are selected by highest price, and:
-    <ul className="ml-5 list-disc">
-      <li>All winners pay the same final clearing price</li>
-      <li>This price is the lowest winning price needed to clear</li>
-    </ul>
-    {"\n\n"}
-    This enables fair price discovery while distributing assets across multiple participants, and <strong>developing a substantial liquidity pool before being launched on the DEX.</strong>
-  </li>
-</ul>
+            <li>
+              <strong className="text-[var(--foreground)]">Uniform-price auction:</strong>{" "}
+              used for selling tokens.
+              {"\n\n"}
+              Bidders submit:
+              <ul className="ml-5 list-disc">
+                <li><strong>Amount</strong> (how many units they want)</li>
+                <li><strong>Max price per unit</strong></li>
+              </ul>
+              {"\n\n"}
+              Winners are selected by highest price, and:
+              <ul className="ml-5 list-disc">
+                <li>All winners pay the same final clearing price</li>
+                <li>This price is the lowest winning price needed to clear</li>
+              </ul>
+              {"\n\n"}
+              This enables fair price discovery while distributing assets across multiple participants, and <strong>developing a substantial liquidity pool before being launched on the DEX.</strong>
+            </li>
+          </ul>
 
 
             <h3 id="settlement" className="mb-2 text-lg font-semibold text-[var(--foreground)]">
               Settlement
             </h3>
-<ul className="ml-5 list-disc space-y-2 text-[var(--muted)]">
-  <li>At auction close, bids are revealed and the winner is determined according to the chosen auction type.</li>
-  <li>On-chain settlement transfers the asset(s) to the winner(s) and the winning bids to seed the Raydium pool; all escrowed bidders who didn’t win can claim refunds.</li>
-  <li>
-    <strong className="text-[var(--foreground)]">
-      Tokens launched through ARCRYPT are automatically made available for trading on the Raydium DEX immediately after settlement.
-    </strong>
-  </li>
-</ul>
+              <ul className="ml-5 list-disc space-y-2 text-[var(--muted)]">
+                <li>At auction close, bids are revealed and the winner is determined according to the chosen auction type.</li>
+                <li>On-chain settlement transfers the asset(s) to the winner(s) and the winning bids to seed the Raydium pool; all escrowed bidders who didn’t win can claim refunds.</li>
+                <li>
+                  <strong className="text-[var(--foreground)]">
+                    Tokens launched through ARCRYPT are automatically made available for trading on the Raydium DEX immediately after settlement.
+                  </strong>
+                </li>
+              </ul>
           </section>
 
           <section id="dao-proposal" className="mb-16 scroll-mt-32">

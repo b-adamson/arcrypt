@@ -142,27 +142,27 @@ React.useEffect(() => {
     >
       <article className="flex h-full flex-col">
         <div className="relative aspect-[4/3] w-full overflow-hidden border-b border-[var(--line)] bg-[var(--background)]">
-<div className="absolute right-4 top-4 z-10">
-  <div
-    className={`
-      surface-strong px-4 py-3 transition-all
-      ${flash ? "border-accent pulse-accent" : ""}
-    `}
-  >
-    <div className="text-[10px] uppercase tracking-[0.22em] text-muted">
-      Bids
-    </div>
+        <div className="absolute right-4 top-4 z-10">
+          <div
+            className={`
+              surface-strong px-4 py-3 transition-all
+              ${flash ? "border-accent pulse-accent" : ""}
+            `}
+          >
+            <div className="text-[10px] uppercase tracking-[0.22em] text-muted">
+              Bids
+            </div>
 
-    <div
-      className={`
-        text-2xl font-bold tracking-tight
-        ${flash ? "text-accent" : ""}
-      `}
-    >
-      {item.bidCount ?? 0}
-    </div>
-  </div>
-</div>
+            <div
+              className={`
+                text-2xl font-bold tracking-tight
+                ${flash ? "text-accent" : ""}
+              `}
+            >
+              {item.bidCount ?? 0}
+            </div>
+          </div>
+        </div>
           {item.image ? (
             <img
               src={item.image}

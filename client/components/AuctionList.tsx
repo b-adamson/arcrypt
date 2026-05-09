@@ -99,33 +99,33 @@ function AuctionCard({ item }: { item: AuctionSummary }) {
           )}
         </div>
         <div className="flex flex-col p-5 md:p-6">
-<div>
-  <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--muted)]">
-    Auction
-  </div>
-  <h3 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
-    {item.name}
-  </h3>
-</div>
-<div
-  className={`
-    mt-3 surface-strong px-4 py-3 transition-all
-    ${flash ? "border-accent pulse-accent" : ""}
-  `}
->
-  <div className="text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">
-    Bids
-  </div>
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--muted)]">
+            Auction
+          </div>
+          <h3 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
+            {item.name}
+          </h3>
+        </div>
+        <div
+          className={`
+            mt-3 surface-strong px-4 py-3 transition-all
+            ${flash ? "border-accent pulse-accent" : ""}
+          `}
+        >
+          <div className="text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">
+            Bids
+          </div>
 
-  <div
-    className={`
-      text-xl font-bold transition-colors
-      ${flash ? "text-accent" : "text-[var(--foreground)]"}
-    `}
-  >
-    {item.bidCount ?? 0}
-  </div>
-</div>
+          <div
+            className={`
+              text-xl font-bold transition-colors
+              ${flash ? "text-accent" : "text-[var(--foreground)]"}
+            `}
+          >
+            {item.bidCount ?? 0}
+          </div>
+        </div>
           <p
             className="mt-4 text-sm leading-6 text-[var(--muted)]"
             style={{

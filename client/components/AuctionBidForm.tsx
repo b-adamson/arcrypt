@@ -217,63 +217,63 @@ export default function AuctionBidForm({
     <section className="mt-6 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3">
       <div className="flex w-full items-center gap-4">
         <div className="shrink-0 min-w-[4rem]">
-  <div className="flex items-center gap-2">
-    <div className="text-[10px] font-semibold uppercase tracking-[0.24em] opacity-60">
-      Encrypted Balance
-    </div>
+            <div className="flex items-center gap-2">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.24em] opacity-60">
+                Encrypted Balance
+              </div>
 
-    <button
-      type="button"
-      onClick={() => void refresh()}
-      disabled={querying}
-      aria-label="Refresh encrypted balance"
-      className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--surface-2)] text-[var(--foreground)] transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
-      title="Refresh"
-    >
-      <RefreshCw className={`h-3.5 w-3.5 ${querying ? "animate-spin" : ""}`} />
-    </button>
-  </div>
+              <button
+                type="button"
+                onClick={() => void refresh()}
+                disabled={querying}
+                aria-label="Refresh encrypted balance"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[var(--line)] bg-[var(--surface-2)] text-[var(--foreground)] transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
+                title="Refresh"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${querying ? "animate-spin" : ""}`} />
+              </button>
+            </div>
 
-  <div className="mt-1 text-4xl font-semibold leading-none md:text-5xl">
-    {querying ? "…" : balanceRaw.toString()}
-  </div>
-</div>
+            <div className="mt-1 text-4xl font-semibold leading-none md:text-5xl">
+              {querying ? "…" : balanceRaw.toString()}
+            </div>
+          </div>
 
-        <div className="flex flex-1 min-w-0 flex-col gap-2">
-         <div className="flex w-full gap-2">
-  <div
-    className={`flex min-w-0 flex-1 items-center rounded-xl border border-[var(--line)] px-3 py-2 ${
-      !isRegistered ? "opacity-50" : ""
-    }`}
-  >
-    <input
-      value={amount}
-      onChange={(e) => handleAmountChange(e.target.value)}
-      disabled={!isRegistered}
-      inputMode="numeric"
-      placeholder="Amount"
-      className="w-full min-w-0 flex-1 bg-transparent text-sm outline-none disabled:cursor-not-allowed"
-    />
-  </div>
+                  <div className="flex flex-1 min-w-0 flex-col gap-2">
+                  <div className="flex w-full gap-2">
+            <div
+              className={`flex min-w-0 flex-1 items-center rounded-xl border border-[var(--line)] px-3 py-2 ${
+                !isRegistered ? "opacity-50" : ""
+              }`}
+            >
+              <input
+                value={amount}
+                onChange={(e) => handleAmountChange(e.target.value)}
+                disabled={!isRegistered}
+                inputMode="numeric"
+                placeholder="Amount"
+                className="w-full min-w-0 flex-1 bg-transparent text-sm outline-none disabled:cursor-not-allowed"
+              />
+            </div>
 
-  <button
-    onClick={handleDeposit}
-    disabled={!isRegistered || depositing}
-    className="shrink-0 rounded-lg border border-black bg-black px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white transition-all duration-300 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
-  >
-    {depositing ? "Depositing" : "Deposit"}
-  </button>
+            <button
+              onClick={handleDeposit}
+              disabled={!isRegistered || depositing}
+              className="shrink-0 rounded-lg border border-black bg-black px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white transition-all duration-300 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {depositing ? "Depositing" : "Deposit"}
+            </button>
 
-  <button
-    onClick={handleWithdraw}
-    disabled={!isRegistered || withdrawing || withdrawTooLarge}
-    className="shrink-0 rounded-lg border border-black bg-black px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white transition-all duration-300 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
-  >
-    {withdrawing ? "Withdrawing" : withdrawTooLarge ? "Too much" : "Withdraw"}
-  </button>
+            <button
+              onClick={handleWithdraw}
+              disabled={!isRegistered || withdrawing || withdrawTooLarge}
+              className="shrink-0 rounded-lg border border-black bg-black px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white transition-all duration-300 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {withdrawing ? "Withdrawing" : withdrawTooLarge ? "Too much" : "Withdraw"}
+            </button>
 
-  {auctionType !== "uniform" && placeBidButton}
-</div>
+            {auctionType !== "uniform" && placeBidButton}
+          </div>
 
           {!isRegistered && (
             <div className="text-xs text-[var(--muted)]">

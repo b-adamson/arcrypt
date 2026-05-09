@@ -184,66 +184,60 @@ export default function AuctionCreateForm({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const { connection } = useConnection();
-const { publicKey, connected, wallet } = useWallet();
-const adapter = wallet?.adapter;
+  const { publicKey, connected, wallet } = useWallet();
+  const adapter = wallet?.adapter;
 
-const umi = useMemo(() => {
-  if (!adapter) return null;
+  const umi = useMemo(() => {
+    if (!adapter) return null;
 
-  return createUmi(RPC_URL)
-    .use(walletAdapterIdentity(adapter))
-    .use(mplTokenMetadata());
-}, [adapter]);
-
+    return createUmi(RPC_URL)
+      .use(walletAdapterIdentity(adapter))
+      .use(mplTokenMetadata());
+  }, [adapter]);
 
   const [walletTokens, setWalletTokens] = useState<TokenOption[]>([]);
   const [tokenSearch, setTokenSearch] = useState("");
   const [showTokenDropdown, setShowTokenDropdown] = useState(false);
-
   const [mintMode, setMintMode] = useState<"Existing" | "CreateNew">("CreateNew");
-const [isProcessing, setIsProcessing] = useState(false);
-
+  const [isProcessing, setIsProcessing] = useState(false);
   const loadedKeyRef = useRef<string>("");
   const debounceRef = useRef<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const ownerBase58 = publicKey?.toBase58() ?? "";
   const rpcEndpoint = connection.rpcEndpoint;
-
   const [imageError, setImageError] = useState<string | null>(null);
-
   const [tokenMintMode, setTokenMintMode] = useState<"Existing" | "CreateNew">("CreateNew");
+  const [totalSupply, setTotalSupply] = useState("1000000");
+  const [keepPercent, setKeepPercent] = useState("10");
 
-const [totalSupply, setTotalSupply] = useState("1000000");
-const [keepPercent, setKeepPercent] = useState("10");
+  const split = useMemo(() => {
+    const total = Number(totalSupply || 0);
+    const pct = Number(keepPercent || 0);
 
-const split = useMemo(() => {
-  const total = Number(totalSupply || 0);
-  const pct = Number(keepPercent || 0);
+    if (total <= 0 || pct < 0 || pct > 100) {
+      return { user: 0, auction: 0 };
+    }
 
-  if (total <= 0 || pct < 0 || pct > 100) {
-    return { user: 0, auction: 0 };
-  }
+    const user = Math.floor((pct / 100) * total);
+    const remaining = total - user;
 
-  const user = Math.floor((pct / 100) * total);
-  const remaining = total - user;
-
-  return {
-    user,
-    auction: remaining,
-  };
-}, [totalSupply, keepPercent]);
+    return {
+      user,
+      auction: remaining,
+    };
+  }, [totalSupply, keepPercent]);
 
   useEffect(() => {
-  if (assetKind === "Nft") {
-    onSaleAmountTokenChange("1");
-  }
-}, [assetKind]);
+    if (assetKind === "Nft") {
+      onSaleAmountTokenChange("1");
+    }
+  }, [assetKind]);
 
-useEffect(() => {
-  if (lockTokenMint && assetKind === "Nft") {
-    onAssetKindChange("Fungible");
-  }
-}, [lockTokenMint, assetKind]);
+  useEffect(() => {
+    if (lockTokenMint && assetKind === "Nft") {
+      onAssetKindChange("Fungible");
+    }
+  }, [lockTokenMint, assetKind]);
 
   useEffect(() => {
     if (debounceRef.current !== null) {
@@ -309,10 +303,10 @@ useEffect(() => {
           const options = [...byMint.values()].map(({ rawAmount, ...rest }) => rest);
 
          const enriched = await Promise.all(
-options.slice(0, 8).map((opt) =>
-  umi ? enrichTokenOption(opt, umi) : opt
-)
-);
+            options.slice(0, 8).map((opt) =>
+              umi ? enrichTokenOption(opt, umi) : opt
+            )
+            );
           if (!controller.signal.aborted) {
             setWalletTokens(enriched);
           }
@@ -502,26 +496,26 @@ async function handleSubmit() {
       metadataUri = json.metadataUri;
 
       // Mint NFT
-mintAddress = await mintNft(
-  umi,
-  publicKey.toBase58(),
-  metadataUri!,
-  metadataName
-);
+      mintAddress = await mintNft(
+        umi,
+        publicKey.toBase58(),
+        metadataUri!,
+        metadataName
+      );
 
       onTokenMintChange(mintAddress);
     }
 
-await onSubmit(metadataUri, {
-  mint: mintAddress,
-});
-  } catch (err: any) {
-    console.error(err);
-    alert(err?.message || "Failed to create NFT");
-  } finally {
-    setIsProcessing(false);
+  await onSubmit(metadataUri, {
+    mint: mintAddress,
+  });
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || "Failed to create NFT");
+    } finally {
+      setIsProcessing(false);
+    }
   }
-}
 
   return (
     <section className="relative overflow-hidden border border-[var(--line)] bg-[var(--surface)] p-6 shadow-none md:p-8">
@@ -675,40 +669,39 @@ await onSubmit(metadataUri, {
             ) : null}
           </Field>
 
-<Field label="Min bid (USDC)" hint="Lowest bid allowed for this auction.">
-  <input
-    type="number"
-    step="0.000001"
-    min={0}
-    value={minBidUsdc}
-    onChange={(e) => onMinBidUsdcChange(e.target.value)}
-    className={inputClass}
-    placeholder="1.00"
-  />
-</Field>
+            <Field label="Min bid (USDC)" hint="Lowest bid allowed for this auction.">
+              <input
+                type="number"
+                step="0.000001"
+                min={0}
+                value={minBidUsdc}
+                onChange={(e) => onMinBidUsdcChange(e.target.value)}
+                className={inputClass}
+                placeholder="1.00"
+              />
+            </Field>
 
-        {assetKind === "Fungible" && tokenMintMode !== "CreateNew" ? (
-  <Field label="Prize amount" hint="Token amount sent to the winner(s).">
-    <input
-      type="number"
-      step="0.000001"
-      min={0}
-      value={saleAmountToken}
-      onChange={(e) => onSaleAmountTokenChange(e.target.value)}
-      className={inputClass}
-      placeholder="1000"
-    />
-  </Field>
-) : assetKind === "Nft" ? (
-  <Field label="Prize amount" hint="NFT mode is fixed to exactly 1.">
-    <input type="text" value="1" disabled className={`${inputClass} cursor-not-allowed opacity-80 text-white/80`} />
-  </Field>
-) : null}
+                    {assetKind === "Fungible" && tokenMintMode !== "CreateNew" ? (
+              <Field label="Prize amount" hint="Token amount sent to the winner(s).">
+                <input
+                  type="number"
+                  step="0.000001"
+                  min={0}
+                  value={saleAmountToken}
+                  onChange={(e) => onSaleAmountTokenChange(e.target.value)}
+                  className={inputClass}
+                  placeholder="1000"
+                />
+              </Field>
+            ) : assetKind === "Nft" ? (
+              <Field label="Prize amount" hint="NFT mode is fixed to exactly 1.">
+                <input type="text" value="1" disabled className={`${inputClass} cursor-not-allowed opacity-80 text-white/80`} />
+              </Field>
+            ) : null}
 
-
-{assetKind !== "MetadataOnly" &&
- !(assetKind === "Nft" && mintMode === "CreateNew") &&
- !(assetKind === "Fungible" && tokenMintMode === "CreateNew") ? (
+            {assetKind !== "MetadataOnly" &&
+            !(assetKind === "Nft" && mintMode === "CreateNew") &&
+            !(assetKind === "Fungible" && tokenMintMode === "CreateNew") ? (
             <Field
               label="Token mint"
               hint={lockTokenMint ? "Locked in proposal mode." : "Type a mint directly or pick one from your wallet tokens."}
@@ -809,35 +802,35 @@ await onSubmit(metadataUri, {
           ) : null}
 
           {assetKind === "Fungible" && tokenMintMode === "CreateNew" && (
-  <>
-    <Field label="Total supply">
-      <input
-        type="number"
-        min={0}
-        value={totalSupply}
-        onChange={(e) => setTotalSupply(e.target.value)}
-        className={inputClass}
-        placeholder="1000"
-      />
-    </Field>
+            <>
+              <Field label="Total supply">
+                <input
+                  type="number"
+                  min={0}
+                  value={totalSupply}
+                  onChange={(e) => setTotalSupply(e.target.value)}
+                  className={inputClass}
+                  placeholder="1000"
+                />
+              </Field>
 
-   <Field label="You keep (%)" hint="Percentage of supply you keep">
-  <input
-    type="number"
-    min={0}
-    max={100}
-    value={keepPercent}
-    onChange={(e) => setKeepPercent(e.target.value)}
-    className={inputClass}
-    placeholder="10"
-  />
-</Field>
+            <Field label="You keep (%)" hint="Percentage of supply you keep">
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={keepPercent}
+              onChange={(e) => setKeepPercent(e.target.value)}
+              className={inputClass}
+              placeholder="10"
+            />
+          </Field>
 
-<div className="text-[10px] text-white/70 mt-1">
-  You keep: {split.user} • Auction: {split.auction}
-</div>
-  </>
-)}
+          <div className="text-[10px] text-white/70 mt-1">
+            You keep: {split.user} • Auction: {split.auction}
+          </div>
+            </>
+          )}
 
           <Field label="Duration" >
             <div className="flex w-full gap-3">
@@ -897,21 +890,21 @@ await onSubmit(metadataUri, {
             </div>
             <p className="text-xs text-white/70/80">Uniform is hidden for NFT / metadata-only.</p>
           <select
-  value={auctionType}
-  onChange={(e) => onAuctionTypeChange(e.target.value as AuctionType)}
-  className={selectClass}
->
-  {allowedTypes.map((type) => {
-    const isToken = assetKind === "Fungible";
-    const warn = isToken && (type === "FirstPrice" || type === "Vickrey");
+            value={auctionType}
+            onChange={(e) => onAuctionTypeChange(e.target.value as AuctionType)}
+            className={selectClass}
+          >
+            {allowedTypes.map((type) => {
+              const isToken = assetKind === "Fungible";
+              const warn = isToken && (type === "FirstPrice" || type === "Vickrey");
 
-    return (
-      <option key={type} value={type}>
-        {type} {warn ? "(not recommended)" : ""}
-      </option>
-    );
-  })}
-</select>
+              return (
+                <option key={type} value={type}>
+                  {type} {warn ? "(not recommended)" : ""}
+                </option>
+              );
+            })}
+          </select>
           </div>
 
           <div className="border border-[var(--line)] bg-[var(--background)] px-4 py-3">
@@ -921,25 +914,25 @@ await onSubmit(metadataUri, {
             </p>
           </div>
 
-<button
-  onClick={handleSubmit}
-  disabled={isDisabled || isProcessing}
-  className="btn btn-primary h-12 px-5 text-sm font-bold uppercase tracking-[0.18em] transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-[0_8px_24px_rgba(0,230,118,0.14)] active:translate-y-0 active:scale-[0.99] disabled:translate-y-0 disabled:scale-100 disabled:opacity-60"
->
-  {isProcessing
-    ? assetKind === "Fungible"
-      ? "Processing Token & Auction..."
-      : "Processing NFT & Auction..."
-    : "Make Auction"}
-</button>
+          <button
+            onClick={handleSubmit}
+            disabled={isDisabled || isProcessing}
+            className="btn btn-primary h-12 px-5 text-sm font-bold uppercase tracking-[0.18em] transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-[0_8px_24px_rgba(0,230,118,0.14)] active:translate-y-0 active:scale-[0.99] disabled:translate-y-0 disabled:scale-100 disabled:opacity-60"
+          >
+            {isProcessing
+              ? assetKind === "Fungible"
+                ? "Processing Token & Auction..."
+                : "Processing NFT & Auction..."
+              : "Make Auction"}
+          </button>
         </div>
 
         {auctionPkStr ? (
           <div className="mt-5">
-<Link
-  href={`/bid?auctionPk=${encodeURIComponent(auctionPkStr)}`}
-  className="btn inline-flex items-center gap-2 bg-[var(--accent)] text-black hover:opacity-90 px-4 py-2"
->
+          <Link
+            href={`/bid?auctionPk=${encodeURIComponent(auctionPkStr)}`}
+            className="btn inline-flex items-center gap-2 bg-[var(--accent)] text-black hover:opacity-90 px-4 py-2"
+            >
               Open this auction’s bid page
               <span aria-hidden>→</span>
             </Link>

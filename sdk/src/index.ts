@@ -367,7 +367,32 @@ async function buildAuctionCore(params: CreateAuctionParams): Promise<AuctionCor
   };
 }
 
-
+/**
+ * Builds and returns the governance proposal flow for creating an auction.
+ *
+ * Params:
+ * - programClient: Anchor program client.
+ * - programId: Auction program ID.
+ * - publicKey: Wallet public key.
+ * - authorityBase58: Auction authority wallet.
+ * - sourceTokenAccountBase58: Optional source token account.
+ * - makeAuctionResult: Optional precomputed server context.
+ * - minBidUsdc: Minimum bid amount in USDC.
+ * - durationSecs: Auction duration in seconds.
+ * - auctionType: Auction pricing model.
+ * - assetKind: Auctioned asset type.
+ * - metadataUri: Metadata URI.
+ * - tokenMint: Token mint for SPL/NFT auctions.
+ * - saleAmountToken: Amount to sell for fungible auctions.
+ * - realmAddress: Realm address.
+ * - governanceProgramId: Governance program ID.
+ * - governanceAddress: Governance account.
+ * - communityMint: Realm community mint.
+ * - proposalName: Proposal title.
+ * - proposalDescription: Proposal description.
+ *
+ * Returns: Proposal, insert, sign-off, and combined transactions.
+ */
 export async function createSPLGovernanceProposal(
   params: CreateSPLGovernanceProposalParams
 ): Promise<GovernanceAuctionBundle> {
@@ -571,6 +596,18 @@ export type DetermineWinnerBundle = AuctionActionBundle & {
   srv: DetermineWinnerServerResponse;
 };
 
+/**
+ * Resolves the encrypted bid context for submission.
+ *
+ * Params:
+ * - auctionPk: Auction public key.
+ * - bidderPubkey: Bidder wallet public key.
+ * - bidAmountUsdc: Bid amount in USDC.
+ * - nonceHex: Optional custom nonce.
+ * - endpoint: Optional API endpoint.
+ *
+ * Returns: Encryption context for bid submission.
+ */
 export type ResolvePlaceBidContextParams = {
   auctionPk: string;
   bidderPubkey: string;
@@ -579,6 +616,20 @@ export type ResolvePlaceBidContextParams = {
   endpoint?: string;
 };
 
+/**
+ * Builds a bid transaction for the selected auction.
+ *
+ * Params:
+ * - programClient: Anchor program client.
+ * - programId: Auction program ID.
+ * - publicKey: Bidder wallet public key.
+ * - auctionPk: Auction public key.
+ * - bidAmountUsdc: Bid amount in USDC.
+ * - nonceHex: Optional custom nonce.
+ * - bidPriceUsdc: Optional explicit price for the encrypted payload.
+ *
+ * Returns: Bid transaction bundle and escrow PDA.
+ */
 export type BuildPlaceBidTransactionParams = {
   programClient: any;
   programId: PublicKey;
@@ -595,6 +646,19 @@ export type ResolveDetermineWinnerContextParams = {
   which: DetermineWinnerKind;
 };
 
+/**
+ * Builds a winner-determination transaction.
+ *
+ * Params:
+ * - programClient: Anchor program client.
+ * - programId: Auction program ID.
+ * - publicKey: Settler wallet public key.
+ * - auctionPk: Auction public key.
+ * - which: Winner-determination mode.
+ * - srv: Server context with Arcium addresses and offsets.
+ *
+ * Returns: Winner-determination transaction bundle.
+ */
 export type BuildDetermineWinnerTransactionParams = {
   programClient: any;
   programId: PublicKey;
@@ -629,6 +693,21 @@ export type BuildSettleWinnerTransactionParams = {
   targetWinnerBase58?: string | null;
 };
 
+/**
+ * Chooses and builds the correct settlement action for the current wallet.
+ *
+ * Params:
+ * - programClient: Anchor program client.
+ * - programId: Auction program ID.
+ * - publicKey: Current wallet public key.
+ * - auctionPk: Auction public key.
+ * - auctionData: Cached auction account data.
+ * - escrowExists: Optional hint about bidder escrow state.
+ * - action: Optional forced settlement action.
+ * - targetWinnerBase58: Optional explicit winner target.
+ *
+ * Returns: The selected settlement bundle and action name.
+ */
 export type CreateSettlementFlowParams = {
   programClient: any;
   programId: PublicKey;
@@ -676,10 +755,6 @@ function auctionTypeKey(auction: any): string {
 
 function auctionAssetKindKey(auction: any): string {
   return enumKey(auction?.assetKind ?? auction?.asset_kind).toLowerCase();
-}
-
-function auctionBidCount(auction: any): number {
-  return Number(auction?.bidCount ?? auction?.bid_count ?? 0);
 }
 
 function auctionResolvedWinnerKeys(auction: any): string[] {
@@ -747,6 +822,14 @@ function resolveWinnerTargetForSettlement(auction: any, walletBase58: string): s
   return winners.includes(walletBase58) ? walletBase58 : winners[0] ?? null;
 }
 
+/**
+ * Builds and returns a bid transaction.
+ *
+ * Params:
+ * - params: Bid build inputs.
+ *
+ * Returns: Bid bundle with encrypted payload and escrow PDA.
+ */
 export async function buildPlaceBidTransaction(
   params: BuildPlaceBidTransactionParams
 ): Promise<PlaceBidBundle> {
@@ -894,7 +977,14 @@ export async function buildPlaceBidTransaction(
   };
 }
 
-
+/**
+ * Builds and returns a winner-determination transaction.
+ *
+ * Params:
+ * - params: Winner-determination inputs.
+ *
+ * Returns: Winner-determination bundle.
+ */
 export async function buildDetermineWinnerTransaction(
   params: BuildDetermineWinnerTransactionParams
 ): Promise<DetermineWinnerBundle> {
@@ -944,7 +1034,14 @@ const methodName =
   };
 }
 
-
+/**
+ * Builds the reclaim-unsold transaction for the auction creator.
+ *
+ * Params:
+ * - params: Reclaim inputs.
+ *
+ * Returns: Single-transaction action bundle.
+ */
 export async function buildReclaimUnsoldTransaction(
   params: BuildReclaimUnsoldTransactionParams
 ): Promise<AuctionActionBundle> {
@@ -1007,6 +1104,14 @@ export async function buildReclaimUnsoldTransaction(
   return txBundleFromInstruction(ix);
 }
 
+/**
+ * Builds the refund-claim transaction for a bidder.
+ *
+ * Params:
+ * - params: Refund inputs.
+ *
+ * Returns: Single-transaction action bundle.
+ */
 export async function buildClaimRefundTransaction(
   params: BuildClaimRefundTransactionParams
 ): Promise<AuctionActionBundle> {
@@ -1034,6 +1139,14 @@ export async function buildClaimRefundTransaction(
   return txBundleFromInstruction(ix);
 }
 
+/**
+ * Builds the settlement transaction for the winning bidder or creator. You will need to loop through these for uniform for each winner
+ *
+ * Params:
+ * - params: Settlement inputs.
+ *
+ * Returns: Single-transaction action bundle.
+ */
 export async function buildSettleWinnerTransaction(
   params: BuildSettleWinnerTransactionParams
 ): Promise<AuctionActionBundle> {
@@ -1159,6 +1272,14 @@ export async function buildSettleWinnerTransaction(
   return txBundleFromInstruction(ix);
 }
 
+/**
+ * Backwards-compatible auction creation wrapper.
+ *
+ * Params:
+ * - params: Auction creation inputs.
+ *
+ * Returns: Auction bundle with one transaction.
+ */
 export async function createAuction(
   params: CreateAuctionParams
 ): Promise<AuctionBundle> {
@@ -1173,6 +1294,14 @@ export async function createAuction(
   };
 }
 
+/**
+ * Backwards-compatible bid creation wrapper.
+ *
+ * Params:
+ * - params: Bid build inputs.
+ *
+ * Returns: Bid bundle with encrypted payload and escrow PDA.
+ */
 export async function createPlaceBid(
   params: BuildPlaceBidTransactionParams
 ): Promise<PlaceBidBundle> {
@@ -1212,9 +1341,9 @@ export async function createPlaceBid(
     ? Buffer.from(nonceHex.replace(/^0x/, ""), "hex")
     : crypto.randomBytes(16);
 
-const price = bidPriceUsdc
-  ? BigInt(decimalToBaseUnitsBN(bidPriceUsdc, PAYMENT_DECIMALS).toString())
-  : amount;
+  const price = bidPriceUsdc
+    ? BigInt(decimalToBaseUnitsBN(bidPriceUsdc, PAYMENT_DECIMALS).toString())
+    : amount;
 
   const ciphertext = cipher.encrypt([bidderLo, bidderHi, amount, price], nonce)
   const nonceBN = new BN(deserializeLE(nonce).toString());
@@ -1229,46 +1358,46 @@ const price = bidPriceUsdc
     programId
   )[0];
 
-const bidderPaymentAta = getAssociatedTokenAddressSync(PAYMENT_MINT, publicKey);
+  const bidderPaymentAta = getAssociatedTokenAddressSync(PAYMENT_MINT, publicKey);
 
-const escrowTokenAccount = getAssociatedTokenAddressSync(
-  PAYMENT_MINT,
-  escrowPda,
-  true
-);
+  const escrowTokenAccount = getAssociatedTokenAddressSync(
+    PAYMENT_MINT,
+    escrowPda,
+    true
+  );
 
   const ix = await programClient.methods
-.placeBid(
-  computationOffset,
-  new BN(amount.toString()),
-  Array.from(ciphertext[0]), // bidder_lo
-  Array.from(ciphertext[1]), // bidder_hi
-  Array.from(ciphertext[2]), // amount
-  Array.from(ciphertext[3]),
-  Array.from(bidderX25519Pub),
-  nonceBN
-)
-  .accounts({
-  bidder: publicKey,
-  auction: auctionPk,
-  escrowAccount: escrowPda,
+    .placeBid(
+      computationOffset,
+      new BN(amount.toString()),
+      Array.from(ciphertext[0]), // bidder_lo
+      Array.from(ciphertext[1]), // bidder_hi
+      Array.from(ciphertext[2]), // amount
+      Array.from(ciphertext[3]),
+      Array.from(bidderX25519Pub),
+      nonceBN
+    )
+      .accounts({
+      bidder: publicKey,
+      auction: auctionPk,
+      escrowAccount: escrowPda,
 
-  bidderPaymentAta,
-  escrowTokenAccount,
-  paymentMint: PAYMENT_MINT,
-  tokenProgram: TOKEN_PROGRAM_ID,
-  associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      bidderPaymentAta,
+      escrowTokenAccount,
+      paymentMint: PAYMENT_MINT,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
 
-  signPdaAccount: signPda,
-  mxeAccount: new PublicKey(mxePk),
-  mempoolAccount: mempoolPk,
-  executingPool: executingPoolPk,
-  computationAccount: computationPk,
-  compDefAccount: compDefPk,
-  clusterAccount: clusterPk,
-  poolAccount: poolPk,
-  clockAccount: clockPk,
-})
+      signPdaAccount: signPda,
+      mxeAccount: new PublicKey(mxePk),
+      mempoolAccount: mempoolPk,
+      executingPool: executingPoolPk,
+      computationAccount: computationPk,
+      compDefAccount: compDefPk,
+      clusterAccount: clusterPk,
+      poolAccount: poolPk,
+      clockAccount: clockPk,
+    })
     .instruction();
 
   const tx = new Transaction().add(ix);
@@ -1282,6 +1411,14 @@ const escrowTokenAccount = getAssociatedTokenAddressSync(
   };
 }
 
+/**
+ * Backwards-compatible winner-determination wrapper.
+ *
+ * Params:
+ * - params: Winner-determination inputs.
+ *
+ * Returns: Winner-determination bundle.
+ */
 export async function createDetermineWinner(params: {
   programClient: any;
   programId: PublicKey;
@@ -1378,6 +1515,14 @@ export async function createDetermineWinner(params: {
   };
 }
 
+/**
+ * Builds the best settlement transaction for the current wallet.
+ *
+ * Params:
+ * - params: Auction settlement inputs.
+ *
+ * Returns: Selected settlement bundle and chosen action.
+ */
 export async function createSettlement(
   params: CreateSettlementFlowParams
 ): Promise<AuctionActionBundle & { action: Exclude<SettlementAction, "auto"> }> {
