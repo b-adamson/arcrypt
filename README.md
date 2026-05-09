@@ -38,9 +38,9 @@ ARCRYPT combines four pieces:
 1. A seller creates a project which mints a token and creates an auction through Arcrypt.
 2. Bidders place encrypted bids from their personal encrypted balance (See below).
 3. Funds are escrowed securely within the UMBRA shielded pool (See below).
-4. Off-chain worker calls MPC to determine the winner and reveal it publicly.
-5. To claim their rewards, the auction creator clicks "Settle" on the dashboard, releasing the tokens to the Raydium DEX seeded at the clearing price.
-6. Losers reclaim their bids.
+4. Off-chain worker calls MPC to determine the winner and reveal it publicly, it also transfers tokens to the winner.
+5. To claim their rewards, the auction creator clicks "Claim payout and create pool" on the dashboard, releasing the USDC to the Raydium DEX seeded at the clearing price.
+6. Losers reclaim their bids manually by clicking "Claim refund". 
 
 Under the hood, when submitting a bid:
 
@@ -182,9 +182,14 @@ The on-chain program is built around a few core steps:
 
 1. **Create auction**
 2. **Place bid**
-3. **Close auction**
-4. **Determine winner privately**
-5. **Finalize settlement and refunds**
+
+There are many functions for placing bids. `place_bid` is called by the client and uses legacy escrows. `deposit_encrypted_bid` is used by the client and is the entrypoint for the encrypted escrows (pending SDK support). `submit_encrypted_bid` is the cpi callback from umbra that receives the bid amount encrypted against our own MXE and sends to PendingEncryptedBid account. `place_encrypted_bid` is cranked clientside in vercel to move the temp account bid to MPC to avoid async issues. 
+
+3. **Determine winner privately** Called automatically. Click Refresh if you cannot see it. 
+4. **Finalize settlement** Called automatically. Click Refresh if you cannot see it. 
+5. **Creator usdc claim and raydium pool creation** Called manually. See roadmap.
+
+Currently, withdrawals of winner tokens and refunds go to the user public ATA, as this does not need to be encrypted. 
 
 ## Example SDK usage
 
@@ -231,7 +236,7 @@ main().catch(console.error);
 ## Program ID
 
 On devnet we are deployed at
-* `JEJdjPBaWAteXajrhpEJCWcgUci3QUCJbCvEJxwM9ZYq`
+* `BPKLg61gd4FChxuFkn2VEEbT9cMED5nsSYRi84j5FRaK`
 
 ## Troubleshooting
 
@@ -239,15 +244,17 @@ On devnet we are deployed at
 * Make sure your Solana CLI points to the local validator when testing locally.
 * If bid settlement fails, confirm that the auction has ended and the correct settlement instruction is being used.
 * Make sure, if testing in localnet, you have ARCIUM_CLUSTER_OFFSET=0 specified as a client environment variable. The SDK will default to 0 (localnet). The devnet program is deployed at 456
+* Make sure the pool has enough USDC and/or the creator has enough devnet SOL to make the pool (See roadmap)
+* Do not be scared by stack offsets on the arcium build process. They are entirely due to the UMBRA functions called from codema and not our own Arcrypt code. Use `<Box>` to make acounts more space-efficient if needed. 
 
-## Upcoming
+## Roadmap
 
 Planned and in-progress areas include:
 
-* On-chain CPI into Raydium so off-chain worker can auto create the Raydium pool
-* Finalise Umbra integration
+* On-chain CPI into Raydium so off-chain worker can auto create the Raydium pool, using liquidity from the auction to cover tx fees
+* Upgrade SDK support for fine grain txs and better callbacks on the encrypted bid placement
+* Make async tx signs appear as just one wallet sign for supported wallets
 * UI Changes
-* Rust SDK support
 * Mainnet Launch
 
 ## License

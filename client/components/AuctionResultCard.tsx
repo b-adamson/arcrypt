@@ -97,13 +97,36 @@ export default function AuctionResultCard({
   const minBid = auctionData?.minBid ?? auctionData?.min_bid;
   const endTime = auctionData?.endTime ?? auctionData?.end_time;
 
+  const tokenDecimalsSafe = tokenDecimals ?? 0;
+
+const paymentAmountRaw = paymentAmount ?? 0;
+const shouldShowSoldCard = BigInt(paymentAmountRaw.toString?.() ?? "0") > 0n;
+
+const formattedSaleAmount = isMetadataOnly(auctionData)
+  ? "Metadata only"
+  : formatTokenAmount(saleAmount ?? 0, tokenDecimalsSafe);
+
+    const displayedSupplyRaw = devBalanceRaw + programBalanceRaw;
+
+const formattedDisplayedSupply = isMetadataOnly(auctionData)
+  ? "Metadata only"
+  : formatTokenAmount(displayedSupplyRaw, tokenDecimalsSafe);
+
+const formattedCreatorBalance = isMetadataOnly(auctionData)
+  ? "Metadata only"
+  : formatTokenAmount(devBalanceRaw, tokenDecimalsSafe);
+
+const formattedVaultBalance = isMetadataOnly(auctionData)
+  ? "Metadata only"
+  : formatTokenAmount(programBalanceRaw, tokenDecimalsSafe);
+
   const metadataUri = getMetadataUri(auctionData);
   const metadataHttpUri = toHttpGateway(metadataUri);
 
   const formattedPayment = formatUsdcAmount(paymentAmount ?? 0);
-  const formattedSaleAmount = isMetadataOnly(auctionData)
-    ? "Metadata only"
-    : formatTokenAmount(saleAmount ?? 0, tokenDecimals);
+  // const formattedSaleAmount = isMetadataOnly(auctionData)
+  //   ? "Metadata only"
+  //   : formatTokenAmount(saleAmount ?? 0, tokenDecimals);
 
   const bidCount = Number(auctionData?.bidCount ?? auctionData?.bid_count ?? 0);
   const flash = useBidFlash(bidCount);
@@ -230,11 +253,11 @@ export default function AuctionResultCard({
     };
   }, [connection, mintStr, vaultStr, creatorStr, auctionData?.assetKind, auctionData?.asset_kind, auctionData]);
 
-  const displayedSupplyRaw = devBalanceRaw + programBalanceRaw;
 
-  const formattedDisplayedSupply = isMetadataOnly(auctionData)
-    ? "Metadata only"
-    : formatTokenAmount(displayedSupplyRaw, tokenDecimals);
+
+  // const formattedDisplayedSupply = isMetadataOnly(auctionData)
+  //   ? "Metadata only"
+  //   : formatTokenAmount(displayedSupplyRaw, tokenDecimals);
 
   const formattedDevBalance = isMetadataOnly(auctionData)
     ? "Metadata only"
@@ -330,8 +353,8 @@ export default function AuctionResultCard({
                   copyValue={metadata?.image || ""}
                 />
 
-                <CopyableField label="Dev balance (USDC)" value={formattedDevBalance} />
-                <CopyableField label="Program balance (USDC)" value={formattedProgramBalance} />
+                <CopyableField label="Dev balance" value={formattedDevBalance} />
+                <CopyableField label="Program balance" value={formattedProgramBalance} />
                 <CopyableField label="Supply (dev + program)" value={formattedDisplayedSupply} />
               </div>
 
@@ -379,11 +402,11 @@ export default function AuctionResultCard({
         <CopyableField label="Min bid (USDC)" value={formattedMinBid} />
         <CopyableField label="End time" value={formatEndTime(endTime)} />
 
-        {multi && bidCount < 3 && (
-          <div className="col-span-full border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm">
-            Uniform auctions require at least 3 bids. Results are incomplete.
-          </div>
-        )}
+          {multi && auctionEnded && bidCount < 3 && (
+            <div className="col-span-full border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm">
+              Uniform auctions require at least 3 bids. Results are incomplete.
+            </div>
+          )}
 
         {!multi ? (
           <>
@@ -392,11 +415,49 @@ export default function AuctionResultCard({
               value={isWinner ? "You are the winner" : singleWinner ? shorten(singleWinner) : "Not resolved yet"}
               copyValue={singleWinner ?? ""}
             />
-            <CopyableField
-              label="Payment (USDC)"
-              value={formattedPayment}
-              copyValue={toStringMaybe(paymentAmount ?? 0)}
-            />
+{shouldShowSoldCard && (
+  <div
+    className={`col-span-full border px-5 py-5 ${
+      auctionEnded
+        ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)]"
+        : "border-[var(--line)] bg-[var(--background)]"
+    }`}
+  >
+    <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+      SOLD
+    </div>
+
+    <div
+      className={`mt-2 flex items-end gap-2 ${
+        auctionEnded ? "text-accent" : "text-[var(--foreground)]"
+      }`}
+    >
+      <span className="text-4xl font-bold tabular-nums">
+        {formattedPayment}
+      </span>
+
+      <span className="pb-1 text-sm font-semibold uppercase tracking-[0.18em] opacity-70">
+        USDC
+      </span>
+    </div>
+
+    <button
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(toStringMaybe(paymentAmount ?? 0));
+        } catch {}
+      }}
+      className={`mt-3 inline-flex min-w-[52px] items-center justify-center border px-2 py-1 text-xs transition ${
+        auctionEnded
+          ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_14%,transparent)] text-accent hover:opacity-80"
+          : "border-[var(--line)] bg-[var(--background)] text-[var(--muted)] hover:border-[var(--line-strong)] hover:text-[var(--foreground)]"
+      }`}
+      title="Copy"
+    >
+      Copy
+    </button>
+  </div>
+)}
           </>
         ) : (
           <>
@@ -411,7 +472,7 @@ export default function AuctionResultCard({
             />
 
             <CopyableField
-              label="Winner bids (USDC)"
+              label="Winner allocations (USDC)"
               value={formattedWinnerBids}
               copyValue={winnerBids.join(", ")}
             />

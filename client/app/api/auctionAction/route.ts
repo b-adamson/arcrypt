@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { Buffer } from "buffer";
-import { PublicKey } from "@solana/web3.js";
+import { Keypair, PublicKey } from "@solana/web3.js";
 import { createReadOnlyProgram } from "../../../lib/anchorClient";
 import {
   createDetermineWinner,
@@ -9,14 +9,28 @@ import {
   type SettlementAction,
 } from "@arcrypt/sdk";
 
+function loadBackendSigner(): Keypair {
+  const raw = process.env.BACKEND_SIGNER_SECRET;
+  if (!raw) {
+    throw new Error("Missing BACKEND_SIGNER_SECRET");
+  }
+
+  const parsed = JSON.parse(raw);
+  if (!Array.isArray(parsed)) {
+    throw new Error("BACKEND_SIGNER_SECRET must be a JSON array");
+  }
+
+  return Keypair.fromSecretKey(Uint8Array.from(parsed));
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { auctionPk, publicKey, kind, which, action } = body ?? {};
 
-    if (!auctionPk || !publicKey || !kind) {
+    if (!auctionPk || !kind) {
       return NextResponse.json(
-        { error: "auctionPk, publicKey, and kind are required" },
+        { error: "auctionPk and kind are required" },
         { status: 400 }
       );
     }
@@ -32,23 +46,26 @@ export async function POST(req: Request) {
     }
 
     const program = await createReadOnlyProgram(rpcUrl, programIdStr);
-    const userPk = new PublicKey(publicKey);
     const auctionPkObj = new PublicKey(auctionPk);
 
     if (kind === "determineWinner") {
+      const keeper = loadBackendSigner();
+
       const bundle = await createDetermineWinner({
         programClient: program,
         programId: new PublicKey(programIdStr),
-        publicKey: userPk,
+        publicKey: keeper.publicKey,
         auctionPk: auctionPkObj,
         which: which as DetermineWinnerKind,
       });
 
       const tx = bundle.transaction;
-      tx.feePayer = userPk;
+      tx.feePayer = keeper.publicKey;
       tx.recentBlockhash = (
         await program.provider.connection.getLatestBlockhash()
       ).blockhash;
+
+      tx.partialSign(keeper);
 
       return NextResponse.json({
         txBase64: Buffer.from(
@@ -59,6 +76,14 @@ export async function POST(req: Request) {
     }
 
     if (kind === "settlement") {
+      if (!publicKey) {
+        return NextResponse.json(
+          { error: "publicKey is required for settlement" },
+          { status: 400 }
+        );
+      }
+
+      const userPk = new PublicKey(publicKey);
       const auctionData = await program.account.auction.fetch(auctionPkObj);
 
       const escrowPda = PublicKey.findProgramAddressSync(
@@ -95,10 +120,7 @@ export async function POST(req: Request) {
       });
     }
 
-    return NextResponse.json(
-      { error: "invalid kind" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "invalid kind" }, { status: 400 });
   } catch (err: any) {
     console.error("auctionAction error:", err);
     return NextResponse.json(

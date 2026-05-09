@@ -29,6 +29,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-  ],
+, "app/api/createRaydiumPool"  ],
   "exclude": ["node_modules"]
 }

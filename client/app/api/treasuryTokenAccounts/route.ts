@@ -68,7 +68,7 @@ async function listGovernancesForRealm(
     filters: [
       {
         memcmp: {
-          offset: 1, // ⚠️ realm field offset in Governance account
+          offset: 1, // realm field offset in Governance account
           bytes: realmPk.toBase58(),
         },
       },
@@ -126,7 +126,6 @@ export async function GET(req: Request) {
     const governanceProgramId = new PublicKey(programId);
     const realmPk = new PublicKey(realm);
 
-    // TODO: fetch realm account here and read its community mint
     const communityMint = await fetchRealmCommunityMint(connection, governanceProgramId, realmPk);
 
     const governancePks = await listGovernancesForRealm(

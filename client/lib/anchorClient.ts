@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Connection, PublicKey } from "@solana/web3.js";
-import type { Arcrypt } from "./arcrypt";
+import type { Arcrypt } from "./Arcrypt";
 
 async function loadIdlFromPublic(): Promise<anchor.Idl> {
   if (typeof window !== "undefined") {

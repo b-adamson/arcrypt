@@ -89,9 +89,6 @@ export default function Header() {
         className="text-[var(--foreground)]/70 hover:text-white transition leading-tight text-center"
       >
         <span className="block">Encrypted Balance</span>
-        <span className="block text-xs text-[var(--accent)]">
-          [dev]
-        </span>
       </Link>
     </nav>
     <div className="scale-95 brightness-110">

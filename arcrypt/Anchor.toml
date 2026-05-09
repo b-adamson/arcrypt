@@ -6,10 +6,10 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-arcibid = "JEJdjPBaWAteXajrhpEJCWcgUci3QUCJbCvEJxwM9ZYq"
+arcibid = "BPKLg61gd4FChxuFkn2VEEbT9cMED5nsSYRi84j5FRaK"
 
 [programs.localnet]
-arcibid = "JEJdjPBaWAteXajrhpEJCWcgUci3QUCJbCvEJxwM9ZYq"
+arcibid = "BPKLg61gd4FChxuFkn2VEEbT9cMED5nsSYRi84j5FRaK"
 
 [registry]
 url = "https://api.apr.dev"

@@ -6,7 +6,7 @@ import { PublicKey, Transaction, } from "@solana/web3.js";
 import { AccountMetaData, InstructionData, VoteType, getTokenOwnerRecordAddress, withCreateProposal, withInsertTransaction, withSignOffProposal, } from "@realms-today/spl-governance";
 import { getArciumEnv, getMXEPublicKey, x25519, RescueCipher, deserializeLE, getMXEAccAddress, getClusterAccAddress, getMempoolAccAddress, getExecutingPoolAccAddress, getFeePoolAccAddress, getClockAccAddress, getCompDefAccOffset, getCompDefAccAddress, getComputationAccAddress, getArciumProgram, } from "@arcium-hq/client";
 import dotenv from "dotenv";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, NATIVE_MINT, } from "@solana/spl-token";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, } from "@solana/spl-token";
 dotenv.config();
 const PAYMENT_MINT = new PublicKey("4oG4sjmopf5MzvTHLE8rpVJ2uyczxfsw2K84SUTpNDx7");
 const PAYMENT_DECIMALS = 6;
@@ -496,7 +496,7 @@ export async function buildReclaimUnsoldTransaction(params) {
     const prizeMintPk = new PublicKey(auctionData.tokenMint ?? auctionData.token_mint);
     const prizeVaultPk = new PublicKey(auctionData.prizeVault ?? auctionData.prize_vault);
     const vaultAuthorityPda = PublicKey.findProgramAddressSync([Buffer.from("vault-authority"), auctionPk.toBuffer()], programId)[0];
-    const creatorAta = getAssociatedTokenAddressSync(prizeMintPk, publicKey, false, TOKEN_PROGRAM_ID);
+    const creatorAta = getAssociatedTokenAddressSync(prizeMintPk, creatorPk, false, TOKEN_PROGRAM_ID);
     const ix = await programClient.methods
         .reclaimUnsoldTokenItem()
         .accounts({
@@ -518,12 +518,18 @@ export async function buildClaimRefundTransaction(params) {
     if (!auctionData)
         throw new Error("Auction data is required.");
     const escrowPda = deriveEscrowPda(auctionPk, publicKey, programId);
+    const bidderPaymentAta = getAssociatedTokenAddressSync(PAYMENT_MINT, publicKey);
+    const escrowTokenAccount = getAssociatedTokenAddressSync(PAYMENT_MINT, escrowPda, true);
     const ix = await programClient.methods
         .claimRefund()
         .accounts({
         bidder: publicKey,
         auction: auctionPk,
         escrowAccount: escrowPda,
+        bidderPaymentAta,
+        escrowTokenAccount,
+        paymentMint: PAYMENT_MINT,
+        tokenProgram: TOKEN_PROGRAM_ID,
     })
         .instruction();
     return txBundleFromInstruction(ix);
@@ -546,9 +552,10 @@ export async function buildSettleWinnerTransaction(params) {
         throw new Error("Could not determine settlement target.");
     const targetWinnerPk = new PublicKey(targetWinner);
     const winnerEscrowPda = deriveWinnerEscrowPda(auctionPk, targetWinnerPk, programId);
-    const escrowTokenAccount = getAssociatedTokenAddressSync(NATIVE_MINT, winnerEscrowPda, true);
-    const creatorWsolAta = getAssociatedTokenAddressSync(NATIVE_MINT, creatorPk);
-    const winnerWsolAta = getAssociatedTokenAddressSync(NATIVE_MINT, targetWinnerPk);
+    const paymentMintPk = PAYMENT_MINT;
+    const escrowTokenAccount = getAssociatedTokenAddressSync(paymentMintPk, winnerEscrowPda, true);
+    const creatorPaymentAta = getAssociatedTokenAddressSync(paymentMintPk, creatorPk);
+    const winnerPaymentAta = getAssociatedTokenAddressSync(paymentMintPk, targetWinnerPk);
     if (metadataOnly) {
         const ix = await programClient.methods
             .finalizeMetadataWinnerPayout()
@@ -558,9 +565,9 @@ export async function buildSettleWinnerTransaction(params) {
             winnerWallet: targetWinnerPk,
             winnerEscrow: winnerEscrowPda,
             escrowTokenAccount,
-            creatorWsolAta,
-            winnerWsolAta,
-            wsolMint: NATIVE_MINT,
+            creatorPaymentAta,
+            winnerPaymentAta,
+            paymentMint: PAYMENT_MINT,
             associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
             tokenProgram: TOKEN_PROGRAM_ID,
         })
@@ -574,6 +581,7 @@ export async function buildSettleWinnerTransaction(params) {
     const prizeVaultPk = new PublicKey(auctionData.prizeVault ?? auctionData.prize_vault);
     const vaultAuthorityPda = PublicKey.findProgramAddressSync([Buffer.from("vault-authority"), auctionPk.toBuffer()], programId)[0];
     const winnerAta = getAssociatedTokenAddressSync(prizeMintPk, targetWinnerPk, false, TOKEN_PROGRAM_ID);
+    const creatorAta = getAssociatedTokenAddressSync(prizeMintPk, creatorPk, false, TOKEN_PROGRAM_ID);
     const ix = await programClient.methods
         .finalizeTokenWinnerPayout()
         .accounts({
@@ -583,15 +591,16 @@ export async function buildSettleWinnerTransaction(params) {
         winnerWallet: targetWinnerPk,
         winnerEscrow: winnerEscrowPda,
         escrowTokenAccount,
-        creatorWsolAta,
-        winnerWsolAta,
-        wsolMint: NATIVE_MINT,
+        creatorPaymentAta,
+        winnerPaymentAta,
+        paymentMint: PAYMENT_MINT,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         tokenProgram: TOKEN_PROGRAM_ID,
         prizeMint: prizeMintPk,
         prizeVault: prizeVaultPk,
         vaultAuthority: vaultAuthorityPda,
         winnerAta,
+        creatorAta,
     })
         .instruction();
     return txBundleFromInstruction(ix);

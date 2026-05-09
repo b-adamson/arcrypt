@@ -40,7 +40,6 @@ import {
 import dotenv from "dotenv";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
-  NATIVE_MINT,
 } from "@solana/spl-token";
 
 dotenv.config();
@@ -985,7 +984,12 @@ export async function buildReclaimUnsoldTransaction(
     [Buffer.from("vault-authority"), auctionPk.toBuffer()],
     programId
   )[0];
-  const creatorAta = getAssociatedTokenAddressSync(prizeMintPk, publicKey, false, TOKEN_PROGRAM_ID);
+  const creatorAta = getAssociatedTokenAddressSync(
+    prizeMintPk,
+    creatorPk,
+    false,
+    TOKEN_PROGRAM_ID
+  );
 
   const ix = await (programClient.methods as any)
     .reclaimUnsoldTokenItem()
@@ -1011,6 +1015,8 @@ export async function buildClaimRefundTransaction(
   if (!auctionData) throw new Error("Auction data is required.");
 
   const escrowPda = deriveEscrowPda(auctionPk, publicKey, programId);
+  const bidderPaymentAta = getAssociatedTokenAddressSync(PAYMENT_MINT, publicKey);
+  const escrowTokenAccount = getAssociatedTokenAddressSync(PAYMENT_MINT, escrowPda, true);
 
   const ix = await (programClient.methods as any)
     .claimRefund()
@@ -1018,6 +1024,10 @@ export async function buildClaimRefundTransaction(
       bidder: publicKey,
       auction: auctionPk,
       escrowAccount: escrowPda,
+      bidderPaymentAta,
+      escrowTokenAccount,
+      paymentMint: PAYMENT_MINT,
+      tokenProgram: TOKEN_PROGRAM_ID,
     })
     .instruction();
 
@@ -1061,21 +1071,16 @@ export async function buildSettleWinnerTransaction(
     programId
   );
 
+  const paymentMintPk = PAYMENT_MINT;
+
   const escrowTokenAccount = getAssociatedTokenAddressSync(
-    NATIVE_MINT,
+    paymentMintPk,
     winnerEscrowPda,
     true
   );
 
-  const creatorWsolAta = getAssociatedTokenAddressSync(
-    NATIVE_MINT,
-    creatorPk
-  );
-
-  const winnerWsolAta = getAssociatedTokenAddressSync(
-    NATIVE_MINT,
-    targetWinnerPk
-  );
+  const creatorPaymentAta = getAssociatedTokenAddressSync(paymentMintPk, creatorPk);
+  const winnerPaymentAta = getAssociatedTokenAddressSync(paymentMintPk, targetWinnerPk);
 
   if (metadataOnly) {
     const ix = await (programClient.methods as any)
@@ -1086,9 +1091,9 @@ export async function buildSettleWinnerTransaction(
         winnerWallet: targetWinnerPk,
         winnerEscrow: winnerEscrowPda,
         escrowTokenAccount,
-        creatorWsolAta,
-        winnerWsolAta,
-        wsolMint: NATIVE_MINT,
+        creatorPaymentAta,
+        winnerPaymentAta,
+        paymentMint: PAYMENT_MINT,
         associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
@@ -1120,6 +1125,13 @@ export async function buildSettleWinnerTransaction(
     TOKEN_PROGRAM_ID
   );
 
+  const creatorAta = getAssociatedTokenAddressSync(
+    prizeMintPk,
+    creatorPk,
+    false,
+    TOKEN_PROGRAM_ID
+  );
+
   const ix = await (programClient.methods as any)
     .finalizeTokenWinnerPayout()
     .accounts({
@@ -1130,9 +1142,9 @@ export async function buildSettleWinnerTransaction(
       winnerWallet: targetWinnerPk,
       winnerEscrow: winnerEscrowPda,
       escrowTokenAccount,
-      creatorWsolAta,
-      winnerWsolAta,
-      wsolMint: NATIVE_MINT,
+      creatorPaymentAta,
+      winnerPaymentAta,
+      paymentMint: PAYMENT_MINT,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       tokenProgram: TOKEN_PROGRAM_ID,
 
@@ -1140,6 +1152,7 @@ export async function buildSettleWinnerTransaction(
       prizeVault: prizeVaultPk,
       vaultAuthority: vaultAuthorityPda,
       winnerAta,
+      creatorAta,
     })
     .instruction();
 

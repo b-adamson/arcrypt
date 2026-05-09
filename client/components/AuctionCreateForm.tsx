@@ -120,7 +120,8 @@ onSubmit: (
   tokenOverride?: {
     mint: string;
     sourceAta?: string;
-  }
+  },
+  saleAmountOverride?: string
 ) => Promise<void>;
 };
 
@@ -213,7 +214,6 @@ const [isProcessing, setIsProcessing] = useState(false);
   const [tokenMintMode, setTokenMintMode] = useState<"Existing" | "CreateNew">("CreateNew");
 
 const [totalSupply, setTotalSupply] = useState("1000000");
-const [keepAmount, setKeepAmount] = useState("");
 const [keepPercent, setKeepPercent] = useState("10");
 
 const split = useMemo(() => {
@@ -387,31 +387,25 @@ async function handleSubmit() {
   let metadataUri: string | undefined = undefined;
   let mintAddress = "";
 
- if (
-  assetKind === "Fungible" &&
-  tokenMintMode === "CreateNew"
-) {
+ if (assetKind === "Fungible" && tokenMintMode === "CreateNew") {
   try {
-   if (!publicKey || !wallet?.adapter) {
-  throw new Error("Wallet not connected");
-}
+    if (!publicKey || !wallet?.adapter) {
+      throw new Error("Wallet not connected");
+    }
 
     const total = Number(totalSupply);
-    const keep = Number(keepAmount);
+    const pct = Number(keepPercent);
 
-    if (!total || total <= 0) {
+    if (!Number.isFinite(total) || total <= 0) {
       throw new Error("Total supply required");
     }
 
-    if (keep < 0 || keep > total) {
-      throw new Error("Invalid keep amount");
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+      throw new Error("Invalid keep percent");
     }
 
-   const auctionAmountUi = split.auction;
-
-const userReserve = split.user;
-localStorage.setItem("totalSupply", String(total));
-localStorage.setItem("userReserve", String(userReserve));
+    const userReserve = Math.floor((pct / 100) * total);
+    const auctionAmountUi = total - userReserve;
 
     if (auctionAmountUi <= 0) {
       throw new Error("Auction amount must be > 0");
@@ -423,14 +417,10 @@ localStorage.setItem("userReserve", String(userReserve));
 
     setIsProcessing(true);
 
-
     const formData = new FormData();
     formData.append("name", metadataName.trim());
     formData.append("description", metadataDescription.trim());
-
-    if (metadataImageFile) {
-      formData.append("image", metadataImageFile);
-    }
+    if (metadataImageFile) formData.append("image", metadataImageFile);
 
     const res = await fetch("/api/pin-metadata", {
       method: "POST",
@@ -438,30 +428,32 @@ localStorage.setItem("userReserve", String(userReserve));
     });
 
     const json = await res.json();
-
     if (!res.ok) {
       throw new Error(json?.error || "Metadata upload failed");
     }
 
     metadataUri = json.metadataUri;
 
-const { mint, ownerAta } = await mintToken(
-  connection,
-  wallet.adapter,
-  publicKey,
-  total
-);
+    const { mint, ownerAta } = await mintToken(
+      connection,
+      wallet.adapter,
+      publicKey,
+      total
+    );
 
-mintAddress = mint.toBase58();
+    mintAddress = mint.toBase58();
 
-onTokenMintChange(mintAddress);
-onSaleAmountTokenChange(String(auctionAmountUi));
+    onTokenMintChange(mintAddress);
+    onSaleAmountTokenChange(String(auctionAmountUi));
 
-await onSubmit(metadataUri, {
-  mint: mintAddress,
-  sourceAta: ownerAta.toBase58(),
-});
-
+    await onSubmit(
+      metadataUri,
+      {
+        mint: mintAddress,
+        sourceAta: ownerAta.toBase58(),
+      },
+      String(auctionAmountUi)
+    );
   } catch (err: any) {
     console.error(err);
     alert(err?.message || "Failed to mint token");

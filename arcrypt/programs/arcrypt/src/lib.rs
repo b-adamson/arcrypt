@@ -140,7 +140,7 @@ const COMP_DEF_OFFSET_PLACE_ENCRYPTED_BID: u32 =
     comp_def_offset("place_encrypted_bid");
 
 // ARCRYPT ID
-declare_id!("JEJdjPBaWAteXajrhpEJCWcgUci3QUCJbCvEJxwM9ZYq");
+declare_id!("BPKLg61gd4FChxuFkn2VEEbT9cMED5nsSYRi84j5FRaK");
 
 // Auction account byte offset: 8 (discriminator) + 1 + 32 + 1 + 1 + 8 + 8 + 2 + 16 = 77
 const AUCTION_HEADER_SIZE: u32 = 8 + 1 + 32 + 1 + 1 + 8 + 8 + 2 + 16;
@@ -149,6 +149,94 @@ const ENCRYPTED_STATE_SIZE: u32 = 32 * 13;
 
 pub const UMBRA_PROGRAM_ID: Pubkey = pubkey!("DSuKkyqGVGgo4QtPABfxKJKygUDACbUhirnuv63mEpAJ");
 pub const PAYMENT_MINT: Pubkey = pubkey!("4oG4sjmopf5MzvTHLE8rpVJ2uyczxfsw2K84SUTpNDx7"); // umbra usdc
+
+const WINNER_SHARE_BPS: u64 = 8_000;    // 80%
+const BPS_DENOM: u64 = 10_000;
+
+fn mul_bps(amount: u64, bps: u64) -> Result<u64> {
+    let v = (amount as u128)
+        .checked_mul(bps as u128)
+        .ok_or(ErrorCode::LamportOverflow)?
+        .checked_div(BPS_DENOM as u128)
+        .ok_or(ErrorCode::LamportOverflow)?;
+
+    Ok(v as u64)
+}
+
+fn token_winner_share(amount: u64) -> Result<u64> {
+    mul_bps(amount, WINNER_SHARE_BPS)
+}
+
+fn token_creator_share(amount: u64) -> Result<u64> {
+    amount
+        .checked_sub(token_winner_share(amount)?)
+        .ok_or(ErrorCode::LamportOverflow.into())
+}
+
+fn uniform_gross_payout_amount(auction: &Auction, winner_index: usize) -> Result<u64> {
+    let amounts = auction.winner_bids;
+    let prices = auction.winner_prices;
+    let clearing_price = auction.clearing_price;
+
+    let user_amount = amounts[winner_index];
+    let user_price = prices[winner_index];
+
+    require!(user_amount >= user_price, ErrorCode::BidTooSmall);
+
+    let user_quantity = (user_amount as u128)
+        .checked_div(user_price as u128)
+        .ok_or(ErrorCode::LamportOverflow)?;
+
+    let payment_amount = user_quantity
+        .checked_mul(clearing_price as u128)
+        .ok_or(ErrorCode::LamportOverflow)? as u64;
+
+    let mut total_value: u128 = 0;
+
+    for i in 0..3 {
+        let q = (amounts[i] as u128)
+            .checked_div(prices[i] as u128)
+            .ok_or(ErrorCode::LamportOverflow)?;
+
+        let v = q
+            .checked_mul(clearing_price as u128)
+            .ok_or(ErrorCode::LamportOverflow)?;
+
+        total_value = total_value
+            .checked_add(v)
+            .ok_or(ErrorCode::LamportOverflow)?;
+    }
+
+    let user_value = user_quantity
+        .checked_mul(clearing_price as u128)
+        .ok_or(ErrorCode::LamportOverflow)?;
+
+    let payout_amount = ((auction.sale_amount as u128)
+        .checked_mul(user_value)
+        .ok_or(ErrorCode::LamportOverflow)?)
+        .checked_div(total_value)
+        .ok_or(ErrorCode::LamportOverflow)? as u64;
+
+    Ok(payment_amount.max(payout_amount))
+}
+
+fn uniform_creator_reserve_amount(auction: &Auction) -> Result<u64> {
+    let mut total_winner_share: u128 = 0;
+
+    for i in 0..3 {
+        let gross = uniform_gross_payout_amount(auction, i)?;
+        let winner_share = token_winner_share(gross)? as u128;
+        total_winner_share = total_winner_share
+            .checked_add(winner_share)
+            .ok_or(ErrorCode::LamportOverflow)?;
+    }
+
+    let creator_share = (auction.sale_amount as u128)
+        .checked_sub(total_winner_share)
+        .ok_or(ErrorCode::LamportOverflow)?;
+
+    Ok(creator_share as u64)
+}
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace)]
 pub enum AuctionType {
@@ -1288,6 +1376,8 @@ pub struct Auction {
     pub clearing_price: u64,
     pub total_bid: u64,
     pub winner_paid_multi: [bool; 3],
+
+    pub creator_reserve_paid: bool,
 }
 
 
@@ -2170,15 +2260,15 @@ pub fn finalize_token_winner_payout(ctx: Context<FinalizeTokenWinnerPayout>) -> 
         Clock::get()?.unix_timestamp >= auction.end_time,
         ErrorCode::AuctionNotEnded
     );
-  
-require_keys_eq!(
-    ctx.accounts.payment_mint.key(),
-    PAYMENT_MINT,
-    ErrorCode::WrongMint
-);
 
-        let winner_wallet_key = ctx.accounts.winner_wallet.key();
-        let escrow = &ctx.accounts.winner_escrow;
+    require_keys_eq!(
+        ctx.accounts.payment_mint.key(),
+        PAYMENT_MINT,
+        ErrorCode::WrongMint
+    );
+
+    let winner_wallet_key = ctx.accounts.winner_wallet.key();
+    let escrow = &ctx.accounts.winner_escrow;
 
     require!(
         ctx.accounts.escrow_token_account.amount >= escrow.deposited_amount,
@@ -2187,6 +2277,9 @@ require_keys_eq!(
 
     require_keys_eq!(escrow.auction, auction.key(), ErrorCode::EscrowMismatch);
     require_keys_eq!(escrow.bidder, winner_wallet_key, ErrorCode::EscrowOwnerMismatch);
+
+    let is_fungible = matches!(auction.asset_kind, AssetKind::Fungible);
+    let auction_key = auction.key();
 
     match auction.auction_type {
         AuctionType::FirstPrice => {
@@ -2197,39 +2290,41 @@ require_keys_eq!(
             );
             require!(!auction.winner_paid, ErrorCode::AuctionAlreadySettled);
 
-            let payment_amount = auction.payment_amount;
-            let sale_amount = auction.sale_amount;
-
-            let auction_key = auction.key(); 
-
             let seeds = &[
                 b"escrow",
                 auction_key.as_ref(),
                 winner_wallet_key.as_ref(),
                 &[escrow.bump],
             ];
-
             let signer_seeds: &[&[&[u8]]] = &[seeds];
 
-settle_token_escrow(
-    &ctx.accounts.escrow_token_account.to_account_info(),
-    &ctx.accounts.creator_payment_ata.to_account_info(),
-    &ctx.accounts.winner_payment_ata.to_account_info(),
-    &ctx.accounts.winner_escrow.to_account_info(),
-    &ctx.accounts.token_program.to_account_info(),
-    signer_seeds,
-    escrow.deposited_amount,
-    payment_amount,
-    &ctx.accounts.payment_mint.to_account_info(),
-    ctx.accounts.payment_mint.decimals,
-)?;
+            let payment_amount = auction.payment_amount;
+            let sale_amount = auction.sale_amount;
 
-            let auction_key = auction.key();
+            settle_token_escrow(
+                &ctx.accounts.escrow_token_account.to_account_info(),
+                &ctx.accounts.creator_payment_ata.to_account_info(),
+                &ctx.accounts.winner_payment_ata.to_account_info(),
+                &ctx.accounts.winner_escrow.to_account_info(),
+                &ctx.accounts.token_program.to_account_info(),
+                signer_seeds,
+                escrow.deposited_amount,
+                payment_amount,
+                &ctx.accounts.payment_mint.to_account_info(),
+                ctx.accounts.payment_mint.decimals,
+            )?;
+
             let signer_seeds: &[&[&[u8]]] = &[&[
                 b"vault-authority",
                 auction_key.as_ref(),
                 &[auction.vault_authority_bump],
             ]];
+
+            let winner_tokens = if is_fungible {
+                token_winner_share(sale_amount)?
+            } else {
+                sale_amount
+            };
 
             pay_winner(
                 ctx.accounts.token_program.to_account_info(),
@@ -2237,10 +2332,25 @@ settle_token_escrow(
                 ctx.accounts.prize_vault.to_account_info(),
                 ctx.accounts.vault_authority.to_account_info(),
                 ctx.accounts.winner_ata.to_account_info(),
-                sale_amount,
+                winner_tokens,
                 auction.prize_decimals,
                 signer_seeds,
             )?;
+
+            if is_fungible {
+                let creator_tokens = token_creator_share(sale_amount)?;
+                pay_winner(
+                    ctx.accounts.token_program.to_account_info(),
+                    ctx.accounts.prize_mint.to_account_info(),
+                    ctx.accounts.prize_vault.to_account_info(),
+                    ctx.accounts.vault_authority.to_account_info(),
+                    ctx.accounts.creator_ata.to_account_info(),
+                    creator_tokens,
+                    auction.prize_decimals,
+                    signer_seeds,
+                )?;
+                auction.creator_reserve_paid = true;
+            }
 
             auction.winner_paid = true;
         }
@@ -2253,39 +2363,41 @@ settle_token_escrow(
             );
             require!(!auction.winner_paid, ErrorCode::AuctionAlreadySettled);
 
-            let payment_amount = auction.payment_amount;
-            let sale_amount = auction.sale_amount;
-
-            let auction_key = auction.key(); 
-
             let seeds = &[
                 b"escrow",
                 auction_key.as_ref(),
                 winner_wallet_key.as_ref(),
                 &[escrow.bump],
             ];
-
             let signer_seeds: &[&[&[u8]]] = &[seeds];
 
-settle_token_escrow(
-    &ctx.accounts.escrow_token_account.to_account_info(),
-    &ctx.accounts.creator_payment_ata.to_account_info(),
-    &ctx.accounts.winner_payment_ata.to_account_info(),
-    &ctx.accounts.winner_escrow.to_account_info(),
-    &ctx.accounts.token_program.to_account_info(),
-    signer_seeds,
-    escrow.deposited_amount,
-    payment_amount,
-    &ctx.accounts.payment_mint.to_account_info(),
-    ctx.accounts.payment_mint.decimals,
-)?;
+            let payment_amount = auction.payment_amount;
+            let sale_amount = auction.sale_amount;
 
-            let auction_key = auction.key();
+            settle_token_escrow(
+                &ctx.accounts.escrow_token_account.to_account_info(),
+                &ctx.accounts.creator_payment_ata.to_account_info(),
+                &ctx.accounts.winner_payment_ata.to_account_info(),
+                &ctx.accounts.winner_escrow.to_account_info(),
+                &ctx.accounts.token_program.to_account_info(),
+                signer_seeds,
+                escrow.deposited_amount,
+                payment_amount,
+                &ctx.accounts.payment_mint.to_account_info(),
+                ctx.accounts.payment_mint.decimals,
+            )?;
+
             let signer_seeds: &[&[&[u8]]] = &[&[
                 b"vault-authority",
                 auction_key.as_ref(),
                 &[auction.vault_authority_bump],
             ]];
+
+            let winner_tokens = if is_fungible {
+                token_winner_share(sale_amount)?
+            } else {
+                sale_amount
+            };
 
             pay_winner(
                 ctx.accounts.token_program.to_account_info(),
@@ -2293,10 +2405,25 @@ settle_token_escrow(
                 ctx.accounts.prize_vault.to_account_info(),
                 ctx.accounts.vault_authority.to_account_info(),
                 ctx.accounts.winner_ata.to_account_info(),
-                sale_amount,
+                winner_tokens,
                 auction.prize_decimals,
                 signer_seeds,
             )?;
+
+            if is_fungible {
+                let creator_tokens = token_creator_share(sale_amount)?;
+                pay_winner(
+                    ctx.accounts.token_program.to_account_info(),
+                    ctx.accounts.prize_mint.to_account_info(),
+                    ctx.accounts.prize_vault.to_account_info(),
+                    ctx.accounts.vault_authority.to_account_info(),
+                    ctx.accounts.creator_ata.to_account_info(),
+                    creator_tokens,
+                    auction.prize_decimals,
+                    signer_seeds,
+                )?;
+                auction.creator_reserve_paid = true;
+            }
 
             auction.winner_paid = true;
         }
@@ -2322,32 +2449,32 @@ settle_token_escrow(
                 ErrorCode::AuctionAlreadySettled
             );
 
+            let seeds = &[
+                b"escrow",
+                auction_key.as_ref(),
+                winner_wallet_key.as_ref(),
+                &[escrow.bump],
+            ];
+            let signer_seeds: &[&[&[u8]]] = &[seeds];
+
             let clearing_price = auction.clearing_price;
             let amounts = auction.winner_bids;
             let prices = auction.winner_prices;
 
-            // ---------- per-user ----------
             let user_amount = amounts[winner_index];
             let user_price = prices[winner_index];
 
-            require!(
-                user_amount >= user_price,
-                ErrorCode::BidTooSmall
-            );
+            require!(user_amount >= user_price, ErrorCode::BidTooSmall);
 
-            // quantity = escrow / bid_price
             let user_quantity = (user_amount as u128)
                 .checked_div(user_price as u128)
                 .ok_or(ErrorCode::LamportOverflow)?;
 
-            // payment = quantity * clearing_price
             let payment_amount = user_quantity
                 .checked_mul(clearing_price as u128)
                 .ok_or(ErrorCode::LamportOverflow)? as u64;
 
-            // ---------- total value ----------
             let mut total_value: u128 = 0;
-
             for i in 0..3 {
                 let q = (amounts[i] as u128)
                     .checked_div(prices[i] as u128)
@@ -2362,44 +2489,36 @@ settle_token_escrow(
                     .ok_or(ErrorCode::LamportOverflow)?;
             }
 
-            // ---------- user value ----------
             let user_value = user_quantity
                 .checked_mul(clearing_price as u128)
                 .ok_or(ErrorCode::LamportOverflow)?;
 
-            // ---------- token allocation ----------
-            let payout_amount = ((auction.sale_amount as u128)
+            let gross_payout = ((auction.sale_amount as u128)
                 .checked_mul(user_value)
                 .ok_or(ErrorCode::LamportOverflow)?)
                 .checked_div(total_value)
                 .ok_or(ErrorCode::LamportOverflow)? as u64;
 
-            let auction_key = auction.key(); 
+            settle_token_escrow(
+                &ctx.accounts.escrow_token_account.to_account_info(),
+                &ctx.accounts.creator_payment_ata.to_account_info(),
+                &ctx.accounts.winner_payment_ata.to_account_info(),
+                &ctx.accounts.winner_escrow.to_account_info(),
+                &ctx.accounts.token_program.to_account_info(),
+                signer_seeds,
+                escrow.deposited_amount,
+                payment_amount,
+                &ctx.accounts.payment_mint.to_account_info(),
+                ctx.accounts.payment_mint.decimals,
+            )?;
 
-            let seeds = &[
-                b"escrow",
-                auction_key.as_ref(),
-                winner_wallet_key.as_ref(),
-                &[escrow.bump],
-            ];
+            let winner_tokens = if is_fungible {
+                token_winner_share(gross_payout)?
+            } else {
+                gross_payout
+            };
 
-            let signer_seeds: &[&[&[u8]]] = &[seeds];
-
-settle_token_escrow(
-    &ctx.accounts.escrow_token_account.to_account_info(),
-    &ctx.accounts.creator_payment_ata.to_account_info(),
-    &ctx.accounts.winner_payment_ata.to_account_info(),
-    &ctx.accounts.winner_escrow.to_account_info(),
-    &ctx.accounts.token_program.to_account_info(),
-    signer_seeds,
-    escrow.deposited_amount,
-    payment_amount,
-    &ctx.accounts.payment_mint.to_account_info(),
-    ctx.accounts.payment_mint.decimals,
-)?;
-
-            let auction_key = auction.key();
-            let signer_seeds: &[&[&[u8]]] = &[&[
+            let vault_signer_seeds: &[&[&[u8]]] = &[&[
                 b"vault-authority",
                 auction_key.as_ref(),
                 &[auction.vault_authority_bump],
@@ -2411,12 +2530,30 @@ settle_token_escrow(
                 ctx.accounts.prize_vault.to_account_info(),
                 ctx.accounts.vault_authority.to_account_info(),
                 ctx.accounts.winner_ata.to_account_info(),
-                payout_amount,
+                winner_tokens,
                 auction.prize_decimals,
-                signer_seeds,
+                vault_signer_seeds,
             )?;
 
             auction.winner_paid_multi[winner_index] = true;
+
+            if is_fungible
+                && auction.winner_paid_multi.iter().all(|p| *p)
+                && !auction.creator_reserve_paid
+            {
+                let creator_tokens = uniform_creator_reserve_amount(auction)?;
+                pay_winner(
+                    ctx.accounts.token_program.to_account_info(),
+                    ctx.accounts.prize_mint.to_account_info(),
+                    ctx.accounts.prize_vault.to_account_info(),
+                    ctx.accounts.vault_authority.to_account_info(),
+                    ctx.accounts.creator_ata.to_account_info(),
+                    creator_tokens,
+                    auction.prize_decimals,
+                    vault_signer_seeds,
+                )?;
+                auction.creator_reserve_paid = true;
+            }
         }
     }
 
@@ -2726,8 +2863,6 @@ pub fn determine_winner_uniform_callback(
     require_not_resolved(auction)?;
     require!(auction.auction_type == AuctionType::Uniform, ErrorCode::WrongAuctionType);
 
-    
-
     auction.status = AuctionStatus::Resolved;
     auction.winners = [winner1_pk, winner2_pk, winner3_pk];
     auction.winner_bids = [
@@ -3004,28 +3139,37 @@ pub struct FinalizeTokenWinnerPayout<'info> {
 
     pub prize_mint: Box<InterfaceAccount<'info, Mint>>,
 
-pub payment_mint: Box<InterfaceAccount<'info, Mint>>,
+    pub payment_mint: Box<InterfaceAccount<'info, Mint>>,
+
+    #[account(
+        mut,
+        associated_token::mint = payment_mint,
+        associated_token::authority = winner_escrow,
+    )]
+    pub escrow_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        constraint = creator_payment_ata.owner == creator.key(),
+        constraint = creator_payment_ata.mint == payment_mint.key()
+    )]
+    pub creator_payment_ata: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        constraint = winner_payment_ata.owner == winner_wallet.key(),
+        constraint = winner_payment_ata.mint == payment_mint.key()
+    )]
+    pub winner_payment_ata: Box<InterfaceAccount<'info, TokenAccount>>,
 
 #[account(
-    mut,
-    associated_token::mint = payment_mint,
-    associated_token::authority = winner_escrow,
+    init_if_needed,
+    payer = payer,
+    associated_token::mint = prize_mint,
+    associated_token::authority = creator,
+    associated_token::token_program = token_program,
 )]
-pub escrow_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
-
-#[account(
-    mut,
-    constraint = creator_payment_ata.owner == creator.key(),
-    constraint = creator_payment_ata.mint == payment_mint.key()
-)]
-pub creator_payment_ata: Box<InterfaceAccount<'info, TokenAccount>>,
-
-#[account(
-    mut,
-    constraint = winner_payment_ata.owner == winner_wallet.key(),
-    constraint = winner_payment_ata.mint == payment_mint.key()
-)]
-pub winner_payment_ata: Box<InterfaceAccount<'info, TokenAccount>>,
+pub creator_ata: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
@@ -3327,6 +3471,7 @@ fn init_auction_common(
     auction.encrypted_state = [[0u8; 32]; 13];
 
     auction.raydium_pool_created = false;
+    auction.creator_reserve_paid = false;
 
     auction.token_mint = token_mint;
     auction.sale_amount = sale_amount;

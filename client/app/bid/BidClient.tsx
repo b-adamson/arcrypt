@@ -40,11 +40,15 @@ export default function BidPageClient({ auctionPk }: { auctionPk: string | null 
 
   const [programClient, setProgramClient] = useState<any | null>(null);
   const [readOnlyProgram, setReadOnlyProgram] = useState<any | null>(null);
+  const activeProgram = programClient ?? readOnlyProgram;
   const [status, setStatus] = useState<string | null>(null);
   const [bidTokens, setBidTokens] = useState("1");
 const [bidPriceUsdc, setBidPriceUsdc] = useState("1");
 const [bidAmountUsdc, setBidAmountUsdc] = useState("1");
 
+
+const [isRefreshing, setIsRefreshing] = useState(false);
+const autoFinalizeAttemptedRef = useRef<string | null>(null);
 const derivedAmountUsdc =
   Number(bidTokens || 0) * Number(bidPriceUsdc || 0);
 
@@ -52,13 +56,13 @@ const derivedAmountUsdc =
   const [auctionData, setAuctionData] = useState<any | null>(null);
   const [auctionEnded, setAuctionEnded] = useState(false);
   const [tokenDecimals, setTokenDecimals] = useState<number | null>(null);
-  const refreshedAtZeroRef = useRef(false);
+
 const [balanceRefreshKey, setBalanceRefreshKey] = useState(0);
   const [escrowExists, setEscrowExists] = useState<boolean | null>(null);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const walletBase58 = publicKey?.toBase58() ?? "";
-  const [txSigs, setTxSigs] = useState<string[]>([]);
+
   const auctionStatus = auctionData ? enumKey(auctionData.status).toLowerCase() : "";
   const isResolved = auctionStatus === "resolved";
   const winnerNow = auctionData && publicKey ? isWinnerOfAuction(auctionData, walletBase58) : false;
@@ -71,9 +75,25 @@ const [balanceRefreshKey, setBalanceRefreshKey] = useState(0);
   const bidCount = auctionData ? getBidCount(auctionData) : 0;
   const hasNoBids = auctionData ? bidCount === 0 : false;
   const router = useRouter();
-  const canDetermineWinner = !!auctionData && auctionEnded && !isResolved && !hasNoBids;
+  // const canDetermineWinner = !!auctionData && auctionEnded && !isResolved && !hasNoBids;
+  // const determineWinnerKind = auctionType === "firstprice" ? "first" : auctionType === "vickrey" ? "vickrey" : auctionType === "uniform" ? "uniform" : null;
 
-    console.log("auctionStatus:", auctionStatus);
+useEffect(() => {
+  if (!auctionData || !auctionPkStr || !activeProgram) return;
+
+  const endTime = Number(auctionData.endTime ?? auctionData.end_time ?? 0);
+  const now = Math.floor(Date.now() / 1000);
+  const statusKey = enumKey(auctionData.status).toLowerCase();
+  const ended = now >= endTime || statusKey === "closed" || statusKey === "resolved";
+
+  if (!ended) return;
+
+  const attemptKey = `${auctionPkStr}:${statusKey}:${endTime}:${bidCount}`;
+  if (autoFinalizeAttemptedRef.current === attemptKey) return;
+
+  autoFinalizeAttemptedRef.current = attemptKey;
+  void handleRefreshAuction();
+}, [auctionData, auctionPkStr, activeProgram, bidCount]);
 
 const bidAmountUsdcFinal =
   auctionType === "uniform"
@@ -83,19 +103,20 @@ const bidAmountUsdcFinal =
   const canReclaimUnsold = !!auctionData && auctionEnded && !isResolved && isCreator && hasNoBids;
 
   const canClaimRefund = !!auctionData && auctionEnded && isResolved && publicKey && !winnerNow && escrowExists === true;
+const assetKind = auctionData ? enumKey(auctionData.assetKind ?? auctionData.asset_kind) : "";
+const isTokenAuction = assetKind === "fungible";
+const raydiumPoolCreated = Boolean(
+  auctionData?.raydiumPoolCreated ?? auctionData?.raydium_pool_created
+);
 
 const swapUrl =
-  auctionData?.raydiumPoolCreated
+  raydiumPoolCreated && isTokenAuction
     ? `https://raydium.io/swap/?inputMint=${USDC_MINT}&outputMint=${
         auctionData.tokenMint ?? auctionData.token_mint
       }`
     : null;
 
 const outcomeText = !auctionData ? "Loading..." : !connected ? (auctionEnded ? "Auction ended — connect wallet to see results" : "Connect wallet to see outcome") : !auctionEnded ? "Auction in progress" : !isResolved && hasNoBids ? "Auction ended — creator can reclaim unsold item" : isResolved ? (winnerNow ? (winnerClaimed ? "You won the auction — settled" : "You won the auction") : isCreator ? "Auction resolved — settlement pending" : canClaimRefund ? "You lost the auction — refund available" : "You lost the auction — no refund to claim") : "Auction ended — winner pending";
-
-const determineWinnerKind = auctionType === "firstprice" ? "first" : auctionType === "vickrey" ? "vickrey" : auctionType === "uniform" ? "uniform" : null;
-
-const determineWinnerLabel = determineWinnerKind === "first" ? "Determine first-price winner" : determineWinnerKind === "vickrey" ? "Determine Vickrey winner" : determineWinnerKind === "uniform" ? "Determine uniform winner" : "Determine pro-rata winner";
 
   const panelClass = "mt-6 overflow-hidden border border-[var(--line)] bg-[var(--surface)] p-6 shadow-none";
 
@@ -107,43 +128,25 @@ const determineWinnerLabel = determineWinnerKind === "first" ? "Determine first-
 
   const outcomeBadgeClass = "inline-flex items-center border border-[var(--line)] bg-[var(--background)] px-3 py-1 text-xs font-medium text-[var(--foreground)]";
 
-  useEffect(() => {
-    if (!auctionData) {
-      setTimeLeft(null);
-      refreshedAtZeroRef.current = false;
-      return;
-    }
+ useEffect(() => {
+  if (!auctionData) {
+    setTimeLeft(null);
+    return;
+  }
 
-    const endTime = Number(auctionData.endTime ?? auctionData.end_time ?? 0);
+  const endTime = Number(auctionData.endTime ?? auctionData.end_time ?? 0);
 
-    const tick = async () => {
-      const now = Math.floor(Date.now() / 1000);
-      const remaining = endTime - now;
-      const next = remaining > 0 ? remaining : 0;
+  const tick = () => {
+    const now = Math.floor(Date.now() / 1000);
+    const remaining = endTime - now;
+    setTimeLeft(remaining > 0 ? remaining : 0);
+  };
 
-      setTimeLeft(next);
+  tick();
+  const interval = window.setInterval(tick, 1000);
 
-      if (next === 0 && !refreshedAtZeroRef.current) {
-        refreshedAtZeroRef.current = true;
-        try {
-          await refreshAuctionState();
-        } catch (err) {
-          console.error("Failed to refresh auction state at timer end:", err);
-        }
-      }
-
-      if (next > 0) {
-        refreshedAtZeroRef.current = false;
-      }
-    };
-
-    tick();
-    const interval = setInterval(() => {
-      void tick();
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [auctionData]);
+  return () => window.clearInterval(interval);
+}, [auctionData]);
 
 
   function formatTimeLeft(seconds: number | null): string {
@@ -165,38 +168,42 @@ const determineWinnerLabel = determineWinnerKind === "first" ? "Determine first-
     return Number(auction?.bidCount ?? auction?.bid_count ?? 0);
   }
 
-  useEffect(() => {
-    let cancelled = false;
+useEffect(() => {
+  let cancelled = false;
 
-    (async () => {
-      try {
-        console.log("auctionPkStr", auctionPkStr);
-        if (!auctionPkStr) return;
+  (async () => {
+    try {
+      if (!auctionPkStr || !activeProgram) return;
 
-        const program = programClient ?? readOnlyProgram;
-        if (!program) return;
+      const auctionPk = new PublicKey(auctionPkStr);
+      const auction = await activeProgram.account.auction.fetchNullable(auctionPk);
 
-        const auctionPk = new PublicKey(auctionPkStr);
-        const auction = await program.account.auction.fetchNullable(auctionPk);
+      if (cancelled) return;
 
-        if (cancelled) return;
-
-        if (!auction) {
-          setStatus("Auction not found on chain yet.");
-          return;
-        }
-
-        setAuctionData(auction);
-      } catch (e) {
-        console.error("bid fetch failed:", e);
-        if (!cancelled) setStatus(String(e));
+      if (!auction) {
+        setStatus("Auction not found on chain yet.");
+        return;
       }
-    })();
 
-    return () => {
-      cancelled = true;
-    };
-  }, [auctionPkStr, programClient, readOnlyProgram]);
+      setAuctionData(auction);
+
+      const statusKey = enumKey(auction.status).toLowerCase();
+      const endTime = Number(auction.endTime ?? auction.end_time ?? 0);
+      const now = Math.floor(Date.now() / 1000);
+
+      setAuctionEnded(
+        now >= endTime || statusKey === "closed" || statusKey === "resolved"
+      );
+    } catch (e) {
+      console.error("bid fetch failed:", e);
+      if (!cancelled) setStatus(String(e));
+    }
+  })();
+
+  return () => {
+    cancelled = true;
+  };
+}, [auctionPkStr, activeProgram]);
 
   useEffect(() => {
     let cancelled = false;
@@ -271,7 +278,7 @@ const determineWinnerLabel = determineWinnerKind === "first" ? "Determine first-
         }
 
         const mintPk = new PublicKey(mintStr);
-        const connection = programClient?.provider.connection ?? readOnlyProgram?.provider.connection;
+        const connection = activeProgram?.provider.connection;
 
         if (!connection) return;
 
@@ -341,19 +348,212 @@ body: JSON.stringify({
     return res.json();
   }
 
-  async function refreshAuctionState() {
-    if (!programClient || !auctionPkStr) return;
-    const auctionPk = new PublicKey(auctionPkStr);
-    const auction = await programClient.account.auction.fetch(auctionPk);
-    setAuctionData(auction);
+async function refreshAuctionState() {
+  if (!activeProgram || !auctionPkStr) return null;
 
-    const statusKey = enumKey(auction.status).toLowerCase();
+  const auctionPk = new PublicKey(auctionPkStr);
+  const auction = await activeProgram.account.auction.fetch(auctionPk);
+
+  setAuctionData(auction);
+
+  const statusKey = enumKey(auction.status).toLowerCase();
+  const endTime = Number(auction.endTime ?? auction.end_time ?? 0);
+  const now = Math.floor(Date.now() / 1000);
+  setAuctionEnded(now >= endTime || statusKey === "closed" || statusKey === "resolved");
+
+  return auction;
+}
+
+  async function handleRefreshAuction() {
+  if (isRefreshing) return;
+  setIsRefreshing(true);
+
+  try {
+    if (!activeProgram || !auctionPkStr) {
+      throw new Error("Missing auction or program client");
+    }
+
+const program = activeProgram;
+const connection = program.provider.connection;
+
+let auction = await refreshAuctionState();
+if (!auction) {
+  throw new Error("Auction not found on chain yet.");
+}
+
+const auctionPkObj = new PublicKey(auctionPkStr);
+const statusKey = enumKey(auction.status).toLowerCase();
     const endTime = Number(auction.endTime ?? auction.end_time ?? 0);
     const now = Math.floor(Date.now() / 1000);
+    const bidCountNow = Number(auction.bidCount ?? auction.bid_count ?? 0);
     const ended = now >= endTime || statusKey === "closed" || statusKey === "resolved";
-    setAuctionEnded(ended);
 
+    if (ended && statusKey !== "resolved" && bidCountNow > 0) {
+      const auctionTypeNow = getAuctionType(auction);
+      const which =
+        auctionTypeNow === "firstprice"
+          ? "first"
+          : auctionTypeNow === "vickrey"
+            ? "vickrey"
+            : auctionTypeNow === "uniform"
+              ? "uniform"
+              : null;
+
+      if (which) {
+        const srv = await callAuctionActions({
+          kind: "determineWinner",
+          auctionPk: auctionPkStr,
+          which,
+        });
+
+        if (srv?.error) throw new Error(srv.error);
+
+        const tx = Transaction.from(Buffer.from(srv.txBase64, "base64"));
+        const sig = await connection.sendRawTransaction(tx.serialize());
+        await connection.confirmTransaction(sig, "confirmed");
+      }
+    }
+
+auction = (await refreshAuctionState()) ?? auction;
+const refreshedStatus = enumKey(auction.status).toLowerCase();
+
+    if (refreshedStatus !== "resolved") {
+      setStatus("Auction refreshed.");
+      return;
+    }
+
+    setStatus("Auction resolved. Settling...");
+
+    const settleRes = await fetch("/api/settleAuction", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ auctionPk: auctionPkStr }),
+    });
+
+    const settleJson = await settleRes.json();
+    if (!settleRes.ok) throw new Error(settleJson?.error || "Settlement failed");
+
+    const settleTxs = (settleJson.txBase64s ?? []).map((b64: string) =>
+      Transaction.from(Buffer.from(b64, "base64"))
+    );
+
+    for (const tx of settleTxs) {
+      const sig = await connection.sendRawTransaction(tx.serialize());
+      await connection.confirmTransaction(sig, "confirmed");
+    }
+
+    await refreshAuctionState();
+    setStatus(settleTxs.length > 0 ? "Auction refreshed and settled." : "Auction already settled.");
+  } catch (err: any) {
+    console.error("refresh failed:", err);
+    setStatus("Refresh failed: " + (err?.message ?? String(err)));
+  } finally {
+    setIsRefreshing(false);
   }
+}
+
+async function handleClaimPayoutAndCreatePool() {
+  try {
+    if (!activeProgram || !publicKey || !auctionData || !auctionPkStr) {
+      throw new Error("Missing state");
+    }
+
+    const assetKind = enumKey(auctionData.assetKind).toLowerCase();
+    if (assetKind !== "fungible") {
+      throw new Error("Only fungible token auctions can create a pool");
+    }
+
+    const creatorPk = new PublicKey(auctionData.authority);
+    if (!creatorPk.equals(publicKey)) {
+      throw new Error("Only the creator can create the pool");
+    }
+
+    const connection = activeProgram.provider.connection;
+    const auctionPkObj = new PublicKey(auctionPkStr);
+
+    setStatus("Ensuring settlement is complete...");
+
+    const settleRes = await fetch("/api/settleAuction", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ auctionPk: auctionPkStr }),
+    });
+
+    const settleJson = await settleRes.json();
+    if (!settleRes.ok) {
+      throw new Error(settleJson?.error || "Settlement failed");
+    }
+
+    const settleTxs = (settleJson.txBase64s ?? []).map((b64: string) =>
+      Transaction.from(Buffer.from(b64, "base64"))
+    );
+
+    for (const tx of settleTxs) {
+      const sig = await connection.sendRawTransaction(tx.serialize());
+      await connection.confirmTransaction(sig, "confirmed");
+    }
+
+    await refreshAuctionState();
+
+    setStatus("Creating Raydium pool...");
+
+    const rayRes = await fetch("/api/createRaydiumPool", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        auctionPk: auctionPkStr,
+        publicKey: publicKey.toBase58(),
+      }),
+    });
+
+    const rayJson = await rayRes.json();
+    if (!rayRes.ok) {
+      throw new Error(rayJson?.error || "Raydium creation failed");
+    }
+
+    const rayTxs = (rayJson.txBase64s ?? []).map((b64: string) =>
+      VersionedTransaction.deserialize(Buffer.from(b64, "base64"))
+    );
+
+    if (rayTxs.length > 0) {
+      const adapter = wallet?.adapter as any;
+      if (!adapter?.signAllTransactions) {
+        throw new Error("Wallet does not support batch signing");
+      }
+
+      const { blockhash } = await connection.getLatestBlockhash();
+      for (const tx of rayTxs) {
+        tx.message.recentBlockhash = blockhash;
+      }
+
+      const signedTxs = await adapter.signAllTransactions(rayTxs);
+
+      for (const tx of signedTxs) {
+        const sig = await connection.sendRawTransaction(tx.serialize());
+        await connection.confirmTransaction(sig, "confirmed");
+      }
+    }
+
+    setStatus("Marking pool created...");
+
+    const markIx = await (activeProgram.methods as any)
+      .markPoolCreated()
+      .accounts({
+        authority: publicKey,
+        auction: auctionPkObj,
+      })
+      .instruction();
+
+    const markTx = new Transaction().add(markIx);
+    await safeSendTx(activeProgram, markTx);
+
+    await refreshAuctionState();
+    setStatus("Claim payout and pool creation complete.");
+  } catch (err: any) {
+    console.error("claim payout + pool failed:", err);
+    setStatus("Failed: " + (err?.message ?? String(err)));
+  }
+}
 
 async function handlePlaceBid() {
   setStatus("Preparing bid...");
@@ -443,120 +643,6 @@ const srv = await callPlaceBid(
   }
 }
 
-async function handleFinalizeAll() {
-  try {
-    if (!programClient || !publicKey || !auctionData) {
-      throw new Error("Missing state");
-    }
-
-    const connection = programClient.provider.connection;
-
-    const paymentAmount = Number(
-      auctionData.paymentAmount ?? auctionData.payment_amount ?? 0
-    );
-
-    const liquidityTokens = Number(
-      localStorage.getItem("raydiumReserve") || "0"
-    );
-
-    setStatus("Building transactions...");
-const res = await fetch("/api/finalizeAuction", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    auctionPk: auctionPkStr,
-    publicKey: publicKey.toBase58(),
-    tokenMint: auctionData.tokenMint ?? auctionData.token_mint,
-    usdcAmount: paymentAmount,
-    tokenAmount: liquidityTokens,
-  }),
-});
-
-    const json = await res.json();
-
-    if (!res.ok) {
-      throw new Error(json?.error || "Failed");
-    }
-
-    const adapter = wallet?.adapter as any;
-const txs = json.txs.map((b64: string) =>
-  VersionedTransaction.deserialize(Buffer.from(b64, "base64"))
-);
-
-if (!json.txs || json.txs.length === 0) {
-  setStatus("Nothing to execute — already settled");
-  return;
-}
-
-const { blockhash } = await connection.getLatestBlockhash();
-
-for (const tx of txs) {
-  tx.message.recentBlockhash = blockhash;
-}
-
-const signedTxs = await adapter.signAllTransactions(txs);
-
-const sigs: string[] = [];
-
-
-let settlementSucceeded = false;
-
-for (let i = 0; i < signedTxs.length; i++) {
-  try {
-    const sig = await connection.sendRawTransaction(
-      signedTxs[i].serialize()
-    );
-
-    await connection.confirmTransaction(sig, "confirmed");
-
-    sigs.push(sig);
-
-    if (i === 0) {
-      settlementSucceeded = true;
-      setStatus("USDC claimed successfully...");
-    }
-
-  } catch (err: any) {
-    console.error("TX failed:", err);
-
-    const msg = err?.message || "";
-
-
-    if (msg.includes("insufficient lamports")) {
-        setStatus(
-          "Bid rewards claimed. Not enough liquidity to create pool."
-        );
-    } else {
-      setStatus(
-        "Transaction failed: " + msg
-      );
-    }
-
-    return; 
-  }
-}
-
-setTxSigs(sigs);
-
-setAuctionData((prev: any) =>
-  prev
-    ? {
-        ...prev,
-        raydiumPoolCreated: true,
-      }
-    : prev
-);
-
-setStatus("All done: " + sigs.join(", "));
-
-  } catch (err: any) {
-    console.error(err);
-    setStatus("Failed: " + err.message);
-  }
-}
-
  async function callAuctionActions(body: {
     kind: "determineWinner" | "settlement";
     auctionPk: string;
@@ -615,47 +701,59 @@ setStatus("All done: " + sigs.join(", "));
         }
       }
 
-  async function handleDetermineWinner(which: "first" | "vickrey" | "uniform") {
-    setStatus("Preparing determine winner...");
-    try {
-      if (!programClient || !publicKey) {
-        throw new Error("Connect wallet and ensure program client ready");
-      }
-      if (!auctionPkStr) {
-        throw new Error("Select/create auction first");
-      }
+//  async function handleDetermineWinner(
+//   which: "first" | "vickrey" | "uniform",
+//   auto = false
+// ) {
+//   setStatus(auto ? "Determining winner..." : "Preparing determine winner...");
+//   setIsAutoDetermining(true);
 
-      const program = programClient;
-      assertProviderReady(program);
+//   try {
+//     if (!auctionPkStr) {
+//       throw new Error("Select/create auction first");
+//     }
 
-      const srv = await callAuctionActions({
-        kind: "determineWinner",
-        auctionPk: auctionPkStr,
-        publicKey: publicKey.toBase58(),
-        which,
-      });
+//     const connection =
+//       programClient?.provider.connection ?? readOnlyProgram?.provider.connection;
 
-      if (srv?.error) {
-        throw new Error(srv.error);
-      }
+//     if (!connection) {
+//       throw new Error("Connection not ready");
+//     }
 
-      const tx = Transaction.from(Buffer.from(srv.txBase64, "base64"));
+//     const srv = await callAuctionActions({
+//       kind: "determineWinner",
+//       auctionPk: auctionPkStr,
+//       which,
+//     });
 
-      setStatus("Signing and sending determineWinner tx...");
-const sig = await safeSendTx(program, tx);
+//     if (srv?.error) {
+//       throw new Error(srv.error);
+//     }
 
-setStatus(
-  sig === "already-processed"
-    ? "Determine winner already processed"
-    : "determineWinner tx sent: " + sig
-);
+//     const tx = Transaction.from(Buffer.from(srv.txBase64, "base64"));
 
-await refreshAuctionState();
-    } catch (err: any) {
-      console.error("determineWinner failed:", err);
-      setStatus("determineWinner failed: " + (err?.message ?? String(err)));
-    }
-  }
+//     setStatus("Sending determineWinner tx...");
+//     const sig = await connection.sendRawTransaction(tx.serialize());
+//     await connection.confirmTransaction(sig, "confirmed");
+
+//     setStatus(
+//       sig
+//         ? "determineWinner tx sent: " + sig
+//         : "determineWinner completed"
+//     );
+
+//     await refreshAuctionState();
+//   } catch (err: any) {
+//     console.error("determineWinner failed:", err);
+//     setStatus(
+//       (auto ? "Auto-determine failed: " : "determineWinner failed: ") +
+//         (err?.message ?? String(err))
+//     );
+//   } finally {
+//     setIsAutoDetermining(false);
+//   }
+// }
+  
 
   const isBidDisabled =
     !connected ||
@@ -702,7 +800,7 @@ await refreshAuctionState();
 />
         ) : null}
 
-{auctionData?.raydiumPoolCreated && (
+{auctionData?.raydiumPoolCreated && isTokenAuction && (
   <div className="mt-6 border border-[var(--line)] bg-[var(--surface)] p-5">
     <h3 className="text-lg font-semibold text-[var(--foreground)]">
       Liquidity Pool Created
@@ -724,25 +822,7 @@ await refreshAuctionState();
     </div>
   </div>
 )}
-{txSigs.length > 0 && (
-  <div className="mt-4 text-sm">
-    <span className="text-[var(--muted)]">Recent Transactions:</span>
-    <ul className="mt-1 space-y-1">
-      {txSigs.map((sig, i) => (
-        <li key={sig}>
-          <a
-            href={`https://explorer.solana.com/tx/${sig}?cluster=devnet`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-500 underline break-all"
-          >
-            TX {i + 1}: {sig.slice(0, 8)}...{sig.slice(-8)}
-          </a>
-        </li>
-      ))}
-    </ul>
-  </div>
-)}
+
 
         <div className="mt-6">
 
@@ -770,58 +850,57 @@ await refreshAuctionState();
 )}
 
         <div className={panelClass}>
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <h3 className="text-lg font-semibold text-[var(--foreground)]">Auction actions</h3>
-              <p className="mt-1 text-sm text-[var(--muted)]">
-                Claim payout, refund, or determine winner depending on auction state.
-              </p>
-            </div>
-            <span className={outcomeBadgeClass}>{auctionEnded ? "Ended" : "Live"}</span>
-          </div>
+  <div className="mb-4 flex items-center justify-between gap-3">
+    <div>
+      <h3 className="text-lg font-semibold text-[var(--foreground)]">Auction actions</h3>
+      <p className="mt-1 text-sm text-[var(--muted)]">
+        Refresh, refund, or reclaim depending on auction state.
+      </p>
+    </div>
+    <span className={outcomeBadgeClass}>{auctionEnded ? "Ended" : "Live"}</span>
+  </div>
 
-          <div className="border border-[var(--line)] bg-[var(--background)] px-4 py-3">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
-              Outcome
-            </div>
+  <div className="border border-[var(--line)] bg-[var(--background)] px-4 py-3">
+    <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+      Outcome
+    </div>
+    <div className="mt-1 text-sm text-[var(--foreground)]">{outcomeText}</div>
+  </div>
 
-            <div className="mt-1 text-sm text-[var(--foreground)]">{outcomeText}</div>
-          </div>
+  <div className="mt-5 flex flex-wrap gap-3">
+    {canReclaimUnsold ? (
+      <button
+        onClick={() => handleSettleAuction("reclaimUnsold")}
+        className={buttonPrimary}
+      >
+        Reclaim unsold item
+      </button>
+    ) : null}
 
-          <div className="mt-5 flex flex-wrap gap-3">
-            {canReclaimUnsold ? (
-              <button onClick={() => handleSettleAuction("reclaimUnsold")} className={buttonPrimary}>
-                Reclaim unsold item
-              </button>
-            ) : null}
+<button onClick={handleRefreshAuction} disabled={isRefreshing} className={buttonPrimary}>
+  {isRefreshing ? "Refreshing..." : "Refresh"}
+</button>
 
+  {auctionEnded &&
+  isResolved &&
+  isCreator &&
+  isTokenAuction &&
+  !raydiumPoolCreated ? (
+    <button onClick={handleClaimPayoutAndCreatePool} className={buttonPrimary}>
+      Claim payout and create pool
+    </button>
+  ) : null}
 
-
-{auctionEnded && isResolved && !auctionData.raydiumPoolCreated && (
-  <button onClick={handleFinalizeAll} className={buttonPrimary}>
-    {isCreator ? "Claim payout" : "Settle auction"}
-  </button>
-)}
-
-
-            {canDetermineWinner ? (
-              <button
-                onClick={() => handleDetermineWinner(determineWinnerKind!)}
-                disabled={!connected || !auctionPkStr}
-                className={buttonPrimary}
-              >
-                {determineWinnerLabel}
-              </button>
-            ) : null}
-
-            {canClaimRefund ? (
-              <button onClick={() => handleSettleAuction("claimRefund")} className={buttonSecondary}>
-                Claim refund
-              </button>
-            ) : null}
-          </div>
-        </div>
-
+    {canClaimRefund ? (
+      <button
+        onClick={() => handleSettleAuction("claimRefund")}
+        className={buttonSecondary}
+      >
+        Claim refund
+      </button>
+    ) : null}
+  </div>
+</div>
         <div className="mt-4 border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--muted)]">
           {status}
         </div>

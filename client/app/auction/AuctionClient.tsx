@@ -313,80 +313,81 @@ useEffect(() => {
       }, [programClient, auctionPkStr, publicKey]);
 
     
-    async function handleCreateGovernanceProposal(
+   async function handleCreateGovernanceProposal(
   metadataUri?: string,
-  mint?: string
+  mint?: string,
+  saleAmountOverride?: string
 ) {
-      setStatus("Preparing governance proposal...");
-      try {
-        if (!programClient || !publicKey) throw new Error("Connect wallet first.");
-        if (!realmAddress || !governanceProgramId || !governanceAddress) {
-          throw new Error("Realm address, owner program ID, and governance address are required.");
-        }
-        if (!realmCommunityMint) {
-          throw new Error("Realm community mint is missing. Load treasury accounts first.");
-        }
-        if (!selectedTreasuryGroup || !selectedTreasuryAccount) {
-          throw new Error("Select a treasury wallet and token account to auction.");
-        }
-    
-        const treasuryGroup = treasuryGroups.find((g) => g.nativeTreasury === selectedTreasuryGroup);
-        if (!treasuryGroup) throw new Error("Selected treasury wallet was not found.");
-    
-        const treasuryRow = treasuryGroup.tokenAccounts.find(
-          (row) => row.pubkey === selectedTreasuryAccount
-        );
-        if (!treasuryRow) throw new Error("Selected treasury token account was not found.");
-    
-let finalMetadataUri = metadataUri;
-
-if (!finalMetadataUri) {
-  setStatus("Uploading metadata to Pinata...");
-  const res = await uploadAuctionMetadata();
-  finalMetadataUri = res.metadataUri;
-}
-    
-        const res = await fetch("/api/makeGovernanceAuction", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            authority: publicKey.toBase58(),
-            realmAddress,
-            governanceProgramId,
-            governanceAddress,
-            communityMint: realmCommunityMint,
-            proposalName,
-            proposalDescription,
-            minBidUsdc,
-            durationSecs,
-            auctionType,
-            assetKind,
-            metadataUri: finalMetadataUri,
-            tokenMint: treasuryRow.mint,
-            saleAmountToken,
-            sourceTokenAccountBase58: treasuryRow.pubkey,
-          }),
-        });
-    
-        const json = await res.json();
-        if (!res.ok) {
-          throw new Error(json?.error ?? "Failed to build governance auction");
-        }
-    
-        const sigs = await signAndSendSerializedTxs(json.txBase64s);
-    
-        setRawInstructions(json.rawInstructions ?? []);
-        setShowRawInstructions(true);
-        setStatus(`Governance proposal sent: ${sigs.join(", ")}`);
-        setAuctionPkStr(json.auctionPda);
-        setAuctionSeedHex(json.auctionSeedHex ?? null);
-        persistAuctionForWallet(publicKey.toBase58(), json.auctionPda);
-        await refreshAuctionState(json.auctionPda);
-      } catch (err: any) {
-        console.error("governance proposal failed:", err);
-        setStatus("Governance proposal failed: " + (err?.message ?? String(err)));
-      }
+  setStatus("Preparing governance proposal...");
+  try {
+    if (!programClient || !publicKey) throw new Error("Connect wallet first.");
+    if (!realmAddress || !governanceProgramId || !governanceAddress) {
+      throw new Error("Realm address, owner program ID, and governance address are required.");
     }
+    if (!realmCommunityMint) {
+      throw new Error("Realm community mint is missing. Load treasury accounts first.");
+    }
+    if (!selectedTreasuryGroup || !selectedTreasuryAccount) {
+      throw new Error("Select a treasury wallet and token account to auction.");
+    }
+
+    const treasuryGroup = treasuryGroups.find((g) => g.nativeTreasury === selectedTreasuryGroup);
+    if (!treasuryGroup) throw new Error("Selected treasury wallet was not found.");
+
+    const treasuryRow = treasuryGroup.tokenAccounts.find(
+      (row) => row.pubkey === selectedTreasuryAccount
+    );
+    if (!treasuryRow) throw new Error("Selected treasury token account was not found.");
+
+    let finalMetadataUri = metadataUri;
+
+    if (!finalMetadataUri) {
+      setStatus("Uploading metadata to Pinata...");
+      const res = await uploadAuctionMetadata();
+      finalMetadataUri = res.metadataUri;
+    }
+
+    const res = await fetch("/api/makeGovernanceAuction", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        authority: publicKey.toBase58(),
+        realmAddress,
+        governanceProgramId,
+        governanceAddress,
+        communityMint: realmCommunityMint,
+        proposalName,
+        proposalDescription,
+        minBidUsdc,
+        durationSecs,
+        auctionType,
+        assetKind,
+        metadataUri: finalMetadataUri,
+        tokenMint: treasuryRow.mint,
+        saleAmountToken: saleAmountOverride ?? saleAmountToken,
+        sourceTokenAccountBase58: treasuryRow.pubkey,
+      }),
+    });
+
+    const json = await res.json();
+    if (!res.ok) {
+      throw new Error(json?.error ?? "Failed to build governance auction");
+    }
+
+    const sigs = await signAndSendSerializedTxs(json.txBase64s);
+
+    setRawInstructions(json.rawInstructions ?? []);
+    setShowRawInstructions(true);
+    setStatus(`Governance proposal sent: ${sigs.join(", ")}`);
+    setAuctionPkStr(json.auctionPda);
+    setAuctionSeedHex(json.auctionSeedHex ?? null);
+    persistAuctionForWallet(publicKey.toBase58(), json.auctionPda);
+    await refreshAuctionState(json.auctionPda);
+  } catch (err: any) {
+    console.error("governance proposal failed:", err);
+    setStatus("Governance proposal failed: " + (err?.message ?? String(err)));
+  }
+}
     
       type PinMetadataResponse = {
       imageCid: string | null;
@@ -449,7 +450,8 @@ async function handleMakeAuction(
   tokenOverride?: {
     mint: string;
     sourceAta?: string;
-  }
+  },
+  saleAmountOverride?: string
 ) {
   setStatus("Preparing createAuction...");
 
@@ -466,13 +468,10 @@ async function handleMakeAuction(
       metadataUri = res.metadataUri;
     }
 
-    const mintFinal =
-      tokenOverride?.mint || tokenMint || undefined;
-
-    const sourceAta =
-      tokenOverride?.sourceAta ||
-      selectedTreasuryAccount ||
-      undefined;
+    const mintFinal = tokenOverride?.mint || tokenMint || undefined;
+    const sourceAta = tokenOverride?.sourceAta || selectedTreasuryAccount || undefined;
+    const saleAmountFinal =
+  saleAmountOverride ?? saleAmountToken ?? undefined;
 
     const res = await fetch("/api/makeAuction", {
       method: "POST",
@@ -485,9 +484,9 @@ async function handleMakeAuction(
         auctionType,
         assetKind,
         tokenMint: mintFinal,
-        saleAmountToken: saleAmountToken || undefined,
+        saleAmountToken: saleAmountFinal,
         sourceTokenAccountBase58: sourceAta,
-      })
+      }),
     });
 
     const json = await res.json();
@@ -620,12 +619,13 @@ async function handleMakeAuction(
   onTokenMintChange={setTokenMint}
   onDurationSecsChange={setDurationSecs}
   onAuctionTypeChange={setAuctionType}
-  onSubmit={(metadataUri) =>
+  onSubmit={(metadataUri, tokenOverride, saleAmountOverride) =>
     handleCreateGovernanceProposal(
       metadataUri,
-      tokenMint
+      tokenOverride?.mint ?? tokenMint,
+      saleAmountOverride
     )
-}
+  }
 />
 
           <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/55">
@@ -713,8 +713,8 @@ async function handleMakeAuction(
   onTokenMintChange={setTokenMint}
   onDurationSecsChange={setDurationSecs}
   onAuctionTypeChange={setAuctionType}
-onSubmit={(metadataUri, tokenOverride) =>
-  handleMakeAuction(metadataUri, tokenOverride)
+onSubmit={(metadataUri, tokenOverride, saleAmountOverride) =>
+  handleMakeAuction(metadataUri, tokenOverride, saleAmountOverride)
 }
 />
   )}

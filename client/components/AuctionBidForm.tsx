@@ -118,6 +118,8 @@ export default function AuctionBidForm({
   useEffect(() => {
     void refresh();
   }, [refresh, refreshKey]);
+  
+
 
   const isRegistered = registered === true;
 
@@ -143,6 +145,28 @@ export default function AuctionBidForm({
     },
     [onBidAmountUsdcChange]
   );
+
+    const placeBidButton = (
+  <button
+    onClick={onSubmit}
+    disabled={
+      disabled ||
+      isSubmitting ||
+      auctionEnded ||
+      !isRegistered ||
+      bidTooLarge
+    }
+    className="shrink-0 rounded-lg border border-green-500 bg-green-500 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-black transition-all duration-300 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
+  >
+    {isSubmitting
+      ? "Submitting..."
+      : auctionEnded
+      ? "Auction ended"
+      : bidTooLarge
+      ? "Too much"
+      : "Place Bid"}
+  </button>
+);
 
   const handleDeposit = useCallback(async () => {
     if (!client || !depositFn || !isRegistered || depositing) return;
@@ -216,58 +240,40 @@ export default function AuctionBidForm({
 </div>
 
         <div className="flex flex-1 min-w-0 flex-col gap-2">
-          <div className="flex w-full gap-2">
-            <div
-              className={`flex min-w-0 flex-1 items-center rounded-xl border border-[var(--line)] px-3 py-2 ${
-                !isRegistered ? "opacity-50" : ""
-              }`}
-            >
-              <input
-                value={amount}
-                onChange={(e) => handleAmountChange(e.target.value)}
-                disabled={!isRegistered}
-                inputMode="numeric"
-                placeholder="Amount"
-                className="w-full min-w-0 flex-1 bg-transparent text-sm outline-none disabled:cursor-not-allowed"
-              />
-            </div>
+         <div className="flex w-full gap-2">
+  <div
+    className={`flex min-w-0 flex-1 items-center rounded-xl border border-[var(--line)] px-3 py-2 ${
+      !isRegistered ? "opacity-50" : ""
+    }`}
+  >
+    <input
+      value={amount}
+      onChange={(e) => handleAmountChange(e.target.value)}
+      disabled={!isRegistered}
+      inputMode="numeric"
+      placeholder="Amount"
+      className="w-full min-w-0 flex-1 bg-transparent text-sm outline-none disabled:cursor-not-allowed"
+    />
+  </div>
 
-            <button
-              onClick={handleDeposit}
-              disabled={!isRegistered || depositing}
-              className="shrink-0 rounded-lg border border-black bg-black px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white transition-all duration-300 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {depositing ? "Depositing" : "Deposit"}
-            </button>
+  <button
+    onClick={handleDeposit}
+    disabled={!isRegistered || depositing}
+    className="shrink-0 rounded-lg border border-black bg-black px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white transition-all duration-300 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
+  >
+    {depositing ? "Depositing" : "Deposit"}
+  </button>
 
-            <button
-              onClick={handleWithdraw}
-              disabled={!isRegistered || withdrawing || withdrawTooLarge}
-              className="shrink-0 rounded-lg border border-black bg-black px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white transition-all duration-300 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {withdrawing ? "Withdrawing" : withdrawTooLarge ? "Too much" : "Withdraw"}
-            </button>
+  <button
+    onClick={handleWithdraw}
+    disabled={!isRegistered || withdrawing || withdrawTooLarge}
+    className="shrink-0 rounded-lg border border-black bg-black px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white transition-all duration-300 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
+  >
+    {withdrawing ? "Withdrawing" : withdrawTooLarge ? "Too much" : "Withdraw"}
+  </button>
 
-            <button
-              onClick={onSubmit}
-              disabled={
-                disabled ||
-                isSubmitting ||
-                auctionEnded ||
-                !isRegistered ||
-                bidTooLarge
-              }
-              className="shrink-0 rounded-lg border border-green-500 bg-green-500 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-black transition-all duration-300 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isSubmitting
-                ? "Submitting..."
-                : auctionEnded
-                ? "Auction ended"
-                : bidTooLarge
-                ? "Too much"
-                : "Place Bid"}
-            </button>
-          </div>
+  {auctionType !== "uniform" && placeBidButton}
+</div>
 
           {!isRegistered && (
             <div className="text-xs text-[var(--muted)]">
@@ -281,7 +287,7 @@ export default function AuctionBidForm({
         </div>
       </div>
 
-   {auctionType === "uniform" && (
+  {auctionType === "uniform" && (
   <div className="mt-6 border border-[var(--line)] bg-[var(--background)] p-4">
     <div className="grid gap-4 md:grid-cols-[1fr_1fr]">
       <label className="block">
@@ -332,6 +338,10 @@ export default function AuctionBidForm({
           Commitment is above your encrypted balance.
         </div>
       )}
+    </div>
+
+    <div className="mt-4 flex justify-end">
+      {placeBidButton}
     </div>
   </div>
 )}

@@ -242,23 +242,6 @@ async function main() {
     conn
   );
 
-  // 6) determine_winner_pro_rata
-  const compDefDetermineProRata = await deriveCompDefPda(mxeProgramId, "determine_winner_pro_rata");
-  await callInitMethod(
-    localProgram,
-    "initDetermineWinnerProRataCompDef",
-    {
-      payer: owner.publicKey,
-      mxeAccount: mxe,
-      compDefAccount: compDefDetermineProRata,
-      arciumProgram: arciumProgram.programId,
-      systemProgram: SystemProgram.programId,
-      addressLookupTable: lutAddress,
-    },
-    owner,
-    conn
-  );
-
   console.log("\nAll explicit init calls completed.");
   
 }
