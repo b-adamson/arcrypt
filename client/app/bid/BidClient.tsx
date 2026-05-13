@@ -32,11 +32,24 @@ import { useUmbraClient } from "@/lib/useUmbraClient";
 
 const USDC_MINT = "4oG4sjmopf5MzvTHLE8rpVJ2uyczxfsw2K84SUTpNDx7";
 
+// from past deployments that no-longer work
+const BLACKLISTED_AUCTION_PKS = new Set<string>([
+  "CtnWDiMJXKsB8RCVtkZdyJy1FX49cSWJwkqfb6XaseeW",
+  "9eGLtpKrLH6MsdDYH76s9oAFT3mXTseYDCLuPhBgfLiw",
+]);
+
+function isBlacklistedAuctionPk(pk: string | null | undefined) {
+  return !!pk && BLACKLISTED_AUCTION_PKS.has(pk);
+}
+
 export default function BidPageClient({ auctionPk }: { auctionPk: string | null }) {
   const auctionPkStr = auctionPk;
 
   const { wallet, publicKey, connected } = useWallet();
   const { client: umbraClient, withdrawFn } = useUmbraClient();
+
+  const isBlacklistedAuction = isBlacklistedAuctionPk(auctionPkStr);
+  const showBottomStatusBar = !isBlacklistedAuction;
 
   const [programClient, setProgramClient] = useState<any | null>(null);
   const [readOnlyProgram, setReadOnlyProgram] = useState<any | null>(null);
@@ -75,6 +88,7 @@ export default function BidPageClient({ auctionPk }: { auctionPk: string | null 
   const router = useRouter();
 
   useEffect(() => {
+    if (isBlacklistedAuction) return;
     if (!auctionData || !auctionPkStr || !activeProgram) return;
 
     const endTime = Number(auctionData.endTime ?? auctionData.end_time ?? 0);
@@ -89,7 +103,7 @@ export default function BidPageClient({ auctionPk }: { auctionPk: string | null 
 
     autoFinalizeAttemptedRef.current = attemptKey;
     void handleRefreshAuction();
-  }, [auctionData, auctionPkStr, activeProgram, bidCount]);
+  }, [auctionData, auctionPkStr, activeProgram, bidCount, isBlacklistedAuction]);
 
   const bidAmountUsdcFinal =
     auctionType === "uniform"
@@ -356,8 +370,11 @@ async function refreshAuctionState() {
 
   async function handleRefreshAuction() {
   if (isRefreshing) return;
+  if (isBlacklistedAuction) {
+    setStatus(null);
+    return;
+  }
   setIsRefreshing(true);
-
   try {
     if (!activeProgram || !auctionPkStr) {
       throw new Error("Missing auction or program client");
@@ -765,20 +782,21 @@ async function handlePlaceBid() {
     )}
 
     <div className="mt-6">
-      <AuctionBidForm
-        refreshKey={balanceRefreshKey}
-        auctionType={auctionType}
-        bidTokens={bidTokens}
-        bidPriceUsdc={bidPriceUsdc}
-        onBidTokensChange={setBidTokens}
-        onBidPriceUsdcChange={setBidPriceUsdc}
-        bidAmountUsdc={bidAmountUsdc}
-        onBidAmountUsdcChange={setBidAmountUsdc}
-        disabled={isBidDisabled}
-        isSubmitting={isSubmitting}
-        auctionEnded={auctionEnded}
-        onSubmit={handlePlaceBid}
-      />
+    <AuctionBidForm
+      refreshKey={balanceRefreshKey}
+      auctionData={auctionData}
+      auctionType={auctionType}
+      bidTokens={bidTokens}
+      bidPriceUsdc={bidPriceUsdc}
+      onBidTokensChange={setBidTokens}
+      onBidPriceUsdcChange={setBidPriceUsdc}
+      bidAmountUsdc={bidAmountUsdc}
+      onBidAmountUsdcChange={setBidAmountUsdc}
+      disabled={isBidDisabled}
+      isSubmitting={isSubmitting}
+      auctionEnded={auctionEnded}
+      onSubmit={handlePlaceBid}
+    />
     </div>
 
     {!connected && (
@@ -825,6 +843,7 @@ async function handlePlaceBid() {
           </button>
         ) : null}
 
+      {!isBlacklistedAuction ? (
         <button
           onClick={handleRefreshAuction}
           disabled={isRefreshing}
@@ -832,6 +851,7 @@ async function handlePlaceBid() {
         >
           {isRefreshing ? "Refreshing..." : "Refresh"}
         </button>
+      ) : null}
 
         {auctionEnded &&
         isResolved &&
@@ -857,9 +877,11 @@ async function handlePlaceBid() {
       </div>
     </div>
 
-    <div className="mt-4 border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--muted)]">
-      {status}
-    </div>
+      {showBottomStatusBar ? (
+        <div className="mt-4 border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--muted)]">
+          {status}
+        </div>
+      ) : null}
   </div>
 </main>
   );

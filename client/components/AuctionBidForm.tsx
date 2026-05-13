@@ -13,18 +13,28 @@ import {
 } from "@umbra-privacy/sdk/errors";
 import { useUmbraClient } from "@/lib/useUmbraClient";
 import { RefreshCw } from "lucide-react";
+import {
+  fetchJson,
+  formatTokenAmount,
+  toHttpGateway,
+} from "@/lib/utils";
+
+type AuctionMetadata = {
+  name?: string;
+  symbol?: string;
+  description?: string;
+  image?: string;
+};
 
 type Props = {
   refreshKey?: number;
-
+  auctionData: any | null;
   bidTokens: string;
   bidPriceUsdc: string;
   onBidTokensChange: (value: string) => void;
   onBidPriceUsdcChange: (value: string) => void;
-
   bidAmountUsdc: string;
   onBidAmountUsdcChange: (value: string) => void;
-
   auctionType: string;
   disabled?: boolean;
   isSubmitting?: boolean;
@@ -57,6 +67,7 @@ export default function AuctionBidForm({
   disabled,
   isSubmitting,
   auctionEnded,
+  auctionData,
   onSubmit,
 }: Props) {
   const wallet = useWallet();
@@ -68,6 +79,75 @@ export default function AuctionBidForm({
   const [querying, setQuerying] = useState(false);
   const [depositing, setDepositing] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
+  const [metadata, setMetadata] = useState<AuctionMetadata | null>(null);
+
+// function toStringMaybe(v: any): string {
+//   if (v == null) return "";
+//   return v?.toString?.() ?? String(v);
+// }
+
+// function getMetadataUri(auction: any): string {
+//   const raw =
+//     auction?.auctionMetadataUri ??
+//     auction?.auction_metadata_uri ??
+//     auction?.metadataUri ??
+//     auction?.metadata_uri ??
+//     auction?.uri ??
+//     auction?.metadata?.uri ??
+//     "";
+
+//   return toStringMaybe(raw);
+// }
+
+// function toHttpGateway(uri: string): string {
+//   if (!uri) return "";
+//   if (uri.startsWith("ipfs://")) return uri.replace("ipfs://", "https://ipfs.io/ipfs/");
+//   return uri;
+// }
+
+const metadataUri =
+  auctionData?.auctionMetadataUri ??
+  auctionData?.auction_metadata_uri ??
+  auctionData?.metadataUri ??
+  auctionData?.metadata_uri ??
+  auctionData?.uri ??
+  auctionData?.metadata?.uri ??
+  "";
+
+const metadataHttpUri = toHttpGateway(String(metadataUri ?? ""));
+
+useEffect(() => {
+  let cancelled = false;
+
+  async function loadMetadata() {
+    const json = await fetchJson(metadataHttpUri);
+
+    if (cancelled) return;
+
+    if (!json) {
+      setMetadata(null);
+      return;
+    }
+
+    setMetadata({
+      name: json?.name ?? "",
+      symbol: json?.symbol ?? "",
+      description: json?.description ?? "",
+      image: json?.image ?? "",
+    });
+  }
+
+  void loadMetadata();
+
+  return () => {
+    cancelled = true;
+  };
+}, [metadataHttpUri]);
+
+const tokenLabel =
+  metadata?.symbol && metadata.symbol.trim().length > 0
+    ? metadata.symbol.toUpperCase()
+    : "TOKENS";
 
   useEffect(() => {
     setAmount(bidAmountUsdc || "1");
@@ -233,10 +313,16 @@ export default function AuctionBidForm({
                 <RefreshCw className={`h-3.5 w-3.5 ${querying ? "animate-spin" : ""}`} />
               </button>
             </div>
-
-            <div className="mt-1 text-4xl font-semibold leading-none md:text-5xl">
-              {querying ? "…" : balanceRaw.toString()}
-            </div>
+              <div className="mt-1 flex items-baseline gap-2 text-4xl font-semibold leading-none md:text-5xl">
+                {querying ? (
+                  "…"
+                ) : (
+                  <>
+                    <span>{balanceRaw.toString()}</span>
+                    <span className="text-2xl font-medium opacity-70">USDC</span>
+                  </>
+                )}
+              </div>
           </div>
 
                   <div className="flex flex-1 min-w-0 flex-col gap-2">
@@ -254,6 +340,10 @@ export default function AuctionBidForm({
                 placeholder="Amount"
                 className="w-full min-w-0 flex-1 bg-transparent text-sm outline-none disabled:cursor-not-allowed"
               />
+
+              <span className="ml-2 shrink-0 text-xs font-semibold uppercase tracking-[0.14em] opacity-60">
+                USDC
+              </span>
             </div>
 
             <button
@@ -290,33 +380,46 @@ export default function AuctionBidForm({
   {auctionType === "uniform" && (
   <div className="mt-6 border border-[var(--line)] bg-[var(--background)] p-4">
     <div className="grid gap-4 md:grid-cols-[1fr_1fr]">
-      <label className="block">
-        <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-          Tokens desired
-        </span>
-        <input
-          type="number"
-          step="1"
-          value={bidTokens}
-          min={0}
-          onChange={(e) => onBidTokensChange(e.target.value)}
-          className="w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--foreground)] outline-none"
-        />
-      </label>
+        <label className="block">
+          <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+            Tokens desired
+          </span>
 
-      <label className="block">
-        <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-          Max price per token (USDC)
-        </span>
-        <input
-          type="number"
-          step="1"
-          value={bidPriceUsdc}
-          min={0}
-          onChange={(e) => onBidPriceUsdcChange(e.target.value)}
-          className="w-full rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--foreground)] outline-none"
-        />
-      </label>
+          <div className="flex items-center rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3">
+            <input
+              type="number"
+              step="1"
+              value={bidTokens}
+              min={0}
+              onChange={(e) => onBidTokensChange(e.target.value)}
+              className="w-full bg-transparent text-sm text-[var(--foreground)] outline-none"
+            />
+
+            <span className="ml-2 shrink-0 text-xs font-semibold uppercase tracking-[0.14em] opacity-60">
+              {tokenLabel}
+            </span>
+          </div>
+        </label>
+        <label className="block">
+          <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+            Max price per token
+          </span>
+
+          <div className="flex items-center rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3">
+            <input
+              type="number"
+              step="1"
+              value={bidPriceUsdc}
+              min={0}
+              onChange={(e) => onBidPriceUsdcChange(e.target.value)}
+              className="w-full bg-transparent text-sm text-[var(--foreground)] outline-none"
+            />
+
+            <span className="ml-2 shrink-0 text-xs font-semibold uppercase tracking-[0.14em] opacity-60">
+              USDC / {tokenLabel}
+            </span>
+          </div>
+        </label>
     </div>
 
     <div className="mt-4 rounded-xl border border-[var(--line)] bg-[var(--surface-2)] p-4">

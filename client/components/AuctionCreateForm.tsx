@@ -100,6 +100,7 @@ type Props = {
   auctionType: AuctionType;
   assetKind: AssetKind;
   metadataName: string;
+  tokenSymbol: string;
   metadataDescription: string;
   metadataImageFile: File | null;
   auctionPkStr?: string | null;
@@ -112,6 +113,7 @@ type Props = {
   onMetadataImageChange: (file: File | null) => void;
   onMinBidUsdcChange: (value: string) => void;
   onSaleAmountTokenChange: (value: string) => void;
+    onTokenSymbolChange: (value: string) => void;
   onTokenMintChange: (value: string) => void;
   onDurationSecsChange: (value: number) => void;
   onAuctionTypeChange: (value: AuctionType) => void;
@@ -162,6 +164,7 @@ export default function AuctionCreateForm({
   auctionType,
   assetKind,
   metadataName,
+  tokenSymbol,
   metadataDescription,
   metadataImageFile,
   auctionPkStr,
@@ -174,6 +177,7 @@ export default function AuctionCreateForm({
   onMetadataImageChange,
   onMinBidUsdcChange,
   onSaleAmountTokenChange,
+  onTokenSymbolChange,
   onTokenMintChange,
   onDurationSecsChange,
   onAuctionTypeChange,
@@ -413,6 +417,7 @@ async function handleSubmit() {
 
     const formData = new FormData();
     formData.append("name", metadataName.trim());
+    formData.append("symbol", tokenSymbol.trim().toUpperCase());
     formData.append("description", metadataDescription.trim());
     if (metadataImageFile) formData.append("image", metadataImageFile);
 
@@ -428,11 +433,23 @@ async function handleSubmit() {
 
     metadataUri = json.metadataUri;
 
+    if (!metadataUri) {
+      throw new Error("Metadata upload failed: missing metadata URI.");
+    }
+
+    const tokenSymbolValue = tokenSymbol.trim().toUpperCase();
+
     const { mint, ownerAta } = await mintToken(
       connection,
       wallet.adapter,
       publicKey,
-      total
+      total,
+      6,
+      {
+        name: metadataName.trim(),
+        symbol: tokenSymbolValue,
+        uri: metadataUri,
+      }
     );
 
     mintAddress = mint.toBase58();
@@ -471,16 +488,14 @@ async function handleSubmit() {
         throw new Error("Wallet not ready");
       }
 
-      setIsProcessing(false);
+      setIsProcessing(true);
 
       // Upload metadata
       const formData = new FormData();
       formData.append("name", metadataName.trim());
+      formData.append("symbol", tokenSymbol.trim().toUpperCase());
       formData.append("description", metadataDescription.trim());
-
-      if (metadataImageFile) {
-        formData.append("image", metadataImageFile);
-      }
+      if (metadataImageFile) formData.append("image", metadataImageFile);
 
       const res = await fetch("/api/pin-metadata", {
         method: "POST",
@@ -803,6 +818,15 @@ async function handleSubmit() {
 
           {assetKind === "Fungible" && tokenMintMode === "CreateNew" && (
             <>
+                <Field label="Token tag / symbol" hint="Shown as the token ticker.">
+                  <input
+                    value={tokenSymbol}
+                    onChange={(e) => onTokenSymbolChange(e.target.value.toUpperCase())}
+                    className={inputClass}
+                    placeholder="ARCT"
+                    maxLength={10}
+                  />
+                </Field>
               <Field label="Total supply">
                 <input
                   type="number"
@@ -931,7 +955,7 @@ async function handleSubmit() {
           <div className="mt-5">
           <Link
             href={`/bid?auctionPk=${encodeURIComponent(auctionPkStr)}`}
-            className="btn inline-flex items-center gap-2 bg-[var(--accent)] text-black hover:opacity-90 px-4 py-2"
+            className="btn btn-primary inline-flex h-12 items-center gap-2 px-5 text-sm font-bold uppercase tracking-[0.18em] transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-[0_8px_24px_rgba(0,230,118,0.14)] active:translate-y-0 active:scale-[0.99]"
             >
               Open this auction’s bid page
               <span aria-hidden>→</span>

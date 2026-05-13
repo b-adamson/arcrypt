@@ -29,10 +29,10 @@ type Props = {
 
 type AuctionMetadata = {
   name?: string;
+  symbol?: string;
   description?: string;
   image?: string;
 };
-
 const USDC_DECIMALS = 6;
 
 function toStringMaybe(v: any): string {
@@ -145,6 +145,7 @@ export default function AuctionResultCard({
 
         setMetadata({
           name: json?.name ?? "",
+          symbol: json?.symbol ?? "",
           description: json?.description ?? "",
           image: json?.image ?? "",
         });
@@ -319,6 +320,14 @@ export default function AuctionResultCard({
                 {metadata?.name || (metadataLoading ? "Loading..." : "Untitled auction")}
               </h4>
 
+              {assetKind !== "nft" &&
+              metadata?.symbol &&
+              metadata.symbol.trim() ? (
+                <div className="mt-2 inline-flex items-center border border-[var(--line)] bg-[var(--background)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
+                  ${metadata.symbol}
+                </div>
+              ) : null}
+
               <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">
                 {metadata?.description ||
                   (metadataLoading ? "Fetching description from IPFS..." : "No description available.")}
@@ -387,7 +396,7 @@ export default function AuctionResultCard({
 
           {multi && auctionEnded && bidCount < 3 && (
             <div className="col-span-full border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm">
-              Uniform auctions require at least 3 bids. Results are incomplete.
+              Uniform auctions require at least 3 bids. Results are incomplete. Not eligible for Raydium deployment. Bids refunded.
             </div>
           )}
 
@@ -442,8 +451,43 @@ export default function AuctionResultCard({
         </div>
         )}
           </>
-        ) : (
+           ) : (
           <>
+            {auctionEnded && hasEnoughBids && (
+              <div
+                className={`col-span-full border px-5 py-5 ${
+                  auctionEnded
+                    ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_12%,transparent)]"
+                    : "border-[var(--line)] bg-[var(--background)]"
+                }`}
+              >
+                <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+                  CLEARING PRICE
+                </div>
+
+                <div
+                  className={`mt-2 flex items-end gap-2 ${
+                    auctionEnded ? "text-accent" : "text-[var(--foreground)]"
+                  }`}
+                >
+                  <span className="text-4xl font-bold tabular-nums">
+                    {formattedClearingPrice}
+                  </span>
+
+                  <span className="pb-1 text-sm font-semibold uppercase tracking-[0.18em] opacity-70">
+                    USDC
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {!auctionEnded || !hasEnoughBids ? (
+              <CopyableField
+                label="Clearing price (USDC)"
+                value={formattedClearingPrice}
+              />
+            ) : null}
+
             <CopyableField
               label="Winners"
               value={
@@ -464,11 +508,6 @@ export default function AuctionResultCard({
               label="Winner prices (USDC)"
               value={formattedWinnerPrices}
               copyValue={winnerPrices.join(", ")}
-            />
-
-            <CopyableField
-              label="Clearing price (USDC)"
-              value={formattedClearingPrice}
             />
 
             <CopyableField

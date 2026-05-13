@@ -80,6 +80,7 @@ export default function AuctionClient() {
 
     const wallet = useWallet();
 
+    const [tokenSymbol, setTokenSymbol] = useState("ARCT");
     const [selectedTreasuryAccount, setSelectedTreasuryAccount] = useState("");
     const [showRawInstructions, setShowRawInstructions] = useState(false);
     const [rawInstructions, setRawInstructions] = useState<RawIxView[]>([]);
@@ -398,11 +399,9 @@ useEffect(() => {
     
       const formData = new FormData();
       formData.append("name", metadataName.trim());
+      formData.append("symbol", tokenSymbol.trim().toUpperCase());
       formData.append("description", metadataDescription.trim());
-    
-      if (metadataImageFile) {
-        formData.append("image", metadataImageFile);
-      }
+      if (metadataImageFile) formData.append("image", metadataImageFile);
     
       const res = await fetch("/api/pin-metadata", {
         method: "POST",
@@ -617,6 +616,8 @@ async function handleMakeAuction(
               auctionPkStr={auctionPkStr}
               disabled={!connected}
               lockTokenMint={true}
+              tokenSymbol={tokenSymbol}
+              onTokenSymbolChange={setTokenSymbol}
               getAllowedAuctionTypes={getAllowedAuctionTypes}
               onAssetKindChange={handleAssetKindChange}
               onMetadataNameChange={setMetadataName}
@@ -730,6 +731,8 @@ async function handleMakeAuction(
         auctionPkStr={auctionPkStr}
         disabled={!connected}
         lockTokenMint={false}
+        tokenSymbol={tokenSymbol}
+        onTokenSymbolChange={setTokenSymbol}
         getAllowedAuctionTypes={getAllowedAuctionTypes}
         onAssetKindChange={handleAssetKindChange}
         onMetadataNameChange={setMetadataName}

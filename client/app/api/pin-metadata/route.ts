@@ -116,11 +116,20 @@ export async function POST(req: NextRequest) {
     const form = await req.formData();
 
     const name = String(form.get("name") ?? "").trim();
+    const symbol = String(form.get("symbol") ?? "").trim().toUpperCase();
     const description = String(form.get("description") ?? "").trim();
     const image = form.get("image");
 
     if (!name) {
       return NextResponse.json({ error: "Name is required." }, { status: 400 });
+    }
+
+    if (!symbol) {
+      return NextResponse.json({ error: "Symbol is required." }, { status: 400 });
+    }
+
+    if (symbol.length > 10) {
+      return NextResponse.json({ error: "Symbol must be 10 characters or fewer." }, { status: 400 });
     }
 
     let uploadedImage: { cid: string; uri: string } | null = null;
@@ -131,6 +140,7 @@ export async function POST(req: NextRequest) {
 
     const metadata = {
       name,
+      symbol,
       description,
       ...(uploadedImage?.uri ? { image: uploadedImage.uri } : {}),
     };

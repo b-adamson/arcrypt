@@ -6,19 +6,21 @@ import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "re
 const launchPhrases = [
   "Launch a token",
   "Eliminate rug-pulls",
-  // "Launch an NFT",
+  "Launch an NFT",
   // "Launch your DAO",
   // "Run sealed liquidation auctions",
   "Sell DAO treasuries",
   // "Liquidate positions",
   "Protect from MEV",
   "Sell a token",
-  "Run private sales",
-  // "Sell an NFT",
+  "Run a private sale",
+  "Sell an NFT",
   "Protect bids from MEV",
-  "Develop with sealed auctions",
+  "Sell your art",
+  "Develop with sealed bids",
   "Avoid OTC",
-  "Maximize price discovery"
+  "Maximize price discovery",
+  "Eliminate bots",
 ] as const;
 
 const launchUseCases = [
@@ -72,7 +74,7 @@ const flowSteps = [
   },
 {
     id: "settle",
-  title: "Settle",
+  title: "Win!",
   eyebrow: "4 · Settle",
   description: (
     <>
@@ -86,7 +88,7 @@ const flowSteps = [
     title: "Make an auction",
     eyebrow: "5 · Launch",
     description:
-      "Create highest-bid, Vickrey, uniform, or pro-rata auctions with the ARCRYPT program. Auction SPL tokens, NFTs, or use DAO treasury mode to create a governance proposal, then post it on the ARCRYPT marketplace or launch with your own program using the SDK.",
+      "Create highest-bid, Vickrey or uniform auctions with the ARCRYPT program. Auction SPL tokens, NFTs, or use DAO treasury mode to create a governance proposal, then post it on the ARCRYPT marketplace or launch with your own program using the SDK.",
   },
 ] as const;
 
@@ -296,12 +298,12 @@ const scrollTo =
               title={
                 <>
                   <span className="block">The fairest way to</span>
-                  <span className="block text-accent">launch without rugs</span>
+                  <span className="block text-accent">launch your project</span>
                 </>
               }
               subtitle={
                 <>
-                  ARCRYPT brings 100% sealed auctions to Solana so escrows, pricing, and settlement happen without exposing bids to the public mempool. This provides total MEV protection and a market structure designed from the start to protect participants. We use state-of-the-art cryptography including Arcium MPC for winner calculation, and CPI with the UMBRA program to keep escrows private.
+                  ARCRYPT brings 100% sealed auctions to Solana so escrows, pricing, and settlement happen without exposing bids to the public mempool. This provides total MEV protection, no bot front-runs, no false-hype, uniform allocation, maximal price discovery, real buyers and real liquidity. We use state-of-the-art cryptography including Arcium MPC for winner calculation, and CPI with Umbra to keep escrows private.
                 </>
               }
             />
@@ -347,7 +349,7 @@ const scrollTo =
                     {item}
                   </div>
                   <div className="mt-3 text-sm leading-6 text-[var(--muted)] md:text-base">
-                      {index === 0 && "Launch a token to Raydium with absolute rug protection"}
+                      {index === 0 && "Bootstrap liquidity for a token to Raydium with a sealed-bid auction"}
                       {index === 1 && "Auction and bid for NFTs, completely sealed - create your own or sell an existing one"}
                       {index === 2 && "Plug in with DAOs and Realms governance to propose treasury liquidations"}
                       {index === 3 && "Use the auction program directly inside your app or protocol with the SDK"}
@@ -450,7 +452,7 @@ const scrollTo =
               A comprehensive sealed auction <span className="text-accent">SDK for developers</span>
             </h2>
             <p className="mt-6 max-w-3xl text-lg leading-8 text-[var(--muted)] md:text-2xl md:leading-10">
-              Build sealed-bid markets into protocols, launchpads, validators, and treasury tools without exposing bidder intent. ARCRYPT gives you the primitives to ship encrypted auctions with low latency.
+              Build sealed-bid markets into protocols, launchpads, validators, and webclients without exposing bidder intent. ARCRYPT gives you the primitives to ship encrypted auctions with low latency.
             </p>
 
             <div className="mt-8 flex flex-col gap-4 sm:flex-row">
@@ -484,10 +486,10 @@ const scrollTo =
               03 · How it works
             </p>
             <h2 className="mt-4 text-5xl font-black tracking-tight text-[var(--foreground)] md:text-7xl lg:text-8xl">
-              Encrypted balances and shared secrets with MPC
+              Invisible USDC investments with MPC
             </h2>
             <p className="mt-6 max-w-4xl text-lg leading-8 text-[var(--muted)] md:text-2xl md:leading-10">
-              See how ARCRYPT securely locks encrypted bid escrows and determines the result of the auction without revealing the bid quantity anywhere on-chain using multi-party computation.
+              Bid in the dark with Arcrypt. Nobody can see how much USDC you have bid, even if they know your wallet address. See how ARCRYPT securely locks encrypted bid escrows and determines the result of the auction without revealing the bid quantity anywhere on-chain using multi-party computation.
             </p>
           </div>
 
@@ -768,9 +770,7 @@ const scrollTo =
                       }}
                       aria-hidden="true"
                     >
-                      {`npm install @arcrypt/sdk
-
-                      cargo install arcrypt-sdk`}
+                      {`npm install @arcrypt/sdk`}
                     </pre>
                   </div>
                 </div>
@@ -799,9 +799,44 @@ const scrollTo =
               </div>
 
             </article>
+              <a
+    href="https://www.youtube.com/watch?v=RJwPN_H7-DU"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="block h-full"
+  >
+    <article className="card surface-hover flex h-full min-h-[220px] flex-col justify-center p-8 transition">
+      <div className="text-sm font-medium uppercase tracking-wide text-[var(--muted)]">
+        View the pitch
+      </div>
+      <h3 className="mt-4 text-2xl font-extrabold tracking-tight text-[var(--foreground)]">
+        Watch the pitch video
+      </h3>
+    </article>
+  </a>
+
+  <a
+    href="https://www.youtube.com/watch?v=y2xpd_ST2ZY"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="block h-full"
+  >
+    <article className="card surface-hover flex h-full min-h-[220px] flex-col justify-center p-8 transition">
+      <div className="text-sm font-medium uppercase tracking-wide text-[var(--muted)]">
+        View the demo
+      </div>
+      <h3 className="mt-4 text-2xl font-extrabold tracking-tight text-[var(--foreground)]">
+        Watch the demo video
+      </h3>
+    </article>
+  </a>
+            
           </div>
+          
         </div>
+        
       </section>
+      
     </main>
   );
 }

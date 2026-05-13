@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { PublicKey } from "@solana/web3.js";
 import { createReadOnlyProgram } from "../../lib/anchorClient";
 
 type AuctionSummary = {
@@ -18,7 +17,10 @@ type AuctionSummary = {
   auctionType: string;
   assetKind: string;
   error?: string;
-   bidCount: number;
+  bidCount: number;
+  metadataSymbol?: string;
+  endTime?: string | number;
+  end_time?: string | number;
 };
 
 type SearchSuggestion = {
@@ -26,6 +28,8 @@ type SearchSuggestion = {
   value: string;
   auctionPk: string;
 };
+
+type SortOption = "popular" | "closingSoon";
 
 import {
   shorten,
@@ -38,10 +42,55 @@ import {
 const INITIAL_VISIBLE = 12;
 const LOAD_MORE_STEP = 12;
 const METADATA_TIMEOUT_MS = 2500;
+const HOUR_MS = 60 * 60 * 1000;
 
 function toStringMaybe(v: any): string {
-  if (v == null) return "";
-  return v?.toString?.() ?? String(v);
+  return v == null ? "" : v?.toString?.() ?? String(v);
+}
+
+function normalizeTimeValue(raw: any): number {
+  if (raw == null) return 0;
+
+  const num = Number(raw);
+  if (!Number.isFinite(num) || num <= 0) return 0;
+
+  return num < 1e12 ? num * 1000 : num;
+}
+
+function getEndTimeMs(item: AuctionSummary): number {
+  return normalizeTimeValue(item.endTime ?? item.end_time);
+}
+
+function isClosed(item: AuctionSummary): boolean {
+  const endMs = getEndTimeMs(item);
+  return endMs > 0 && endMs <= Date.now();
+}
+
+function formatClosingLabel(item: AuctionSummary): string {
+  const endMs = getEndTimeMs(item);
+  if (!endMs) return "";
+
+  const diff = endMs - Date.now();
+  if (diff <= 0) return "closed";
+  if (diff < HOUR_MS) return "<1 hour";
+
+  const totalHours = Math.ceil(diff / HOUR_MS);
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+
+  if (days <= 0) {
+    return `closes in ${hours}h`;
+  }
+
+  if (hours === 0) {
+    return `closes in ${days}d`;
+  }
+
+  return `closes in ${days}d ${hours}h`;
+}
+
+function isTokenAssetKind(assetKind: string): boolean {
+  return ["token", "ft", "fungible", "spltoken", "spl-token"].includes(assetKind.toLowerCase());
 }
 
 async function fetchJsonWithTimeout(url: string, timeoutMs: number): Promise<any | null> {
@@ -51,6 +100,7 @@ async function fetchJsonWithTimeout(url: string, timeoutMs: number): Promise<any
   try {
     const res = await fetch(url, { cache: "no-store", signal: controller.signal });
     if (!res.ok) return null;
+
     try {
       return await res.json();
     } catch {
@@ -80,7 +130,10 @@ async function buildAuctionSummary(entry: any): Promise<AuctionSummary> {
   const auction = entry?.account ?? {};
 
   const metadataUri = toStringMaybe(
-    auction?.auctionMetadataUri ?? auction?.auction_metadata_uri ?? auction?.metadataUri ?? auction?.uri
+    auction?.auctionMetadataUri ??
+      auction?.auction_metadata_uri ??
+      auction?.metadataUri ??
+      auction?.uri
   );
 
   const decimals = Number(auction?.prizeDecimals ?? auction?.prize_decimals ?? 0);
@@ -89,6 +142,7 @@ async function buildAuctionSummary(entry: any): Promise<AuctionSummary> {
   let name = `Auction ${shorten(pk)}`;
   let description = "";
   let image = "";
+  let metadataSymbol = "";
 
   if (metadataUri) {
     const meta = await fetchJsonWithTimeout(toHttpGateway(metadataUri), METADATA_TIMEOUT_MS);
@@ -96,6 +150,7 @@ async function buildAuctionSummary(entry: any): Promise<AuctionSummary> {
       name = String(meta?.name ?? name);
       description = String(meta?.description ?? "");
       image = toStringMaybe(meta?.image ?? "");
+      metadataSymbol = String(meta?.symbol ?? "");
     }
   }
 
@@ -114,55 +169,76 @@ async function buildAuctionSummary(entry: any): Promise<AuctionSummary> {
     auctionType: enumKey(auction?.auctionType ?? auction?.auction_type).toLowerCase(),
     assetKind: enumKey(auction?.assetKind ?? auction?.asset_kind).toLowerCase(),
     bidCount,
+    metadataSymbol,
+    endTime: auction?.endTime ?? auction?.end_time,
   };
 }
 
 function AuctionCard({ item, active }: { item: AuctionSummary; active?: boolean }) {
   const isMetadataOnly = item.assetKind === "metadataonly";
+  const closingLabel = formatClosingLabel(item);
+  const showTicker = isTokenAssetKind(item.assetKind) && Boolean(item.metadataSymbol?.trim());
 
   const [flash, setFlash] = React.useState(false);
-const prev = React.useRef(item.bidCount ?? 0);
+  const prev = React.useRef(item.bidCount ?? 0);
 
-React.useEffect(() => {
-  if ((item.bidCount ?? 0) > prev.current) {
-    setFlash(true);
-    setTimeout(() => setFlash(false), 700);
-  }
-  prev.current = item.bidCount ?? 0;
-}, [item.bidCount]);
+  React.useEffect(() => {
+    if ((item.bidCount ?? 0) > prev.current) {
+      setFlash(true);
+      setTimeout(() => setFlash(false), 700);
+    }
+    prev.current = item.bidCount ?? 0;
+  }, [item.bidCount]);
 
   return (
     <Link
       href={`/bid?auctionPk=${encodeURIComponent(item.auctionPk)}`}
       className={`group block h-full overflow-hidden border transition hover:-translate-y-0.5 ${
-        active
-          ? "card-active ring-1 ring-[var(--accent)]/25"
-          : "card surface-hover"
+        active ? "card-active ring-1 ring-[var(--accent)]/25" : "card surface-hover"
       }`}
     >
       <article className="flex h-full flex-col">
         <div className="relative aspect-[4/3] w-full overflow-hidden border-b border-[var(--line)] bg-[var(--background)]">
-        <div className="absolute right-4 top-4 z-10">
-          <div
-            className={`
-              surface-strong px-4 py-3 transition-all
-              ${flash ? "border-accent pulse-accent" : ""}
-            `}
-          >
-            <div className="text-[10px] uppercase tracking-[0.22em] text-muted">
-              Bids
-            </div>
+          <div className="absolute left-3 top-3 z-10 flex max-w-[75%] flex-wrap gap-2">
+            <span className="badge text-[10px] uppercase tracking-[0.16em]">
+              {item.auctionType || "auction"}
+            </span>
 
+            {showTicker ? (
+              <span className="badge text-[10px] uppercase tracking-[0.16em]">
+                ${item.metadataSymbol?.trim()}
+              </span>
+            ) : null}
+
+            {closingLabel ? (
+              <span className="badge text-[10px] uppercase tracking-[0.16em]">
+                {closingLabel}
+              </span>
+            ) : null}
+          </div>
+
+          <div className="absolute right-4 top-4 z-10">
             <div
               className={`
-                text-2xl font-bold tracking-tight
-                ${flash ? "text-accent" : ""}
+                surface-strong px-4 py-3 transition-all
+                ${flash ? "border-accent pulse-accent" : ""}
               `}
             >
-              {item.bidCount ?? 0}
+              <div className="text-[10px] uppercase tracking-[0.22em] text-muted">
+                Bids
+              </div>
+
+              <div
+                className={`
+                  text-2xl font-bold tracking-tight
+                  ${flash ? "text-accent" : ""}
+                `}
+              >
+                {item.bidCount ?? 0}
+              </div>
             </div>
           </div>
-        </div>
+
           {item.image ? (
             <img
               src={item.image}
@@ -174,13 +250,6 @@ React.useEffect(() => {
               No image
             </div>
           )}
-
-          <div className="absolute left-3 top-3 flex gap-2">
-            <span className="badge text-[10px] uppercase tracking-[0.16em]">
-              {item.auctionType || "auction"}
-            </span>
-
-          </div>
         </div>
 
         <div className="flex flex-1 flex-col p-4">
@@ -250,6 +319,7 @@ export default function MarketPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
   const [query, setQuery] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("popular");
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [jumpTarget, setJumpTarget] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -291,11 +361,49 @@ export default function MarketPage() {
     };
   }, []);
 
+  const sortedAuctions = useMemo(() => {
+    const items = [...auctions];
+
+    items.sort((a, b) => {
+      const aClosed = isClosed(a);
+      const bClosed = isClosed(b);
+
+      // Closed auctions always go to the bottom.
+      if (aClosed !== bClosed) {
+        return aClosed ? 1 : -1;
+      }
+
+      const aEnd = getEndTimeMs(a) || Number.POSITIVE_INFINITY;
+      const bEnd = getEndTimeMs(b) || Number.POSITIVE_INFINITY;
+
+      if (sortBy === "popular") {
+        const bidDelta = (b.bidCount ?? 0) - (a.bidCount ?? 0);
+        if (bidDelta !== 0) return bidDelta;
+
+        const endDelta = aEnd - bEnd;
+        if (endDelta !== 0) return endDelta;
+
+        return a.name.localeCompare(b.name);
+      }
+
+      // closing soon
+      const endDelta = aEnd - bEnd;
+      if (endDelta !== 0) return endDelta;
+
+      const bidDelta = (b.bidCount ?? 0) - (a.bidCount ?? 0);
+      if (bidDelta !== 0) return bidDelta;
+
+      return a.name.localeCompare(b.name);
+    });
+
+    return items;
+  }, [auctions, sortBy]);
+
   const suggestions = useMemo<SearchSuggestion[]>(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
 
-    return auctions
+    return sortedAuctions
       .filter((item) => {
         return (
           item.name.toLowerCase().includes(q) ||
@@ -310,13 +418,13 @@ export default function MarketPage() {
         value: item.name,
         auctionPk: item.auctionPk,
       }));
-  }, [auctions, query]);
+  }, [sortedAuctions, query]);
 
   const filteredAuctions = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return auctions;
+    if (!q) return sortedAuctions;
 
-    return auctions.filter((item) => {
+    return sortedAuctions.filter((item) => {
       return (
         item.name.toLowerCase().includes(q) ||
         item.tokenMint.toLowerCase().includes(q) ||
@@ -324,7 +432,7 @@ export default function MarketPage() {
         item.metadataUri.toLowerCase().includes(q)
       );
     });
-  }, [auctions, query]);
+  }, [sortedAuctions, query]);
 
   const visibleAuctions = filteredAuctions.slice(0, visibleCount);
 
@@ -341,7 +449,9 @@ export default function MarketPage() {
     setQuery(item.value);
     setJumpTarget(item.auctionPk);
     setSuggestionsOpen(false);
-    setVisibleCount((current) => Math.max(current, auctions.findIndex((a) => a.auctionPk === item.auctionPk) + 4));
+    setVisibleCount((current) =>
+      Math.max(current, auctions.findIndex((a) => a.auctionPk === item.auctionPk) + 4)
+    );
   }
 
   async function handleLoadMore() {
@@ -379,57 +489,76 @@ export default function MarketPage() {
             </div>
           </div>
 
-          <div className="relative z-50 max-w-3xl">
-            <input
-              ref={inputRef}
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setSuggestionsOpen(true);
-                setJumpTarget(null);
-                setVisibleCount(INITIAL_VISIBLE);
-              }}
-              onFocus={() => setSuggestionsOpen(true)}
-              onBlur={() => window.setTimeout(() => setSuggestionsOpen(false), 150)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && suggestions[0]) {
-                  handleSuggestionPick(suggestions[0]);
-                }
-              }}
-              placeholder="Search name, token mint, auction PDA, metadata URI..."
-              className="h-12 w-full border border-[var(--line)] bg-[var(--background)] px-4 text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--muted)]/70 transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20"
-            />
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div className="relative z-50 max-w-3xl flex-1">
+              <input
+                ref={inputRef}
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setSuggestionsOpen(true);
+                  setJumpTarget(null);
+                  setVisibleCount(INITIAL_VISIBLE);
+                }}
+                onFocus={() => setSuggestionsOpen(true)}
+                onBlur={() => window.setTimeout(() => setSuggestionsOpen(false), 150)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && suggestions[0]) {
+                    handleSuggestionPick(suggestions[0]);
+                  }
+                }}
+                placeholder="Search name, token mint, auction PDA, metadata URI..."
+                className="h-12 w-full border border-[var(--line)] bg-[var(--background)] px-4 text-sm text-[var(--foreground)] outline-none placeholder:text-[var(--muted)]/70 transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20"
+              />
 
-            {suggestionsOpen && suggestions.length > 0 ? (
-              <div className="absolute z-50 mt-2 w-full overflow-hidden border border-[var(--line)] bg-[var(--background)] shadow-2xl">
-                <div className="border-b border-[var(--line)] px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
-                  Suggestions
-                </div>
-                <div className="max-h-72 overflow-auto">
-                  {suggestions.map((s) => (
-                    <button
-                      key={s.auctionPk}
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => handleSuggestionPick(s)}
-                      className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition hover:bg-[var(--surface-2)]"
-                    >
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-medium text-[var(--foreground)]">
-                          {s.label}
+              {suggestionsOpen && suggestions.length > 0 ? (
+                <div className="absolute z-50 mt-2 w-full overflow-hidden border border-[var(--line)] bg-[var(--background)] shadow-2xl">
+                  <div className="border-b border-[var(--line)] px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
+                    Suggestions
+                  </div>
+                  <div className="max-h-72 overflow-auto">
+                    {suggestions.map((s) => (
+                      <button
+                        key={s.auctionPk}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => handleSuggestionPick(s)}
+                        className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition hover:bg-[var(--surface-2)]"
+                      >
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-medium text-[var(--foreground)]">
+                            {s.label}
+                          </div>
+                          <div className="mt-0.5 truncate font-mono text-xs text-[var(--muted)]">
+                            {s.auctionPk}
+                          </div>
                         </div>
-                        <div className="mt-0.5 truncate font-mono text-xs text-[var(--muted)]">
-                          {s.auctionPk}
-                        </div>
-                      </div>
-                      <span className="badge text-[10px] uppercase tracking-[0.16em]">
-                        Jump
-                      </span>
-                    </button>
-                  ))}
+                        <span className="badge text-[10px] uppercase tracking-[0.16em]">
+                          Jump
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
+              ) : null}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
+                Sort
               </div>
-            ) : null}
+              <select
+                value={sortBy}
+                onChange={(e) => {
+                  setSortBy(e.target.value as SortOption);
+                  setVisibleCount(INITIAL_VISIBLE);
+                }}
+                className="h-12 border border-[var(--line)] bg-[var(--background)] px-3 text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20"
+              >
+                <option value="popular">popular</option>
+                <option value="closingSoon">closing soon</option>
+              </select>
+            </div>
           </div>
         </div>
 

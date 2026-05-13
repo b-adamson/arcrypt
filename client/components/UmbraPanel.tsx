@@ -313,9 +313,9 @@ export default function UmbraPanel() {
 
             <div className="mb-8 text-center">
               <div className="text-xs uppercase tracking-[0.2em] text-muted">Balance</div>
-              <div className="hero-title mt-2 text-6xl font-semibold transition-transform duration-200 group-hover:scale-[1.01]">
-                {balance}
-              </div>
+                <div className="hero-title mt-2 text-6xl font-semibold transition-transform duration-200 group-hover:scale-[1.01]">
+                  {balance} <span className="text-3xl text-muted">USDC</span>
+                </div>
             </div>
 
             <label className="mb-4 block">
