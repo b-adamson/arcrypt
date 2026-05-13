@@ -40,7 +40,7 @@ export default function DocsPage() {
 
               {"\n\n"}
                 NFTs launched on the Arcrypt marktplace go directly to the highest bidder. <strong className="text-[var(--foreground)]">
-                Tokens launched on Arcrypt go through a uniform FDV based auciton, and the bids generate liquidity for an automatically generated Raydium swap pool once the auction closes.
+                Tokens launched on Arcrypt go through a uniform FDV based auction, and the bids generate liquidity for an automatically generated Raydium swap pool once the auction closes.
               </strong> <strong className="text-[var(--foreground)]">
                 This enables token launches in just a few clicks with 100% resistance to rug pulls.
               </strong>
