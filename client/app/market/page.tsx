@@ -204,12 +204,6 @@ function AuctionCard({ item, active }: { item: AuctionSummary; active?: boolean 
               {item.auctionType || "auction"}
             </span>
 
-            {showTicker ? (
-              <span className="badge text-[10px] uppercase tracking-[0.16em]">
-                ${item.metadataSymbol?.trim()}
-              </span>
-            ) : null}
-
             {closingLabel ? (
               <span className="badge text-[10px] uppercase tracking-[0.16em]">
                 {closingLabel}
@@ -260,6 +254,12 @@ function AuctionCard({ item, active }: { item: AuctionSummary; active?: boolean 
             <h3 className="mt-1 line-clamp-1 text-lg font-semibold text-[var(--foreground)]">
               {item.name}
             </h3>
+
+            {showTicker ? (
+              <div className="mt-1 text-sm font-medium text-[var(--muted)]">
+                ${item.metadataSymbol?.trim()}
+              </div>
+            ) : null}
           </div>
 
           <p
