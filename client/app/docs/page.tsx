@@ -42,7 +42,7 @@ export default function DocsPage() {
                 NFTs launched on the Arcrypt marktplace go directly to the highest bidder. <strong className="text-[var(--foreground)]">
                 Tokens launched on Arcrypt go through a uniform FDV based auction, and the bids generate liquidity for an automatically generated Raydium swap pool once the auction closes.
               </strong> <strong className="text-[var(--foreground)]">
-                This enables token launches in just a few clicks with 100% resistance to rug pulls.
+                This enables token launches in just a few clicks with 100% resistance to bot manipulation. All USDC bids are entirely invisible - even if people track your wallet.
               </strong>
 
               {"\n\n"}ARCRYPT leverages state of the art cryptography and MPC technology to keep your money entirely hidden from the chain.{" "}
