@@ -284,13 +284,13 @@ export default function AuctionResultCard({
   return (
     <section className="mt-6 overflow-hidden border border-[var(--line)] bg-[var(--surface)] p-6 shadow-none">
       <div className="mb-5 flex items-center justify-between gap-3 border-b border-[var(--line)] pb-4">
-        <div>
-          <h3 className="text-lg font-semibold text-[var(--foreground)]">Project status</h3>
-          <p className="mt-1 text-sm text-[var(--muted)]">
-            Core project status, settlement details, and pinned metadata
-          </p>
-        </div>
-
+            {assetKind !== "nft" &&
+              metadata?.symbol &&
+              metadata.symbol.trim() ? (
+                <div className="text-lg font-semibold text-[var(--foreground)]">
+                  ${metadata.symbol}
+                </div>
+              ) : null}
         <span className="badge badge-accent">{auctionEnded ? "Ended" : "Live"}</span>
       </div>
 
@@ -312,9 +312,6 @@ export default function AuctionResultCard({
             </div>
 
             <div className="p-5">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
-                Metadata
-              </div>
 
               <h4 className="mt-2 text-2xl font-semibold text-[var(--foreground)]">
                 {metadata?.name || (metadataLoading ? "Loading..." : "Untitled auction")}

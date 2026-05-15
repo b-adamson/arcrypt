@@ -49,7 +49,7 @@ export default function BidPageClient({ auctionPk }: { auctionPk: string | null 
   const { client: umbraClient, withdrawFn } = useUmbraClient();
 
   const isBlacklistedAuction = isBlacklistedAuctionPk(auctionPkStr);
-  const showBottomStatusBar = !isBlacklistedAuction;
+
 
   const [programClient, setProgramClient] = useState<any | null>(null);
   const [readOnlyProgram, setReadOnlyProgram] = useState<any | null>(null);
@@ -82,6 +82,7 @@ export default function BidPageClient({ auctionPk }: { auctionPk: string | null 
   const isCreator = auctionData && publicKey ? new PublicKey(auctionData.authority).equals(publicKey) : false;
   const auctionType = auctionData ? getAuctionType(auctionData) : "";
   const resolvedWinnerKeys = auctionData ? getResolvedWinnerKeys(auctionData) : [];
+  const showBottomStatusBar = !isBlacklistedAuction && !(auctionType === "uniform" && resolvedWinnerKeys.length < 3);
   const resolvedWinnerBase58 = resolvedWinnerKeys[0] ?? null;
   const bidCount = auctionData ? getBidCount(auctionData) : 0;
   const hasNoBids = auctionData ? bidCount === 0 : false;
@@ -713,7 +714,6 @@ async function handlePlaceBid() {
   return (
 <main className="page-shell min-h-screen px-5 py-5 md:px-8 md:py-8">
   <AuctionWinConfetti show={showWinConfetti} />
-
   <div className="mx-auto max-w-6xl">
     <div className="mb-6">
       <button
@@ -809,10 +809,6 @@ async function handlePlaceBid() {
     <div className={panelClass}>
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-[var(--foreground)]">
-            Auction actions
-          </h3>
-
           <p className="mt-1 text-sm text-[var(--muted)]">
             Refresh, refund, or reclaim depending on auction state.
           </p>
@@ -857,7 +853,8 @@ async function handlePlaceBid() {
         isResolved &&
         isCreator &&
         isTokenAuction &&
-        !raydiumPoolCreated ? (
+        !raydiumPoolCreated &&
+        !(auctionType === "uniform" && resolvedWinnerKeys.length < 3) ? (
           <button
             onClick={handleClaimPayoutAndCreatePool}
             className={buttonPrimary}

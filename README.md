@@ -7,6 +7,8 @@ ARCRYPT is an upcoming sealed-bid auction platform on Solana. It lets sellers au
 Telegram: https://t.me/+NGbdEEbM-AYyNDZk
 Twitter (X): https://x.com/arcrypt_bid
 
+* Legacy escrows temporatirly enabled whilst we investigate an issue with refunds
+
 ## What ARCRYPT does
 
 ARCRYPT is built for private price discovery.
@@ -44,7 +46,7 @@ ARCRYPT combines four pieces:
 
 Under the hood, when submitting a bid:
 
-1. The client generates an encrypted token account and funds it with wSOL using the dashboard.
+1. The client generates an encrypted token account and funds it with USDC using the dashboard.
 2. The bid client encrypts their bid against Umbra’s MXE and submits it to Arcrypt.
 3. Arcrypt performs a CPI into Umbra, passing the encrypted token account and bid amount.
 4. Umbra decrypts the bid inside its own Arcium MXE and allocates the corresponding funds into its shielded pool.
@@ -152,7 +154,7 @@ It exposes the commands used by the app and by integrators, including:
 * `createPlaceBid`
 * `createDetermineWinner`
 * `createSettlement`
-* low-level settlement builders
+* low-level tx builders
 
 Install it with:
 
@@ -247,15 +249,16 @@ On devnet we are deployed at
 * If bid settlement fails, confirm that the auction has ended and the correct settlement instruction is being used.
 * Make sure, if testing in localnet, you have ARCIUM_CLUSTER_OFFSET=0 specified as a client environment variable. The SDK will default to 0 (localnet). The devnet program is deployed at 456
 * Make sure the pool has enough USDC and/or the creator has enough devnet SOL to make the pool (See roadmap)
-* Do not be scared by stack offsets on the arcium build process. They are entirely due to the UMBRA functions called from codema and not our own Arcrypt code. Use `<Box>` to make acounts more space-efficient if needed. 
+* Do not be scared by stack offsets on the arcium build process. They are entirely due to the umbra functions called from codema and not our own Arcrypt code. Use `<Box>` to make acounts more space-efficient if needed. 
 
 ## Roadmap
 
 Planned and in-progress areas include:
 
-* On-chain CPI into Raydium so off-chain worker can auto create the Raydium pool, using liquidity from the auction to cover tx fees
-* Upgrade SDK support for fine grain txs and better callbacks on the encrypted bid placement
-* Make async tx signs appear as just one wallet sign for supported wallets
+* On-chain CPI into Raydium so off-chain worker can auto create the Raydium pool, using liquidity from the auction to cover tx fees.
+* Move instructions out of API. This is currently due to the arcium ts package pulling backend only imports which next complains about.
+* Upgrade SDK support for fine grain txs and better callbacks on the encrypted bid placement.
+* Make async tx signs appear as just one wallet sign for supported wallets. place_bid will eventually be just one sign. 
 * UI Changes
 * Mainnet Launch
 

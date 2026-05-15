@@ -61,7 +61,7 @@ export default function DocsPage() {
               The Mission
             </h3>
             <p className="text-[var(--muted)]">
-              We firmly believe privacy is a central human right. Nobody needs to know what you do with your data, and that includes your money. Arcrypt aims to be the first launchpad that entirely eliminates the possibility of rug pulls and MEV attacks. 
+              We firmly believe privacy is a central human right. Nobody needs to know what you do with your data, and that includes your money. Arcrypt aims to be the first launchpad that entirely eliminates the possibility of bots outbidding humans, gives investors total confidentialty, and providing great price discovery. 
             </p>
           </section>
 
