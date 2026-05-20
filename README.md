@@ -1,13 +1,13 @@
 # ARCRYPT
 
-Join us at [arcrypt.bid](https://arcrypt.bid)
+**WAITLIST OPEN NOW. Refer a friend to move up in the list. Join us at [arcrypt.bid](https://arcrypt.bid)**
 
 ARCRYPT is an upcoming sealed-bid auction platform on Solana. It lets sellers auction tokens, NFTs, or metadata-only assets without exposing competing bids on-chain, helping prevent front-running, MEV, and other forms of bid leakage. Bid amounts are processed privately through Arcium MPC, while settlement still happens transparently on Solana. For the first time ever we leverage UMBRA to conceal committed bid escrows on chain, as well as hiding the same bid amount transmitted to Arcium MXE. 
 
 Telegram: https://t.me/+NGbdEEbM-AYyNDZk
 Twitter (X): https://x.com/arcrypt_bid
 
-* Legacy escrows temporatirly enabled whilst we investigate an issue with refunds
+* 05/20 1pm: Legacy escrows temporarily enabled whilst we investigate an issue with refunds.
 
 ## What ARCRYPT does
 
@@ -255,12 +255,13 @@ On devnet we are deployed at
 
 Planned and in-progress areas include:
 
-* On-chain CPI into Raydium so off-chain worker can auto create the Raydium pool, using liquidity from the auction to cover tx fees.
-* Move instructions out of API. This is currently due to the arcium ts package pulling backend only imports which next complains about.
+* Expand token mode. Right now we are focusing on NFTs as its the easiest to do, but once we can get many bids setup we can enable uniform auctions for many winners. We may deprecate token mode if this is not feasible. NFTs are a valuable unlock and we want to deliver it, since this is the only possible way to run a sealed nft auction. 
+* On-chain CPI into Raydium so off-chain worker can auto create the Raydium pool, using liquidity from the auction to cover tx fees in token mode. 
+* Move instructions out of API. This is currently due to the arcium ts package pulling backend only imports which Next.js complains about.
 * Upgrade SDK support for fine grain txs and better callbacks on the encrypted bid placement.
 * Make async tx signs appear as just one wallet sign for supported wallets. place_bid will eventually be just one sign. 
-* UI Changes
-* Mainnet Launch
+* UI Overhaul
+* **Mainnet Launch this Summer**
 
 ## License
 

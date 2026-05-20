@@ -17,6 +17,7 @@
     "@metaplex-foundation/umi": "^1.5.1",
     "@metaplex-foundation/umi-bundle-defaults": "^1.5.1",
     "@metaplex-foundation/umi-signer-wallet-adapters": "^1.5.1",
+    "@neondatabase/serverless": "^1.1.0",
     "@noble/curves": "^2.0.1",
     "@noble/hashes": "^2.0.1",
     "@pinata/sdk": "^2.1.0",

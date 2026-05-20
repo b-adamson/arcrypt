@@ -146,6 +146,7 @@ function SectionTitle({
 
 export default function HomePage() {
   const launchRef = useRef<HTMLElement | null>(null);
+  const waitlistRef = useRef<HTMLElement | null>(null);
   const sdkRef = useRef<HTMLElement | null>(null);
   const howItWorksRef = useRef<HTMLElement | null>(null);
   const getStartedRef = useRef<HTMLElement | null>(null);
@@ -157,6 +158,9 @@ export default function HomePage() {
 
   const activeDetailRef = useRef<HTMLDivElement | null>(null);
   const didMountRef = useRef(false);
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [referralLink, setReferralLink] = useState("");
 
   const highlightTransition =
   "transition-[border-color,background-color,box-shadow,color] duration-200 ease-out";
@@ -216,6 +220,27 @@ const scrollTo =
 
   const active = flowSteps[activeStep];
 
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setStatus("loading");
+
+    const res = await fetch("/api/updateWaitlist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      setStatus("error");
+      return;
+    }
+
+    setReferralLink(data.referralLink || "");
+    setStatus("success");
+  }
+
   return (
     <main className="page-shell min-h-[100svh] overflow-hidden">
       <section className="page-section relative isolate flex min-h-[100svh] w-full items-center justify-center overflow-hidden py-20 md:py-28">
@@ -270,12 +295,21 @@ const scrollTo =
               >
                 Begin
               </a>
-<Link
-  href="/docs"
-  className="btn text-sm font-semibold uppercase tracking-[0.2em] md:text-base"
->
-  Read docs
-</Link>
+
+              <a
+                href="#waitlist"
+                onClick={scrollTo(waitlistRef)}
+                className="btn btn-primary text-sm font-semibold uppercase tracking-[0.2em] md:text-base"
+              >
+                Join the waitlist
+              </a>
+
+              <Link
+                href="/docs"
+                className="btn text-sm font-semibold uppercase tracking-[0.2em] md:text-base"
+              >
+                Read docs
+              </Link>
             </div>
           </div>
 
@@ -669,7 +703,7 @@ const scrollTo =
 
       <section
         id="get-started"
-        ref={getStartedRef}
+        ref={waitlistRef}
         className="page-section border-t border-[var(--line)] min-h-[100svh] flex items-center py-20 md:py-28"
         aria-label="Get started panels"
       >
@@ -830,8 +864,44 @@ const scrollTo =
       </h3>
     </article>
   </a>
+  
             
           </div>
+          <section className="page-section border-t border-[var(--line)] py-20 md:py-28">
+  <div className="mx-auto max-w-7xl px-6">
+    <div className="surface-strong p-8 md:p-10 lg:p-12">
+      <p className="text-xs uppercase tracking-[0.45em] text-[var(--muted)]">
+        05 · Waitlist
+      </p>
+      <h2 className="mt-4 text-4xl font-black tracking-tight md:text-6xl">
+        Join the waitlist.
+      </h2>
+      <p className="mt-4 max-w-2xl text-lg text-[var(--muted)]">
+        Get early access and move up the list by inviting friends.
+      </p>
+
+      <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4 sm:flex-row">
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Enter your email"
+          className="min-w-0 flex-1 border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-[var(--foreground)]"
+        />
+        <button type="submit" className="btn btn-primary">
+          {status === "loading" ? "Joining..." : "Join waitlist"}
+        </button>
+      </form>
+      </div>
+  </div>
+  {status === "success" ? (
+  <div className="mt-6 border border-[var(--line)] bg-[var(--background)] p-4">
+    <div className="text-sm text-[var(--muted)]">You are on the waitlist.</div>
+    <div className="mt-2 break-all text-sm text-[var(--accent)]">{referralLink}</div>
+  </div>
+) : null}
+</section>
           
         </div>
         
