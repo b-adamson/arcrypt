@@ -6,6 +6,7 @@
     "sdk"
   ],
   "dependencies": {
-    "@arcium-hq/client": "^0.9.7"
+    "@arcium-hq/client": "^0.9.7",
+    "@umbra-privacy/sdk": "^5.0.0-rc.2"
   }
 }

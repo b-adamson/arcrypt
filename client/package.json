@@ -35,7 +35,7 @@
     "@solana/wallet-adapter-wallets": "^0.19.37",
     "@solana/web3.js": "^1.98.4",
     "@solana/webcrypto-ed25519-polyfill": "^6.5.0",
-    "@umbra-privacy/sdk": "^4.0.0",
+    "@umbra-privacy/sdk": "^5.0.0-rc.2",
     "@umbra-privacy/web-zk-prover": "^2.0.1",
     "@wallet-standard/app": "^1.1.0",
     "@wallet-standard/base": "^1.1.0",

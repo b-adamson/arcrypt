@@ -1526,7 +1526,7 @@ export async function createDetermineWinner(params: {
 export async function createSettlement(
   params: CreateSettlementFlowParams
 ): Promise<AuctionActionBundle & { action: Exclude<SettlementAction, "auto"> }> {
-  const { programClient, programId, publicKey, auctionPk, auctionData, escrowExists } = params;
+  const { programClient, programId, publicKey, auctionPk, auctionData, escrowExists, action } = params;
 
   if (!auctionData) throw new Error("Auction data is required.");
 
@@ -1535,7 +1535,7 @@ export async function createSettlement(
   const isCreator = creator.equals(publicKey);
   const isWinner = auctionResolvedWinnerKeys(auctionData).includes(walletBase58);
   const alreadyClaimed = auctionIsWinnerClaimed(auctionData, walletBase58);
-  const hasBids = Number(auctionData.bidCount ?? 0) > 0;
+  const hasBids = Number(auctionData.bidCount ?? auctionData.bid_count ?? 0) > 0;
 
   const ended = (() => {
     const endTime = Number(auctionData.endTime ?? auctionData.end_time ?? 0);
@@ -1544,8 +1544,11 @@ export async function createSettlement(
     return now >= endTime || statusKey === "closed" || statusKey === "resolved";
   })();
 
-  const action: Exclude<SettlementAction, "auto"> =
-    !hasBids && isCreator
+  const forcedAction = action && action !== "auto" ? action : null;
+
+  const selectedAction: Exclude<SettlementAction, "auto"> =
+    forcedAction ??
+    (!hasBids && isCreator
       ? "reclaimUnsold"
       : isWinner && !alreadyClaimed
         ? "settleWinner"
@@ -1553,9 +1556,9 @@ export async function createSettlement(
           ? "settleWinner"
           : escrowExists === true
             ? "claimRefund"
-            : "settleWinner";
+            : "settleWinner");
 
-  if (action === "reclaimUnsold") {
+  if (selectedAction === "reclaimUnsold") {
     const tx = await buildReclaimUnsoldTransaction({
       programClient,
       programId,
@@ -1563,10 +1566,10 @@ export async function createSettlement(
       auctionPk,
       auctionData,
     });
-    return { ...tx, action };
+    return { ...tx, action: selectedAction };
   }
 
-  if (action === "claimRefund") {
+  if (selectedAction === "claimRefund") {
     const tx = await buildClaimRefundTransaction({
       programClient,
       programId,
@@ -1574,7 +1577,7 @@ export async function createSettlement(
       auctionPk,
       auctionData,
     });
-    return { ...tx, action };
+    return { ...tx, action: selectedAction };
   }
 
   const tx = await buildSettleWinnerTransaction({
@@ -1586,5 +1589,5 @@ export async function createSettlement(
     targetWinnerBase58: isWinner ? walletBase58 : undefined,
   });
 
-  return { ...tx, action };
+  return { ...tx, action: selectedAction };
 }

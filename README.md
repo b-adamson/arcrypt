@@ -7,7 +7,7 @@ ARCRYPT is an upcoming sealed-bid auction platform on Solana. It lets sellers au
 Telegram: https://t.me/+NGbdEEbM-AYyNDZk
 Twitter (X): https://x.com/arcrypt_bid
 
-* 05/20 1pm: Legacy escrows temporarily enabled whilst we investigate an issue with refunds.
+* 05/25 1pm: Legacy escrows temporarily enabled whilst we investigate an issue with refunds. We need to wait for Umbra to complete their codama migration to 0.10 Arcium for the deployed program to use encrypted escrows. PLEASE STANDBY WHILST I FIX BREAKING CHANGES AS WE MIGRATE TO 0.10. BEHAVIOUR MAY BE TEMPORARILY BROKEN.
 
 ## What ARCRYPT does
 
