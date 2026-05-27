@@ -30,7 +30,8 @@ type SearchSuggestion = {
   auctionPk: string;
 };
 
-type SortOption = "popular" | "closingSoon";
+type SortOption = "popular" | "closingSoon" | "highestPayout";
+type TypeFilter = "all" | "token" | "nft" | "metadataonly";
 
 import {
   shorten,
@@ -338,6 +339,7 @@ export default function MarketPage() {
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("popular");
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [jumpTarget, setJumpTarget] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -383,13 +385,20 @@ export default function MarketPage() {
     const items = [...auctions];
 
     items.sort((a, b) => {
+      if (sortBy === "highestPayout") {
+        const aPay = BigInt(a.paymentAmountRaw || "0");
+        const bPay = BigInt(b.paymentAmountRaw || "0");
+        const aHasPay = aPay > 0n;
+        const bHasPay = bPay > 0n;
+        if (aHasPay !== bHasPay) return aHasPay ? -1 : 1;
+        if (bPay !== aPay) return bPay > aPay ? 1 : -1;
+        return a.name.localeCompare(b.name);
+      }
+
       const aClosed = isClosed(a);
       const bClosed = isClosed(b);
 
-      // Closed auctions always go to the bottom.
-      if (aClosed !== bClosed) {
-        return aClosed ? 1 : -1;
-      }
+      if (aClosed !== bClosed) return aClosed ? 1 : -1;
 
       const aEnd = getEndTimeMs(a) || Number.POSITIVE_INFINITY;
       const bEnd = getEndTimeMs(b) || Number.POSITIVE_INFINITY;
@@ -438,11 +447,17 @@ export default function MarketPage() {
       }));
   }, [sortedAuctions, query]);
 
+  const TOKEN_KINDS = new Set(["token", "ft", "fungible", "spltoken", "spl-token"]);
+
   const filteredAuctions = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return sortedAuctions;
 
     return sortedAuctions.filter((item) => {
+      if (typeFilter === "nft" && item.assetKind !== "nft") return false;
+      if (typeFilter === "token" && !TOKEN_KINDS.has(item.assetKind)) return false;
+      if (typeFilter === "metadataonly" && item.assetKind !== "metadataonly") return false;
+
+      if (!q) return true;
       return (
         item.name.toLowerCase().includes(q) ||
         item.tokenMint.toLowerCase().includes(q) ||
@@ -450,7 +465,7 @@ export default function MarketPage() {
         item.metadataUri.toLowerCase().includes(q)
       );
     });
-  }, [sortedAuctions, query]);
+  }, [sortedAuctions, query, typeFilter]);
 
   const visibleAuctions = filteredAuctions.slice(0, visibleCount);
 
@@ -558,21 +573,41 @@ export default function MarketPage() {
               ) : null}
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
-                Sort
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
+                  Sort
+                </div>
+                <select
+                  value={sortBy}
+                  onChange={(e) => {
+                    setSortBy(e.target.value as SortOption);
+                    setVisibleCount(INITIAL_VISIBLE);
+                  }}
+                  className="h-12 border border-[var(--line)] bg-[var(--background)] px-3 text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20"
+                >
+                  <option value="popular">popular</option>
+                  <option value="closingSoon">closing soon</option>
+                  <option value="highestPayout">highest payout</option>
+                </select>
               </div>
-              <select
-                value={sortBy}
-                onChange={(e) => {
-                  setSortBy(e.target.value as SortOption);
-                  setVisibleCount(INITIAL_VISIBLE);
-                }}
-                className="h-12 border border-[var(--line)] bg-[var(--background)] px-3 text-sm text-[var(--foreground)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20"
-              >
-                <option value="popular">popular</option>
-                <option value="closingSoon">closing soon</option>
-              </select>
+
+              <div className="flex items-center gap-1">
+                {(["all", "token", "nft", "metadataonly"] as TypeFilter[]).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => { setTypeFilter(f); setVisibleCount(INITIAL_VISIBLE); }}
+                    className={`h-12 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] border transition ${
+                      typeFilter === f
+                        ? "border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_10%,transparent)] text-[var(--accent)]"
+                        : "border-[var(--line)] bg-[var(--background)] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    {f === "all" ? "All" : f === "token" ? "Tokens" : f === "nft" ? "NFTs" : "Metadata"}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
