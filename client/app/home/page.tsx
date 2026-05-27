@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { createReadOnlyProgram } from "../../lib/anchorClient";
+import { enumKey, toHttpGateway, shorten } from "@/lib/utils";
 
 const launchPhrases = [
   "Launch a token",
@@ -91,6 +93,181 @@ const flowSteps = [
       "Create highest-bid, Vickrey or uniform auctions with the ARCRYPT program. Auction SPL tokens, NFTs, or use DAO treasury mode to create a governance proposal, then post it on the ARCRYPT marketplace or launch with your own program using the SDK.",
   },
 ] as const;
+
+type TopAuctionItem = {
+  auctionPk: string;
+  name: string;
+  image: string;
+  paymentAmount: bigint;
+  auctionType: string;
+  metadataSymbol: string;
+  bidCount: number;
+};
+
+function TopAuctionsSection() {
+  const [items, setItems] = useState<TopAuctionItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const programId = process.env.NEXT_PUBLIC_PROGRAM_ID;
+        const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL;
+        if (!programId || !rpcUrl) return;
+
+        const program = await createReadOnlyProgram(rpcUrl, programId);
+        const entries = await program.account.auction.all();
+
+        const summaries = await Promise.all(
+          entries.map(async (entry: any) => {
+            const pk = entry?.publicKey?.toBase58?.() ?? String(entry?.publicKey ?? "");
+            const auction = entry?.account ?? {};
+
+            const paymentRaw = auction?.paymentAmount ?? auction?.payment_amount ?? 0;
+            const paymentAmount = BigInt(paymentRaw?.toString?.() ?? "0");
+            const auctionType = enumKey(auction?.auctionType ?? auction?.auction_type).toLowerCase();
+            const bidCount = Number(auction?.bidCount ?? auction?.bid_count ?? 0);
+
+            const metadataUri = String(
+              auction?.auctionMetadataUri ??
+              auction?.auction_metadata_uri ??
+              auction?.metadataUri ??
+              auction?.uri ??
+              ""
+            );
+
+            let name = `Auction ${shorten(pk)}`;
+            let image = "";
+            let metadataSymbol = "";
+
+            if (metadataUri) {
+              try {
+                const controller = new AbortController();
+                const timeout = window.setTimeout(() => controller.abort(), 2500);
+                const res = await fetch(toHttpGateway(metadataUri), { cache: "no-store", signal: controller.signal });
+                window.clearTimeout(timeout);
+                if (res.ok) {
+                  const meta = await res.json().catch(() => null);
+                  if (meta) {
+                    name = String(meta?.name ?? name);
+                    image = toHttpGateway(String(meta?.image ?? ""));
+                    metadataSymbol = String(meta?.symbol ?? "");
+                  }
+                }
+              } catch {}
+            }
+
+            return { auctionPk: pk, name, image, paymentAmount, auctionType, metadataSymbol, bidCount };
+          })
+        );
+
+        if (cancelled) return;
+
+        const sorted = summaries
+          .filter((s) => s.paymentAmount > 0n)
+          .sort((a, b) => (b.paymentAmount > a.paymentAmount ? 1 : b.paymentAmount < a.paymentAmount ? -1 : 0))
+          .slice(0, 4);
+
+        setItems(sorted);
+      } catch (e) {
+        console.error("TopAuctions fetch failed:", e);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, []);
+
+  if (loading || items.length === 0) return null;
+
+  return (
+    <section className="page-section border-t border-[var(--line)] py-20 md:py-28">
+      <div className="mx-auto w-full max-w-7xl px-6">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h2 className="mt-4 text-5xl font-black leading-[0.92] tracking-tight text-[var(--foreground)] md:text-7xl lg:text-8xl">
+              Trending
+            </h2>
+          </div>
+          <Link
+            href="/market"
+            className="btn text-sm font-semibold uppercase tracking-[0.2em] md:text-base"
+          >
+            See all
+          </Link>
+        </div>
+
+        <div className="mt-10 grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+          {items.map((item) => (
+            <Link
+              key={item.auctionPk}
+              href={`/bid?auctionPk=${encodeURIComponent(item.auctionPk)}`}
+              className="group block overflow-hidden border card transition-all duration-300 ease-out hover:scale-[1.03] hover:border-[var(--accent)] hover:shadow-[0_8px_32px_rgba(0,230,118,0.12)]"
+            >
+              <article className="flex h-full flex-col">
+                <div className="relative aspect-square w-full overflow-hidden border-b border-[var(--line)] bg-[var(--background)]">
+                  <span className="badge absolute left-3 top-3 z-10 text-[10px] uppercase tracking-[0.16em]">
+                    {item.auctionType || "auction"}
+                  </span>
+                  {item.image ? (
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.06]"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-sm text-[var(--muted)]">
+                      No image
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-1 flex-col p-5">
+                  <h3 className="line-clamp-1 text-lg font-bold text-[var(--foreground)]">
+                    {item.name}
+                  </h3>
+                  {item.metadataSymbol ? (
+                    <div className="mt-1 text-sm font-medium text-[var(--muted)]">
+                      ${item.metadataSymbol}
+                    </div>
+                  ) : null}
+
+                  <div className="mt-4 flex flex-col gap-3 border-t border-[var(--line)] pt-4">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">
+                        Sale price
+                      </div>
+                      <div className="mt-1 flex items-baseline gap-1.5">
+                        <span className="text-3xl font-black tabular-nums text-[var(--accent)]">
+                          {(Number(item.paymentAmount) / 1e6).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </span>
+                        <span className="text-sm font-semibold text-[var(--muted)]">USDC</span>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.22em] text-[var(--muted)]">
+                        Bids
+                      </div>
+                      <div className="mt-1 text-3xl font-black tabular-nums text-[var(--foreground)]">
+                        {item.bidCount}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 function RotatingPhrase() {
   const [index, setIndex] = useState(0);
@@ -318,6 +495,8 @@ const scrollTo =
           </p>
         </div>
       </section>
+
+      <TopAuctionsSection />
 
       <section
         id="launch-section"

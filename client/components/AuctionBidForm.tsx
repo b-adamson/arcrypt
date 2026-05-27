@@ -270,11 +270,11 @@ const tokenLabel =
   }, [amount, balanceRaw, client, isRegistered, refresh, withdrawing, withdrawFn]);
 
   return (
-    <section className="mt-6 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3">
+    <section className="mt-6 overflow-hidden rounded-2xl border border-[var(--accent)] bg-[var(--surface)] px-4 py-3">
       <div className="flex w-full items-center gap-4">
         <div className="shrink-0 min-w-[4rem]">
             <div className="flex items-center gap-2">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.24em] opacity-60">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.24em]">
                 Encrypted Balance
               </div>
 

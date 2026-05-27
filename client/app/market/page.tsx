@@ -21,6 +21,7 @@ type AuctionSummary = {
   metadataSymbol?: string;
   endTime?: string | number;
   end_time?: string | number;
+  paymentAmountRaw?: string;
 };
 
 type SearchSuggestion = {
@@ -171,6 +172,7 @@ async function buildAuctionSummary(entry: any): Promise<AuctionSummary> {
     bidCount,
     metadataSymbol,
     endTime: auction?.endTime ?? auction?.end_time,
+    paymentAmountRaw: toStringMaybe(auction?.paymentAmount ?? auction?.payment_amount ?? "0"),
   };
 }
 
@@ -178,6 +180,10 @@ function AuctionCard({ item, active }: { item: AuctionSummary; active?: boolean 
   const isMetadataOnly = item.assetKind === "metadataonly";
   const closingLabel = formatClosingLabel(item);
   const showTicker = isTokenAssetKind(item.assetKind) && Boolean(item.metadataSymbol?.trim());
+
+  const paymentRaw = BigInt(item.paymentAmountRaw || "0");
+  const isSold = isClosed(item) && paymentRaw > 0n;
+  const formattedPayment = isSold ? formatTokenAmount(item.paymentAmountRaw!, 6) : null;
 
   const [flash, setFlash] = React.useState(false);
   const prev = React.useRef(item.bidCount ?? 0);
@@ -204,7 +210,11 @@ function AuctionCard({ item, active }: { item: AuctionSummary; active?: boolean 
               {item.auctionType || "auction"}
             </span>
 
-            {closingLabel ? (
+            {isSold ? (
+              <span className="text-[10px] font-bold uppercase tracking-[0.16em] bg-[var(--accent)] text-black px-2 py-1">
+                Sold
+              </span>
+            ) : closingLabel ? (
               <span className="badge text-[10px] uppercase tracking-[0.16em]">
                 {closingLabel}
               </span>
@@ -297,6 +307,17 @@ function AuctionCard({ item, active }: { item: AuctionSummary; active?: boolean 
               </div>
             </div>
           </div>
+
+          {isSold && formattedPayment ? (
+            <div className="mt-4 border border-[var(--accent)] bg-[color-mix(in_srgb,var(--accent)_6%,transparent)] px-4 py-3">
+              <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                Final payout
+              </span>
+              <span className="mt-1 block text-2xl font-black tabular-nums text-[var(--accent)]">
+                {formattedPayment} <span className="text-sm font-semibold opacity-70">USDC</span>
+              </span>
+            </div>
+          ) : null}
 
           <div className="mt-4 flex items-center justify-between gap-3 border-t border-[var(--line)] pt-3 text-[11px] text-[var(--muted)]">
             <span className="truncate font-mono">{shorten(item.auctionPk, 7, 5)}</span>

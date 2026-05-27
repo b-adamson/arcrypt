@@ -282,7 +282,7 @@ export default function AuctionResultCard({
   const formattedTotalBid = formatUsdcAmount(totalBid ?? 0);
 
   return (
-    <section className="mt-6 overflow-hidden border border-[var(--line)] bg-[var(--surface)] p-6 shadow-none">
+    <section className="mt-6 overflow-hidden border border-[var(--accent)] bg-[var(--surface)] p-6 shadow-none">
       <div className="mb-5 flex items-center justify-between gap-3 border-b border-[var(--line)] pb-4">
             {assetKind !== "nft" &&
               metadata?.symbol &&

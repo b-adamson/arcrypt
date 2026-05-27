@@ -130,11 +130,11 @@ export default function BidPageClient({ auctionPk }: { auctionPk: string | null 
       : null;
 
   const outcomeText = !auctionData ? "Loading..." : !connected ? (auctionEnded ? "Auction ended — connect wallet to see results" : "Connect wallet to see outcome") : !auctionEnded ? "Auction in progress" : !isResolved && hasNoBids ? "Auction ended — creator can reclaim unsold item" : isResolved ? (winnerNow ? (winnerClaimed ? "You won the auction — settled" : "You won the auction") : isCreator ? "Auction resolved — settlement pending" : canClaimRefund ? "You lost the auction — refund available" : "You lost the auction — no refund to claim") : "Auction ended — winner pending";
-  const panelClass = "mt-6 overflow-hidden border border-[var(--line)] bg-[var(--surface)] p-6 shadow-none";
+  const panelClass = "mt-6 overflow-hidden border border-[var(--accent)] bg-[var(--surface)] p-6 shadow-none";
   const buttonBase = "inline-flex items-center justify-center border px-4 py-3 text-sm font-semibold transition duration-200 ease-out focus:outline-none focus:ring-1 focus:ring-[var(--accent)]/50 disabled:cursor-not-allowed disabled:opacity-40";
   const buttonPrimary = `${buttonBase} border-[var(--accent)] bg-[var(--accent)] text-black hover:opacity-95 hover:-translate-y-0.5`;
-  const buttonSecondary = `${buttonBase} border-[var(--line)] bg-[var(--background)] text-[var(--foreground)] hover:border-[var(--line-strong)] hover:bg-[var(--surface-2)] hover:-translate-y-0.5`;
-  const outcomeBadgeClass = "inline-flex items-center border border-[var(--line)] bg-[var(--background)] px-3 py-1 text-xs font-medium text-[var(--foreground)]";
+  const buttonSecondary = `${buttonBase} border-[var(--accent)] bg-[var(--background)] text-[var(--foreground)] hover:bg-[color-mix(in_srgb,var(--accent)_8%,transparent)] hover:-translate-y-0.5`;
+  const outcomeBadgeClass = "inline-flex items-center border border-[var(--accent)] bg-[var(--background)] px-3 py-1 text-xs font-medium text-[var(--foreground)]";
 
  useEffect(() => {
   if (!auctionData) {
@@ -728,7 +728,7 @@ async function handlePlaceBid() {
     </div>
 
     {auctionData ? (
-      <div className="fixed right-4 top-4 z-50 border border-[var(--line)] bg-[var(--background)] px-5 py-4 shadow-none backdrop-blur-md">
+      <div className="fixed right-4 top-4 z-50 border border-[var(--accent)] bg-[var(--background)] px-5 py-4 shadow-none backdrop-blur-md">
         <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
           Time left
         </div>
@@ -760,7 +760,7 @@ async function handlePlaceBid() {
     ) : null}
 
     {auctionData?.raydiumPoolCreated && isTokenAuction && (
-      <div className="mt-6 border border-[var(--line)] bg-[var(--surface)] p-5">
+      <div className="mt-6 border border-[var(--accent)] bg-[var(--surface)] p-5">
         <h3 className="text-lg font-semibold text-[var(--foreground)]">
           Liquidity Pool Created
         </h3>
@@ -822,7 +822,7 @@ async function handlePlaceBid() {
         </span>
       </div>
 
-      <div className="border border-[var(--line)] bg-[var(--background)] px-4 py-3">
+      <div className="border border-[var(--accent)] bg-[var(--background)] px-4 py-3">
         <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
           Outcome
         </div>
@@ -878,7 +878,7 @@ async function handlePlaceBid() {
     </div>
 
       {showBottomStatusBar ? (
-        <div className="mt-4 border border-[var(--line)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--muted)]">
+        <div className="mt-4 border border-[var(--accent)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--muted)]">
           {status}
         </div>
       ) : null}

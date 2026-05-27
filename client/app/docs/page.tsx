@@ -263,7 +263,7 @@ export default function DocsPage() {
   authorityBase58: string;
   sourceTokenAccountBase58?: string;
 
-  minBidSol: string;           // e.g. "1.5"
+  minBidUsdc: string;           // e.g. "1.5"
   durationSecs: number;        // auction length in seconds
 
   auctionType: "FirstPrice" | "Vickrey" | "Uniform";
@@ -388,7 +388,7 @@ async function main() {
     publicKey: wallet,
 
     authorityBase58: wallet.toBase58(),
-    minBidSol: "1.0",
+    minBidUsdc: "1.0",
     durationSecs: 3600,
 
     auctionType: "FirstPrice",
