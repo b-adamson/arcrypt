@@ -7,11 +7,13 @@ import { Connection, Transaction, VersionedTransaction } from "@solana/web3.js";
 import { install } from "@solana/webcrypto-ed25519-polyfill";
 import * as nobleEd25519 from "@noble/ed25519";
 import { sha512 } from "@noble/hashes/sha2.js";
+import { getUmbraClient } from "@umbra-privacy/sdk";
 import {
-  getUmbraClient,
-  getEncryptedBalanceToPublicBalanceDirectWithdrawerFunction,
-  getPublicBalanceToEncryptedBalanceDirectDepositorFunction,
-} from "@umbra-privacy/sdk";
+  getATAIntoETADirectDepositorFunction,
+} from "@umbra-privacy/sdk/deposit";
+import {
+  getETAIntoATAWithdrawerFunction,
+} from "@umbra-privacy/sdk/withdrawal";
 import { address as toAddress, getTransactionDecoder, getTransactionEncoder } from "@solana/kit";
 
 install();
@@ -55,6 +57,7 @@ function createWalletAdapterSigner(wallet: any) {
 
   return {
     address: toAddress(wallet.publicKey.toBase58()),
+
     signMessage: async (msg: Uint8Array) => {
       const sig = await wallet.signMessage!(msg);
       return {
@@ -63,12 +66,10 @@ function createWalletAdapterSigner(wallet: any) {
         signature: sig,
       };
     },
-    signTransaction: async (tx: any) => {
-      const walletTx = toWalletTx(tx);
-      const signed = await wallet.signTransaction!(walletTx);
-      const wire = signed.serialize();
-      const decoded = txDecoder.decode(wire);
 
+    signTransaction: async (tx: any) => {
+      const signed = await wallet.signTransaction!(toWalletTx(tx));
+      const decoded = txDecoder.decode(signed.serialize());
       return {
         ...decoded,
         signatures: {
@@ -76,6 +77,14 @@ function createWalletAdapterSigner(wallet: any) {
           [wallet.publicKey.toBase58()]: signed.signatures[0],
         },
       } as any;
+    },
+
+    signTransactions: async (txs: readonly any[]) => {
+      const out: any[] = [];
+      for (const tx of txs) {
+        out.push(await (await createWalletAdapterSigner(wallet)).signTransaction(tx));
+      }
+      return out;
     },
   } as any;
 }
@@ -99,51 +108,51 @@ export function useUmbraClient() {
           return;
         }
 
-        const nextClient = await getUmbraClient(
-          {
-            signer,
-            network: "devnet",
-            rpcUrl,
-            rpcSubscriptionsUrl,
-            deferMasterSeedSignature: true,
-          },
-          {
-            transactionForwarder: createSkipPreflightForwarder(rpcUrl),
-            masterSeedStorage: {
-              load: (async () => {
-                try {
-                  const pubkey = wallet.publicKey?.toBase58();
-                  if (!pubkey) return { exists: false };
+const nextClient = await getUmbraClient(
+  {
+    signer,
+    network: "devnet",
+    rpcUrl,
+    rpcSubscriptionsUrl,
+    deferMasterSeedSignature: true,
+  },
+  {
+    transactionForwarder: createSkipPreflightForwarder(rpcUrl),
+    masterSeedStorage: {
+      load: (async () => {
+        try {
+          const pubkey = wallet.publicKey?.toBase58();
+          if (!pubkey) return { exists: false };
 
-                 const stored = localStorage.getItem(`umbra:seed:${pubkey}`);
-                  if (!stored) return { exists: false };
+          const stored = localStorage.getItem(`umbra:seed:${pubkey}`);
+          if (!stored) return { exists: false };
 
-                  return {
-                    exists: true,
-                    seed: new Uint8Array(JSON.parse(stored)),
-                  };
-                } catch {
-                  return { exists: false };
-                }
-              }) as any,
-              store: (async (seed: Uint8Array) => {
-                try {
-                  const pubkey = wallet.publicKey?.toBase58();
-                  if (!pubkey) return { ok: false };
+          return {
+            exists: true,
+            seed: new Uint8Array(JSON.parse(stored)),
+          };
+        } catch {
+          return { exists: false };
+        }
+      }) as any,
+      store: (async (seed: Uint8Array) => {
+        try {
+          const pubkey = wallet.publicKey?.toBase58();
+          if (!pubkey) return { ok: false };
 
-                        localStorage.setItem(
-                        `umbra:seed:${pubkey}`,
-                        JSON.stringify(Array.from(seed)),
-                        );
+          localStorage.setItem(
+            `umbra:seed:${pubkey}`,
+            JSON.stringify(Array.from(seed)),
+          );
 
-                  return { ok: true };
-                } catch {
-                  return { ok: false };
-                }
-              }) as any,
-            } as any,
-          } as any,
-        );
+          return { ok: true };
+        } catch {
+          return { ok: false };
+        }
+      }) as any,
+    } as any,
+  } as any,
+);
 
         if (!cancelled) setClient(nextClient);
       } catch (e) {
@@ -159,12 +168,12 @@ export function useUmbraClient() {
 
   const depositFn = useMemo(() => {
     if (!client) return null;
-    return getPublicBalanceToEncryptedBalanceDirectDepositorFunction({ client });
+    return getATAIntoETADirectDepositorFunction ({ client });
   }, [client]);
 
   const withdrawFn = useMemo(() => {
     if (!client) return null;
-    return getEncryptedBalanceToPublicBalanceDirectWithdrawerFunction({ client });
+    return getETAIntoATAWithdrawerFunction ({ client });
   }, [client]);
 
   return { client, depositFn, withdrawFn };

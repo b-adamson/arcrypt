@@ -82,7 +82,9 @@ export default function BidPageClient({ auctionPk }: { auctionPk: string | null 
   const isCreator = auctionData && publicKey ? new PublicKey(auctionData.authority).equals(publicKey) : false;
   const auctionType = auctionData ? getAuctionType(auctionData) : "";
   const resolvedWinnerKeys = auctionData ? getResolvedWinnerKeys(auctionData) : [];
-  const showBottomStatusBar = !isBlacklistedAuction && !(auctionType === "uniform" && resolvedWinnerKeys.length < 3);
+  const paymentAmountRaw = auctionData?.paymentAmount ?? auctionData?.payment_amount ?? 0;
+  const isSettledWithPrice = isResolved && BigInt(paymentAmountRaw?.toString?.() ?? "0") > 0n;
+  const showBottomStatusBar = !isBlacklistedAuction && !isSettledWithPrice && !(auctionType === "uniform" && resolvedWinnerKeys.length < 3);
   const resolvedWinnerBase58 = resolvedWinnerKeys[0] ?? null;
   const bidCount = auctionData ? getBidCount(auctionData) : 0;
   const hasNoBids = auctionData ? bidCount === 0 : false;
@@ -90,6 +92,7 @@ export default function BidPageClient({ auctionPk }: { auctionPk: string | null 
 
   useEffect(() => {
     if (isBlacklistedAuction) return;
+    if (isSettledWithPrice) return;
     if (!auctionData || !auctionPkStr || !activeProgram) return;
 
     const endTime = Number(auctionData.endTime ?? auctionData.end_time ?? 0);
@@ -104,7 +107,7 @@ export default function BidPageClient({ auctionPk }: { auctionPk: string | null 
 
     autoFinalizeAttemptedRef.current = attemptKey;
     void handleRefreshAuction();
-  }, [auctionData, auctionPkStr, activeProgram, bidCount, isBlacklistedAuction]);
+  }, [auctionData, auctionPkStr, activeProgram, bidCount, isBlacklistedAuction, isSettledWithPrice]);
 
   const bidAmountUsdcFinal =
     auctionType === "uniform"
@@ -839,7 +842,7 @@ async function handlePlaceBid() {
           </button>
         ) : null}
 
-      {!isBlacklistedAuction ? (
+      {!isBlacklistedAuction && !isSettledWithPrice ? (
         <button
           onClick={handleRefreshAuction}
           disabled={isRefreshing}

@@ -248,9 +248,6 @@ function AuctionCard({ item, active }: { item: AuctionSummary; active?: boolean 
 
         <div className="flex flex-1 flex-col p-4">
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-              Auction
-            </div>
             <h3 className="mt-1 line-clamp-1 text-lg font-semibold text-[var(--foreground)]">
               {item.name}
             </h3>
@@ -468,9 +465,6 @@ export default function MarketPage() {
         <div className="mb-6 flex flex-col gap-4 surface p-5 md:p-6">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <div className="badge text-[11px] font-semibold uppercase tracking-[0.18em]">
-                Market
-              </div>
               <h1 className="mt-3 text-3xl font-semibold tracking-tight md:text-4xl text-[var(--foreground)]">
                 All projects
               </h1>

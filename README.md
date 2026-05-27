@@ -76,6 +76,7 @@ You will need:
 * Solana CLI
 * Anchor
 * Arcium tooling
+* Docker
 
 Follow the Arcium Solana installation guide first:
 

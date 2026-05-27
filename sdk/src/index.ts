@@ -999,12 +999,12 @@ export async function buildDetermineWinnerTransaction(
   const computationOffset = new BN(srv.computationOffset);
   const compDefPk = new PublicKey(srv.compDefPk);
 
-const methodName =
-  which === "first"
-    ? "determineWinnerFirstPrice"
-    : which === "vickrey"
-      ? "determineWinnerVickrey"
-      : "determineWinnerUniform";
+  const methodName =
+    which === "first"
+      ? "determineWinnerFirstPrice"
+      : which === "vickrey"
+        ? "determineWinnerVickrey"
+        : "determineWinnerUniform";
 
   const ixCall = (programClient.methods as any)[methodName];
   if (!ixCall) throw new Error(`Program method ${methodName} missing in client program`);

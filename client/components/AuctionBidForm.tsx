@@ -6,7 +6,7 @@ import { address as toAddress } from "@solana/kit";
 import {
   getUserAccountQuerierFunction,
   getEncryptedBalanceQuerierFunction,
-} from "@umbra-privacy/sdk";
+} from "@umbra-privacy/sdk/query";
 import {
   isEncryptedDepositError,
   isEncryptedWithdrawalError,
@@ -80,30 +80,6 @@ export default function AuctionBidForm({
   const [depositing, setDepositing] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
   const [metadata, setMetadata] = useState<AuctionMetadata | null>(null);
-
-// function toStringMaybe(v: any): string {
-//   if (v == null) return "";
-//   return v?.toString?.() ?? String(v);
-// }
-
-// function getMetadataUri(auction: any): string {
-//   const raw =
-//     auction?.auctionMetadataUri ??
-//     auction?.auction_metadata_uri ??
-//     auction?.metadataUri ??
-//     auction?.metadata_uri ??
-//     auction?.uri ??
-//     auction?.metadata?.uri ??
-//     "";
-
-//   return toStringMaybe(raw);
-// }
-
-// function toHttpGateway(uri: string): string {
-//   if (!uri) return "";
-//   if (uri.startsWith("ipfs://")) return uri.replace("ipfs://", "https://ipfs.io/ipfs/");
-//   return uri;
-// }
 
 const metadataUri =
   auctionData?.auctionMetadataUri ??

@@ -4,20 +4,20 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useWallet } from "@solana/wallet-adapter-react";
 import * as nobleEd25519 from "@noble/ed25519";
 import { sha512 } from "@noble/hashes/sha2.js";
+import { getUserRegistrationFunction } from "@umbra-privacy/sdk/registration";
 import {
   getUserAccountQuerierFunction,
   getEncryptedBalanceQuerierFunction,
-  getUserAccountX25519KeypairDeriver,
+} from "@umbra-privacy/sdk/query";
+import {
+  getMintX25519KeypairDeriver,
   getMasterViewingKeyX25519KeypairDeriver,
-  getUserRegistrationFunction,
-} from "@umbra-privacy/sdk";
-import { getUserRegistrationProver } from "@umbra-privacy/web-zk-prover";
+} from "@umbra-privacy/sdk/crypto";
+import { getUserRegistrationProver } from "@umbra-privacy/sdk";
 import { address as toAddress } from "@solana/kit";
 
 import { useUmbraClient } from "@/lib/useUmbraClient";
 import bs58 from "bs58";
-
-
 
 nobleEd25519.hashes.sha512 = sha512;
 
@@ -142,7 +142,7 @@ export default function UmbraPanel() {
           zkProver: getUserRegistrationProver() as any,
           keys: {
             userAccountX25519KeypairDeriver: captureDeriver(
-              getUserAccountX25519KeypairDeriver({ client } as any),
+              getMintX25519KeypairDeriver({ client } as any),
               seedMapRef.current,
             ),
             masterViewingKeyEncryptingX25519KeypairDeriver: captureDeriver(
@@ -190,20 +190,31 @@ export default function UmbraPanel() {
     try {
       const amt = BigInt(amount) as any;
       setStatus("Signing USDC deposit transaction...");
-      const result = await depositFn(client.signer.address, DEVNET_USDC_MINT, amt, {
+      await depositFn(client.signer.address, DEVNET_USDC_MINT, amt, {
         accountInfoCommitment: "confirmed",
       });
 
-      setStatus(
-        result.callbackStatus === "finalized"
-          ? "USDC deposit finalized."
-          : `USDC deposit sent (${result.callbackStatus}).`,
-      );
+      setStatus("USDC deposit complete.");
       await refresh();
-    } catch (e: any) {
-      console.error(e);
-      setStatus(e?.message ?? "Deposit failed.");
-    } finally {
+} catch (e: any) {
+  console.error("Deposit failed:", e);
+
+  console.error("Top-level logs:", e?.logs);
+
+  console.error("Cause logs:", e?.cause?.logs);
+
+  console.error(
+    "Simulation logs:",
+    e?.cause?.context?.logs
+  );
+
+  console.error(
+    "Full error JSON:",
+    JSON.stringify(e, null, 2)
+  );
+
+  setStatus(e?.message ?? "Deposit failed.");
+}finally {
       setLoading(false);
       setPhase("idle");
     }
@@ -219,15 +230,11 @@ export default function UmbraPanel() {
     try {
       const amt = BigInt(amount) as any;
       setStatus("Signing USDC withdrawal transaction...");
-      const result = await withdrawFn(client.signer.address, DEVNET_USDC_MINT, amt, {
+      await withdrawFn(client.signer.address, DEVNET_USDC_MINT, amt, {
         accountInfoCommitment: "confirmed",
       });
 
-      setStatus(
-        result.callbackStatus === "finalized"
-          ? "USDC withdrawal finalized."
-          : `USDC withdrawal sent (${result.callbackStatus}).`,
-      );
+      setStatus("USDC withdrawal complete.");
       await refresh();
     } catch (e: any) {
       console.error(e);

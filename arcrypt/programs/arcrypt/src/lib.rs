@@ -686,7 +686,7 @@ pub fn place_bid(
         .encrypted_u128(encrypted_bidder_lo)
         .encrypted_u128(encrypted_bidder_hi)
         .encrypted_u64(encrypted_amount)
-        .encrypted_u64(encrypted_price_final) // NEW
+        .encrypted_u64(encrypted_price_final)
         .plaintext_u128(auction.state_nonce)
         .account(
             ctx.accounts.auction.key(),
