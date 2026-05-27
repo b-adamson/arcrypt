@@ -100,6 +100,7 @@ type TopAuctionItem = {
   image: string;
   paymentAmount: bigint;
   auctionType: string;
+  assetKind: string;
   metadataSymbol: string;
   bidCount: number;
 };
@@ -128,6 +129,7 @@ function TopAuctionsSection() {
             const paymentRaw = auction?.paymentAmount ?? auction?.payment_amount ?? 0;
             const paymentAmount = BigInt(paymentRaw?.toString?.() ?? "0");
             const auctionType = enumKey(auction?.auctionType ?? auction?.auction_type).toLowerCase();
+            const assetKind = enumKey(auction?.assetKind ?? auction?.asset_kind).toLowerCase();
             const bidCount = Number(auction?.bidCount ?? auction?.bid_count ?? 0);
 
             const metadataUri = String(
@@ -159,7 +161,7 @@ function TopAuctionsSection() {
               } catch {}
             }
 
-            return { auctionPk: pk, name, image, paymentAmount, auctionType, metadataSymbol, bidCount };
+            return { auctionPk: pk, name, image, paymentAmount, auctionType, assetKind, metadataSymbol, bidCount };
           })
         );
 
@@ -229,7 +231,7 @@ function TopAuctionsSection() {
                   <h3 className="line-clamp-1 text-lg font-bold text-[var(--foreground)]">
                     {item.name}
                   </h3>
-                  {item.metadataSymbol ? (
+                  {item.metadataSymbol && item.assetKind !== "nft" ? (
                     <div className="mt-1 text-sm font-medium text-[var(--muted)]">
                       ${item.metadataSymbol}
                     </div>
