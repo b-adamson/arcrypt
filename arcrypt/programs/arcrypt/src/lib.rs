@@ -124,10 +124,11 @@ use anchor_spl::associated_token::AssociatedToken;
 
 // umbra imports
 use umbra_codama::instructions::{
-    TransferFromSharedBalanceToNewNetworkBalanceV13CpiBuilder,
-    TransferFromSharedBalanceToNewNetworkBalanceV13InstructionArgs,
+    TransferFromSharedBalanceToNewNetworkBalanceV17Cpi,
+    TransferFromSharedBalanceToNewNetworkBalanceV17CpiAccounts,
+    TransferFromSharedBalanceToNewNetworkBalanceV17InstructionArgs,
 };
-use umbra_codama::types::{ AccountOffset, Amount, ArciumX25519Nonce, ArciumX25519PublicKey, BasisPoints, ComputationOffset, InstructionDiscriminator, PoseidonHash, RescueCiphertext, SmallMerkleTreeIndex };
+use umbra_codama::types::{ AccountOffset, ArciumX25519Nonce, ArciumX25519PublicKey, ComputationOffset, DispatchObserverCpi, InstructionDiscriminator, OptionalData, PriorityFees, RandomGenerationSeed, RescueCiphertext };
 
 // ARCRYPT ID
 declare_id!("BPKLg61gd4FChxuFkn2VEEbT9cMED5nsSYRi84j5FRaK");
@@ -276,26 +277,24 @@ pub mod arcrypt {
 
     // compdefs called once globally for entire program
     pub fn init_auction_state_comp_def(ctx: Context<InitAuctionStateCompDef>) -> Result<()> {
-        init_comp_def(
+        init_computation_def(
             ctx.accounts,
             Some(CircuitSource::OffChain(OffChainCircuitSource {
                 source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafkreiaueovbknzwvu5beoqmkvz37zkz66f6j3zghe7d4vflhgh4whblmy".to_string(),
                 hash: circuit_hash!("init_auction_state"),
             })),
-            None,
         )?;
         Ok(())
     }
 
     // legacy. encrypts amounts but not the token balances
     pub fn init_place_bid_comp_def(ctx: Context<InitPlaceBidCompDef>) -> Result<()> {
-        init_comp_def(
+        init_computation_def(
             ctx.accounts,
             Some(CircuitSource::OffChain(OffChainCircuitSource {
-                source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafybeieskvhdeiitw5yznxrjrbjfgj4v6gfajisilbjxwm234ad5j3tukq".to_string(),
+                source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafybeibphd3wpygrpeshusdaftk2sc6wvjukqddslwf67dykupbbipqsoi".to_string(),
                 hash: circuit_hash!("place_bid"),
             })),
-            None,
         )?;
         Ok(())
     }
@@ -304,13 +303,12 @@ pub mod arcrypt {
     pub fn init_place_encrypted_bid_comp_def(
         ctx: Context<InitPlaceEncryptedBidCompDef>,
     ) -> Result<()> {
-        init_comp_def(
+        init_computation_def(
             ctx.accounts,
             Some(CircuitSource::OffChain(OffChainCircuitSource {
-                source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafybeibv7lkooq34ppohfmd3bpi7bqi2npf6xid5jzqeb4xd4sb7hylv2q".to_string(),
+                source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafybeif4auehfldxc5chzhwzohftpw4cdi3mfk2helo6ksmshjkylmcklu".to_string(),
                 hash: circuit_hash!("place_encrypted_bid"),
             })),
-            None,
         )?;
         Ok(())
     }
@@ -318,13 +316,12 @@ pub mod arcrypt {
     pub fn init_determine_winner_first_price_comp_def(
         ctx: Context<InitDetermineWinnerFirstPriceCompDef>,
     ) -> Result<()> {
-        init_comp_def(
+        init_computation_def(
             ctx.accounts,
             Some(CircuitSource::OffChain(OffChainCircuitSource {
                 source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafybeiefmnztrgiateqpt6y6envwpc3x3njcvdxsfgcwapu2gsgb5ntmma".to_string(),
                 hash: circuit_hash!("determine_winner_first_price"),
             })),
-            None,
         )?;
         Ok(())
     }
@@ -332,13 +329,12 @@ pub mod arcrypt {
     pub fn init_determine_winner_vickrey_comp_def(
         ctx: Context<InitDetermineWinnerVickreyCompDef>,
     ) -> Result<()> {
-        init_comp_def(
+        init_computation_def(
             ctx.accounts,
             Some(CircuitSource::OffChain(OffChainCircuitSource {
                 source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafybeidkfctp2hnqg57hk4axct7n357qivihqw7zsgnd4y6xpczkvubocm".to_string(),
                 hash: circuit_hash!("determine_winner_vickrey"),
             })),
-            None,
         )?;
         Ok(())
     }
@@ -346,13 +342,12 @@ pub mod arcrypt {
     pub fn init_determine_winner_uniform_comp_def(
     ctx: Context<InitDetermineWinnerUniformCompDef>,
 ) -> Result<()> {
-    init_comp_def(
+    init_computation_def(
         ctx.accounts,
         Some(CircuitSource::OffChain(OffChainCircuitSource {
             source: "https://coffee-far-termite-270.mypinata.cloud/ipfs/bafybeidmjicntkzrgw5xbgitdgk3rysaml53r3uqirukzuybr5ljfyqny4".to_string(),
             hash: circuit_hash!("determine_winner_uniform"),
         })),
-        None,
     )?;
     Ok(())
 }
@@ -397,35 +392,29 @@ pub fn deposit_encrypted_bid(
         temp.umbra_persistence_account = ctx.accounts.umbra_persistence_account.key();
     }
 
-    let args = TransferFromSharedBalanceToNewNetworkBalanceV13InstructionArgs {
+    let args = TransferFromSharedBalanceToNewNetworkBalanceV17InstructionArgs {
         computation_offset: ComputationOffset {
             first: computation_offset,
         },
         fee_vault_offset: AccountOffset { first: 0 },
         mpc_callback_data_offset: AccountOffset { first: 0 },
-        fees_amount_lower_bound: Amount { first: 0 },
-        fees_amount_upper_bound: Amount { first: 0 },
-        fees_base_fees_in_spl: Amount { first: 0 },
-        fees_commission_fee_in_spl: BasisPoints { first: 0 },
-        fees_merkle_path: core::array::from_fn(|_| PoseidonHash { first: [0u8; 32] }),
-        fees_leaf_index: SmallMerkleTreeIndex { first: 0 },
         rescue_encryption_nonce: ArciumX25519Nonce { first: 0u128 },
         rescue_encrypted_transfer_amount: RescueCiphertext { first: encrypted_amount },
         rescue_encryption_public_key: ArciumX25519PublicKey { first: [0u8; 32] },
-        dispatch_observer_cpi: unsafe { core::mem::zeroed() },
+        dispatch_observer_cpi: DispatchObserverCpi { first: 0 },
         observer_output_x25519_public_key: ArciumX25519PublicKey { first: [0u8; 32] },
         destination_discriminator: InstructionDiscriminator {
             first: [79, 24, 114, 130, 197, 38, 79, 99],
         },
-        priority_fees: unsafe { core::mem::zeroed() },
-        optional_data: unsafe { core::mem::zeroed() },
-        random_generation_seed: unsafe { core::mem::zeroed() },
+        priority_fees: PriorityFees { first: 0 },
+        optional_data: OptionalData { first: [0u8; 32] },
+        random_generation_seed: RandomGenerationSeed { first: [0u8; 32] },
+        destination_program: crate::ID,
+        cpi_account1: ctx.accounts.umbra_context_account.key(),
     };
 
     let bidder_ai = ctx.accounts.bidder.to_account_info();
     let umbra_program_ai = ctx.accounts.umbra_program.to_account_info();
-    let destination_program_ai = ctx.accounts.destination_program.to_account_info();
-
     let sign_pda_ai = ctx.accounts.sign_pda_account.to_account_info();
     let mxe_ai = ctx.accounts.mxe_account.to_account_info();
     let mempool_ai = ctx.accounts.mempool_account.to_account_info();
@@ -447,59 +436,38 @@ pub fn deposit_encrypted_bid(
     let mint_ai = ctx.accounts.mint.to_account_info();
     let protocol_config_ai = ctx.accounts.protocol_config.to_account_info();
     let computation_data_ai = ctx.accounts.computation_data.to_account_info();
-    let umbra_callback_signer_ai = ctx.accounts.umbra_callback_signer.to_account_info();
-    let umbra_context_ai = ctx.accounts.umbra_context_account.to_account_info();
-    let umbra_persistence_ai = ctx.accounts.umbra_persistence_account.to_account_info();
 
-    TransferFromSharedBalanceToNewNetworkBalanceV13CpiBuilder::new(&umbra_program_ai)
-        .sender(&bidder_ai)
-        .fee_payer(&bidder_ai)
-        .sign_pda_account(&sign_pda_ai)
-        .mxe_account(&mxe_ai)
-        .mempool_account(&mempool_ai)
-        .executing_pool(&executing_pool_ai)
-        .computation_account(&computation_ai)
-        .comp_def_account(&comp_def_ai)
-        .cluster_account(&cluster_ai)
-        .pool_account(&pool_ai)
-        .clock_account(&clock_ai)
-        .system_program(&system_ai)
-        .arcium_program(&arcium_ai)
-        .sender_token_account(&sender_token_ai)
-        .receiver_address(&receiver_address_ai)
-        .receiver_token_account(&receiver_token_ai)
-        .receiver_user_account(&receiver_user_ai)
-        .fee_schedule(&fee_schedule_ai)
-        .fee_vault(&fee_vault_ai)
-        .token_pool(&token_pool_ai)
-        .mint(&mint_ai)
-        .protocol_config(&protocol_config_ai)
-        .computation_data(&computation_data_ai)
-        .initiator(&bidder_ai)
-        .destination_program(&destination_program_ai)
-        .umbra_callback_signer(&umbra_callback_signer_ai)
-        .cpi_account1(&umbra_context_ai)
-        .cpi_account2(&umbra_persistence_ai)
-        .computation_offset(args.computation_offset)
-        .fee_vault_offset(args.fee_vault_offset)
-        .mpc_callback_data_offset(args.mpc_callback_data_offset)
-        .fees_amount_lower_bound(args.fees_amount_lower_bound)
-        .fees_amount_upper_bound(args.fees_amount_upper_bound)
-        .fees_base_fees_in_spl(args.fees_base_fees_in_spl)
-        .fees_commission_fee_in_spl(args.fees_commission_fee_in_spl)
-        .fees_merkle_path(args.fees_merkle_path)
-        .fees_leaf_index(args.fees_leaf_index)
-        .rescue_encryption_nonce(args.rescue_encryption_nonce)
-        .rescue_encrypted_transfer_amount(args.rescue_encrypted_transfer_amount)
-        .rescue_encryption_public_key(args.rescue_encryption_public_key)
-        .dispatch_observer_cpi(args.dispatch_observer_cpi)
-        .observer_output_x25519_public_key(args.observer_output_x25519_public_key)
-        .destination_discriminator(args.destination_discriminator)
-        .priority_fees(args.priority_fees)
-        .optional_data(args.optional_data)
-        .random_generation_seed(args.random_generation_seed)
-        .invoke_signed(&[])?;
-
+    TransferFromSharedBalanceToNewNetworkBalanceV17Cpi::new(
+        &umbra_program_ai,
+        TransferFromSharedBalanceToNewNetworkBalanceV17CpiAccounts {
+            sender: &bidder_ai,
+            fee_payer: &bidder_ai,
+            sign_pda_account: &sign_pda_ai,
+            mxe_account: &mxe_ai,
+            mempool_account: &mempool_ai,
+            executing_pool: &executing_pool_ai,
+            computation_account: &computation_ai,
+            comp_def_account: &comp_def_ai,
+            cluster_account: &cluster_ai,
+            pool_account: &pool_ai,
+            clock_account: &clock_ai,
+            system_program: &system_ai,
+            arcium_program: &arcium_ai,
+            sender_token_account: &sender_token_ai,
+            receiver_address: &receiver_address_ai,
+            receiver_token_account: &receiver_token_ai,
+            receiver_user_account: &receiver_user_ai,
+            fee_schedule: &fee_schedule_ai,
+            fee_vault: &fee_vault_ai,
+            token_pool: &token_pool_ai,
+            mint: &mint_ai,
+            protocol_config: &protocol_config_ai,
+            computation_data: &computation_data_ai,
+            initiator: &bidder_ai,
+        },
+        args,
+    )
+    .invoke_signed(&[])?;
     Ok(())
 }
 
@@ -656,7 +624,7 @@ pub fn place_bid(
         };
 
         let cpi_ctx = CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
+            ctx.accounts.token_program.key(),
             cpi_accounts,
         );
 
@@ -792,7 +760,7 @@ pub fn create_token_auction(
     };
 
     let cpi_ctx = CpiContext::new(
-        ctx.accounts.token_program.to_account_info(),
+        ctx.accounts.token_program.key(),
         cpi_accounts,
     );
 
@@ -1005,6 +973,56 @@ pub fn close_auction(ctx: Context<CloseAuction>) -> Result<()> {
     Ok(())
 }
 
+/// Triggers winner computation for a First Price auction.
+///
+/// # Requirements
+/// - Auction must be ended
+/// - Auction must not be resolved
+///
+/// # Effects
+/// - Queues encrypted computation
+pub fn determine_winner_first_price(
+    ctx: Context<DetermineWinnerFirstPrice>,
+    computation_offset: u64,
+) -> Result<()> {
+    let auction = &ctx.accounts.auction;
+
+    require_settlement_allowed(auction)?;
+    require!(
+        auction.auction_type == AuctionType::FirstPrice,
+        ErrorCode::WrongAuctionType
+    );
+
+    ctx.accounts.sign_pda_account.bump = ctx.bumps.sign_pda_account;
+
+    let args = ArgBuilder::new()
+        .plaintext_u128(auction.state_nonce)
+        .account(
+            ctx.accounts.auction.key(),
+            ENCRYPTED_STATE_OFFSET,
+            ENCRYPTED_STATE_SIZE,
+        )
+        .build();
+
+    queue_computation(
+        ctx.accounts,
+        computation_offset,
+        args,
+        vec![DetermineWinnerFirstPriceCallback::callback_ix(
+            computation_offset,
+            &ctx.accounts.mxe_account,
+            &[CallbackAccount {
+                pubkey: ctx.accounts.auction.key(),
+                is_writable: true,
+            }],
+        )?],
+        1,
+        0,
+    )?;
+
+    Ok(())
+}
+
 /// Triggers winner computation for a Uniform auction.
 ///
 /// Produces:
@@ -1182,7 +1200,7 @@ pub fn finalize_token_winner_payout(ctx: Context<FinalizeTokenWinnerPayout>) -> 
                 &ctx.accounts.creator_payment_ata.to_account_info(),
                 &ctx.accounts.winner_payment_ata.to_account_info(),
                 &ctx.accounts.winner_escrow.to_account_info(),
-                &ctx.accounts.token_program.to_account_info(),
+                ctx.accounts.token_program.key(),
                 signer_seeds,
                 escrow.deposited_amount,
                 payment_amount,
@@ -1203,7 +1221,7 @@ pub fn finalize_token_winner_payout(ctx: Context<FinalizeTokenWinnerPayout>) -> 
             };
 
             pay_winner(
-                ctx.accounts.token_program.to_account_info(),
+                ctx.accounts.token_program.key(),
                 ctx.accounts.prize_mint.to_account_info(),
                 ctx.accounts.prize_vault.to_account_info(),
                 ctx.accounts.vault_authority.to_account_info(),
@@ -1216,7 +1234,7 @@ pub fn finalize_token_winner_payout(ctx: Context<FinalizeTokenWinnerPayout>) -> 
             if is_fungible {
                 let creator_tokens = token_creator_share(sale_amount)?;
                 pay_winner(
-                    ctx.accounts.token_program.to_account_info(),
+                    ctx.accounts.token_program.key(),
                     ctx.accounts.prize_mint.to_account_info(),
                     ctx.accounts.prize_vault.to_account_info(),
                     ctx.accounts.vault_authority.to_account_info(),
@@ -1255,7 +1273,7 @@ pub fn finalize_token_winner_payout(ctx: Context<FinalizeTokenWinnerPayout>) -> 
                 &ctx.accounts.creator_payment_ata.to_account_info(),
                 &ctx.accounts.winner_payment_ata.to_account_info(),
                 &ctx.accounts.winner_escrow.to_account_info(),
-                &ctx.accounts.token_program.to_account_info(),
+                ctx.accounts.token_program.key(),
                 signer_seeds,
                 escrow.deposited_amount,
                 payment_amount,
@@ -1276,7 +1294,7 @@ pub fn finalize_token_winner_payout(ctx: Context<FinalizeTokenWinnerPayout>) -> 
             };
 
             pay_winner(
-                ctx.accounts.token_program.to_account_info(),
+                ctx.accounts.token_program.key(),
                 ctx.accounts.prize_mint.to_account_info(),
                 ctx.accounts.prize_vault.to_account_info(),
                 ctx.accounts.vault_authority.to_account_info(),
@@ -1289,7 +1307,7 @@ pub fn finalize_token_winner_payout(ctx: Context<FinalizeTokenWinnerPayout>) -> 
             if is_fungible {
                 let creator_tokens = token_creator_share(sale_amount)?;
                 pay_winner(
-                    ctx.accounts.token_program.to_account_info(),
+                    ctx.accounts.token_program.key(),
                     ctx.accounts.prize_mint.to_account_info(),
                     ctx.accounts.prize_vault.to_account_info(),
                     ctx.accounts.vault_authority.to_account_info(),
@@ -1380,7 +1398,7 @@ pub fn finalize_token_winner_payout(ctx: Context<FinalizeTokenWinnerPayout>) -> 
                 &ctx.accounts.creator_payment_ata.to_account_info(),
                 &ctx.accounts.winner_payment_ata.to_account_info(),
                 &ctx.accounts.winner_escrow.to_account_info(),
-                &ctx.accounts.token_program.to_account_info(),
+                ctx.accounts.token_program.key(),
                 signer_seeds,
                 escrow.deposited_amount,
                 payment_amount,
@@ -1401,7 +1419,7 @@ pub fn finalize_token_winner_payout(ctx: Context<FinalizeTokenWinnerPayout>) -> 
             ]];
 
             pay_winner(
-                ctx.accounts.token_program.to_account_info(),
+                ctx.accounts.token_program.key(),
                 ctx.accounts.prize_mint.to_account_info(),
                 ctx.accounts.prize_vault.to_account_info(),
                 ctx.accounts.vault_authority.to_account_info(),
@@ -1419,7 +1437,7 @@ pub fn finalize_token_winner_payout(ctx: Context<FinalizeTokenWinnerPayout>) -> 
             {
                 let creator_tokens = uniform_creator_reserve_amount(auction)?;
                 pay_winner(
-                    ctx.accounts.token_program.to_account_info(),
+                    ctx.accounts.token_program.key(),
                     ctx.accounts.prize_mint.to_account_info(),
                     ctx.accounts.prize_vault.to_account_info(),
                     ctx.accounts.vault_authority.to_account_info(),
@@ -1505,7 +1523,7 @@ pub fn finalize_metadata_winner_payout(
                 &ctx.accounts.creator_payment_ata.to_account_info(),
                 &ctx.accounts.winner_payment_ata.to_account_info(),
                 &ctx.accounts.winner_escrow.to_account_info(),
-                &ctx.accounts.token_program.to_account_info(),
+                ctx.accounts.token_program.key(),
                 signer_seeds,
                 escrow.deposited_amount,
                 payment_amount,
@@ -1590,7 +1608,7 @@ pub fn claim_refund(ctx: Context<ClaimRefund>) -> Result<()> {
     ];
     let signer_seeds: &[&[&[u8]]] = &[seeds];
     let cpi_ctx = CpiContext::new_with_signer(
-        ctx.accounts.token_program.to_account_info(),
+        ctx.accounts.token_program.key(),
         TransferChecked {
             from: ctx.accounts.escrow_token_account.to_account_info(),
             mint: ctx.accounts.payment_mint.to_account_info(),
@@ -1962,11 +1980,11 @@ pub struct InitAuctionStateCallback<'info> {
     pub mxe_account: Account<'info, MXEAccount>,
     /// CHECK: computation_account, checked by arcium program via constraints in the callback context.
     pub computation_account: UncheckedAccount<'info>,
-    #[account(address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(address = derive_cluster_pda!(mxe_account))]
     pub cluster_account: Account<'info, Cluster>,
-    #[account(address = ::anchor_lang::solana_program::sysvar::instructions::ID)]
+    #[account(address = ::arcium_anchor::solana_instructions_sysvar::ID)]
     /// CHECK: instructions_sysvar, checked by the account constraint
-    pub instructions_sysvar: AccountInfo<'info>,
+    pub instructions_sysvar: UncheckedAccount<'info>,
     #[account(mut)]
     pub auction: Box<Account<'info, Auction>>,
 }
@@ -2021,22 +2039,22 @@ pub struct PlaceBid<'info> {
     #[account(address = derive_mxe_pda!())]
     pub mxe_account: Box<Account<'info, MXEAccount>>,
 
-    #[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_mempool_pda!(mxe_account))]
     /// CHECK: mempool_account is validated by the address constraint and Arcium runtime.
     pub mempool_account: UncheckedAccount<'info>,
 
-    #[account(mut, address = derive_execpool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_execpool_pda!(mxe_account))]
     /// CHECK: executing_pool is validated by the address constraint and Arcium runtime.
     pub executing_pool: UncheckedAccount<'info>,
 
-    #[account(mut, address = derive_comp_pda!(computation_offset, mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_comp_pda!(computation_offset, mxe_account))]
     /// CHECK: computation_account is validated by the address constraint and Arcium runtime.
     pub computation_account: UncheckedAccount<'info>,
 
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_PLACE_BID))]
     pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
 
-    #[account(mut, address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_cluster_pda!(mxe_account))]
     /// CHECK: cluster_account is validated by the address constraint and Arcium runtime.
     pub cluster_account: Box<Account<'info, Cluster>>,
 
@@ -2093,21 +2111,21 @@ pub struct PlaceEncryptedBid<'info> {
 
     #[account(
         mut,
-        address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet)
+        address = derive_mempool_pda!(mxe_account)
     )]
     /// CHECK: mempool_account is validated by the PDA derivation and Arcium runtime.
     pub mempool_account: UncheckedAccount<'info>,
 
     #[account(
         mut,
-        address = derive_execpool_pda!(mxe_account, ErrorCode::ClusterNotSet)
+        address = derive_execpool_pda!(mxe_account)
     )]
     /// CHECK: executing_pool is validated by the PDA derivation and Arcium runtime.
     pub executing_pool: UncheckedAccount<'info>,
 
     #[account(
         mut,
-        address = derive_comp_pda!(computation_offset, mxe_account, ErrorCode::ClusterNotSet)
+        address = derive_comp_pda!(computation_offset, mxe_account)
     )]
     /// CHECK: computation_account is validated by the PDA derivation and Arcium runtime.
     pub computation_account: UncheckedAccount<'info>,
@@ -2117,7 +2135,7 @@ pub struct PlaceEncryptedBid<'info> {
 
     #[account(
         mut,
-        address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet)
+        address = derive_cluster_pda!(mxe_account)
     )]
     /// CHECK: cluster_account is validated by the PDA derivation and Arcium runtime.
     pub cluster_account: Box<Account<'info, Cluster>>,
@@ -2144,11 +2162,11 @@ pub struct PlaceBidCallback<'info> {
     pub mxe_account: Account<'info, MXEAccount>,
     /// CHECK: computation_account, checked by arcium program via constraints in the callback context.
     pub computation_account: UncheckedAccount<'info>,
-    #[account(address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(address = derive_cluster_pda!(mxe_account))]
     pub cluster_account: Account<'info, Cluster>,
-    #[account(address = ::anchor_lang::solana_program::sysvar::instructions::ID)]
+    #[account(address = ::arcium_anchor::solana_instructions_sysvar::ID)]
     /// CHECK: instructions_sysvar, checked by the account constraint
-    pub instructions_sysvar: AccountInfo<'info>,
+    pub instructions_sysvar: UncheckedAccount<'info>,
     #[account(mut)]
     pub auction: Box<Account<'info, Auction>>,
 }
@@ -2163,11 +2181,11 @@ pub struct PlaceEncryptedBidCallback<'info> {
     pub mxe_account: Account<'info, MXEAccount>,
     /// CHECK: computation_account, checked by Arcium program via constraints in the callback context.
     pub computation_account: UncheckedAccount<'info>,
-    #[account(address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(address = derive_cluster_pda!(mxe_account))]
     pub cluster_account: Account<'info, Cluster>,
-    #[account(address = ::anchor_lang::solana_program::sysvar::instructions::ID)]
+    #[account(address = ::arcium_anchor::solana_instructions_sysvar::ID)]
     /// CHECK: instructions_sysvar, checked by the account constraint.
-    pub instructions_sysvar: AccountInfo<'info>,
+    pub instructions_sysvar: UncheckedAccount<'info>,
     #[account(mut)]
     pub auction: Box<Account<'info, Auction>>,
 }
@@ -2202,18 +2220,18 @@ pub struct DetermineWinnerFirstPrice<'info> {
     pub sign_pda_account: Box<Account<'info, ArciumSignerAccount>>,
     #[account(address = derive_mxe_pda!())]
     pub mxe_account: Box<Account<'info, MXEAccount>>,
-    #[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_mempool_pda!(mxe_account))]
     /// CHECK: mempool_account is validated by the address constraint and Arcium runtime.
     pub mempool_account: UncheckedAccount<'info>,
-    #[account(mut, address = derive_execpool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_execpool_pda!(mxe_account))]
     /// CHECK: executing_pool is validated by the address constraint and Arcium runtime.
     pub executing_pool: UncheckedAccount<'info>,
-    #[account(mut, address = derive_comp_pda!(computation_offset, mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_comp_pda!(computation_offset, mxe_account))]
     /// CHECK: computation_account is validated by the address constraint and Arcium runtime.
     pub computation_account: UncheckedAccount<'info>,
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_DETERMINE_WINNER_FIRST_PRICE))]
     pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
-    #[account(mut, address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_cluster_pda!(mxe_account))]
     /// CHECK: cluster_account is validated by the address constraint and Arcium runtime.
     pub cluster_account: Box<Account<'info, Cluster>>,
     #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
@@ -2267,18 +2285,18 @@ pub struct DepositEncryptedBid<'info> {
     pub sign_pda_account: Box<Account<'info, ArciumSignerAccount>>,
     #[account(address = derive_mxe_pda!())]
     pub mxe_account: Box<Account<'info, MXEAccount>>,
-    #[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_mempool_pda!(mxe_account))]
     /// CHECK: validated by the address constraint and Arcium runtime.
     pub mempool_account: UncheckedAccount<'info>,
-    #[account(mut, address = derive_execpool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_execpool_pda!(mxe_account))]
     /// CHECK: validated by the address constraint and Arcium runtime.
     pub executing_pool: UncheckedAccount<'info>,
-    #[account(mut, address = derive_comp_pda!(computation_offset, mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_comp_pda!(computation_offset, mxe_account))]
     /// CHECK: validated by the address constraint and Arcium runtime.
     pub computation_account: UncheckedAccount<'info>,
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_PLACE_ENCRYPTED_BID))]
     pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
-    #[account(mut, address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_cluster_pda!(mxe_account))]
     /// CHECK: validated by the address constraint and Arcium runtime.
     pub cluster_account: Box<Account<'info, Cluster>>,
     #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
@@ -2321,13 +2339,7 @@ pub struct DepositEncryptedBid<'info> {
     /// CHECK: Umbra computation data PDA.
     #[account(mut)]
     pub computation_data: UncheckedAccount<'info>,
-    /// CHECK: Umbra callback signer PDA.
-    pub umbra_callback_signer: UncheckedAccount<'info>,
-    /// CHECK: this is your program's own id passed to Umbra as the callback target.
-    #[account(address = crate::ID)]
-    pub destination_program: UncheckedAccount<'info>,
 }
-
 
 #[callback_accounts("determine_winner_first_price")]
 #[derive(Accounts)]
@@ -2339,11 +2351,11 @@ pub struct DetermineWinnerFirstPriceCallback<'info> {
     pub mxe_account: Account<'info, MXEAccount>,
     /// CHECK: computation_account, checked by arcium program via constraints in the callback context.
     pub computation_account: UncheckedAccount<'info>,
-    #[account(address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(address = derive_cluster_pda!(mxe_account))]
     pub cluster_account: Account<'info, Cluster>,
-    #[account(address = ::anchor_lang::solana_program::sysvar::instructions::ID)]
+    #[account(address = ::arcium_anchor::solana_instructions_sysvar::ID)]
     /// CHECK: instructions_sysvar, checked by the account constraint
-    pub instructions_sysvar: AccountInfo<'info>,
+    pub instructions_sysvar: UncheckedAccount<'info>,
     #[account(mut)]
     pub auction: Box<Account<'info, Auction>>,
 }
@@ -2367,18 +2379,18 @@ pub struct DetermineWinnerVickrey<'info> {
     pub sign_pda_account: Box<Account<'info, ArciumSignerAccount>>,
     #[account(address = derive_mxe_pda!())]
     pub mxe_account: Box<Account<'info, MXEAccount>>,
-    #[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_mempool_pda!(mxe_account))]
     /// CHECK: mempool_account is validated by the address constraint and Arcium runtime.
     pub mempool_account: UncheckedAccount<'info>,
-    #[account(mut, address = derive_execpool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_execpool_pda!(mxe_account))]
     /// CHECK: executing_pool is validated by the address constraint and Arcium runtime.
     pub executing_pool: UncheckedAccount<'info>,
-    #[account(mut, address = derive_comp_pda!(computation_offset, mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_comp_pda!(computation_offset, mxe_account))]
     /// CHECK: computation_account is validated by the address constraint and Arcium runtime.
     pub computation_account: UncheckedAccount<'info>,
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_DETERMINE_WINNER_VICKREY))]
     pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
-    #[account(mut, address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_cluster_pda!(mxe_account))]
     /// CHECK: cluster_account is validated by the address constraint and Arcium runtime.
     pub cluster_account: Box<Account<'info, Cluster>>,
     #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
@@ -2401,11 +2413,11 @@ pub struct DetermineWinnerVickreyCallback<'info> {
     pub mxe_account: Account<'info, MXEAccount>,
     /// CHECK: computation_account, checked by arcium program via constraints in the callback context.
     pub computation_account: UncheckedAccount<'info>,
-    #[account(address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(address = derive_cluster_pda!(mxe_account))]
     pub cluster_account: Account<'info, Cluster>,
-    #[account(address = ::anchor_lang::solana_program::sysvar::instructions::ID)]
+    #[account(address = ::arcium_anchor::solana_instructions_sysvar::ID)]
     /// CHECK: instructions_sysvar, checked by the account constraint
-    pub instructions_sysvar: AccountInfo<'info>,
+    pub instructions_sysvar: UncheckedAccount<'info>,
     #[account(mut)]
     pub auction: Box<Account<'info, Auction>>,
 }
@@ -2463,18 +2475,18 @@ pub struct CreateMetadataAuction<'info> {
     pub sign_pda_account: Box<Account<'info, ArciumSignerAccount>>,
     #[account(address = derive_mxe_pda!())]
     pub mxe_account: Box<Account<'info, MXEAccount>>,
-    #[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_mempool_pda!(mxe_account))]
     /// CHECK: validated by address constraint and Arcium runtime.
     pub mempool_account: UncheckedAccount<'info>,
-    #[account(mut, address = derive_execpool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_execpool_pda!(mxe_account))]
     /// CHECK: validated by address constraint and Arcium runtime.
     pub executing_pool: UncheckedAccount<'info>,
-    #[account(mut, address = derive_comp_pda!(computation_offset, mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_comp_pda!(computation_offset, mxe_account))]
     /// CHECK: validated by address constraint and Arcium runtime.
     pub computation_account: UncheckedAccount<'info>,
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_INIT_AUCTION_STATE))]
     pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
-    #[account(mut, address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_cluster_pda!(mxe_account))]
     /// CHECK: validated by address constraint and Arcium runtime.
     pub cluster_account: Box<Account<'info, Cluster>>,
     #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
@@ -2508,14 +2520,14 @@ pub struct CreateTokenAuction<'info> {
     )]
     /// CHECK: PDA used only as signer for token transfers; seeds constrain the address.
     pub vault_authority: UncheckedAccount<'info>,
-#[account(
-    init,
-    payer = authority,
-    space = 8 + SharedVault::INIT_SPACE,
-    seeds = [b"shared-vault", auction.key().as_ref()],
-    bump,
-)]
-pub shared_vault: Box<Account<'info, SharedVault>>,
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + SharedVault::INIT_SPACE,
+        seeds = [b"shared-vault", auction.key().as_ref()],
+        bump,
+    )]
+    pub shared_vault: Box<Account<'info, SharedVault>>,
     #[account(mut)]
     pub authority_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
@@ -2539,18 +2551,18 @@ pub shared_vault: Box<Account<'info, SharedVault>>,
     pub sign_pda_account: Box<Account<'info, ArciumSignerAccount>>,
     #[account(address = derive_mxe_pda!())]
     pub mxe_account: Box<Account<'info, MXEAccount>>,
-    #[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_mempool_pda!(mxe_account))]
     /// CHECK: mempool_account is validated by the address constraint and Arcium runtime.
     pub mempool_account: UncheckedAccount<'info>,
-    #[account(mut, address = derive_execpool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_execpool_pda!(mxe_account))]
     /// CHECK: executing_pool is validated by the address constraint and Arcium runtime.
     pub executing_pool: UncheckedAccount<'info>,
-    #[account(mut, address = derive_comp_pda!(computation_offset, mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_comp_pda!(computation_offset, mxe_account))]
     /// CHECK: computation_account is validated by the address constraint and Arcium runtime.
     pub computation_account: UncheckedAccount<'info>,
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_INIT_AUCTION_STATE))]
     pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
-    #[account(mut, address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_cluster_pda!(mxe_account))]
     /// CHECK: cluster_account is validated by the address constraint and Arcium runtime.
     pub cluster_account: Box<Account<'info, Cluster>>,
     #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
@@ -2752,18 +2764,18 @@ pub struct DetermineWinnerUniform<'info> {
     pub sign_pda_account: Box<Account<'info, ArciumSignerAccount>>,
     #[account(address = derive_mxe_pda!())]
     pub mxe_account: Box<Account<'info, MXEAccount>>,
-    #[account(mut, address = derive_mempool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_mempool_pda!(mxe_account))]
     /// CHECK: mempool_account is validated by the address constraint and Arcium runtime.
     pub mempool_account: UncheckedAccount<'info>,
-    #[account(mut, address = derive_execpool_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_execpool_pda!(mxe_account))]
     /// CHECK: executing_pool is validated by the address constraint and Arcium runtime.
     pub executing_pool: UncheckedAccount<'info>,
-    #[account(mut, address = derive_comp_pda!(computation_offset, mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_comp_pda!(computation_offset, mxe_account))]
     /// CHECK: computation_account is validated by the address constraint and Arcium runtime.
     pub computation_account: UncheckedAccount<'info>,
     #[account(address = derive_comp_def_pda!(COMP_DEF_OFFSET_DETERMINE_WINNER_UNIFORM))]
     pub comp_def_account: Box<Account<'info, ComputationDefinitionAccount>>,
-    #[account(mut, address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(mut, address = derive_cluster_pda!(mxe_account))]
     /// CHECK: cluster_account is validated by the address constraint and Arcium runtime.
     pub cluster_account: Box<Account<'info, Cluster>>,
     #[account(mut, address = ARCIUM_FEE_POOL_ACCOUNT_ADDRESS)]
@@ -2786,11 +2798,11 @@ pub struct DetermineWinnerUniformCallback<'info> {
     pub mxe_account: Account<'info, MXEAccount>,
     /// CHECK: computation_account, checked by arcium program via constraints in the callback context.
     pub computation_account: UncheckedAccount<'info>,
-    #[account(address = derive_cluster_pda!(mxe_account, ErrorCode::ClusterNotSet))]
+    #[account(address = derive_cluster_pda!(mxe_account))]
     pub cluster_account: Account<'info, Cluster>,
-    #[account(address = ::anchor_lang::solana_program::sysvar::instructions::ID)]
+    #[account(address = ::arcium_anchor::solana_instructions_sysvar::ID)]
     /// CHECK: instructions_sysvar, checked by the account constraint
-    pub instructions_sysvar: AccountInfo<'info>,
+    pub instructions_sysvar: UncheckedAccount<'info>,
     #[account(mut)]
     pub auction: Box<Account<'info, Auction>>,
 }
@@ -3008,7 +3020,7 @@ pub fn reclaim_unsold_token_item(ctx: Context<ReclaimUnsoldTokenItem>) -> Result
     ]];
 
     pay_winner(
-        ctx.accounts.token_program.to_account_info(),
+        ctx.accounts.token_program.key(),
         ctx.accounts.prize_mint.to_account_info(),
         ctx.accounts.prize_vault.to_account_info(),
         ctx.accounts.vault_authority.to_account_info(),
@@ -3153,7 +3165,7 @@ fn settle_token_escrow<'info>(
     creator_token: &AccountInfo<'info>,
     winner_token: &AccountInfo<'info>,
     escrow_authority: &AccountInfo<'info>,
-    token_program: &AccountInfo<'info>,
+    token_program: Pubkey,
     signer_seeds: &[&[&[u8]]],
     deposited_amount: u64,
     payment_amount: u64,
@@ -3164,7 +3176,7 @@ fn settle_token_escrow<'info>(
 
     // pay creator
     let pay_ctx = CpiContext::new_with_signer(
-        token_program.clone(),
+        token_program,
         TransferChecked {
             from: escrow_token.clone(),
             mint: mint.clone(),
@@ -3181,7 +3193,7 @@ fn settle_token_escrow<'info>(
 
     if refund > 0 {
         let refund_ctx = CpiContext::new_with_signer(
-            token_program.clone(),
+            token_program,
             TransferChecked {
                 from: escrow_token.clone(),
                 mint: mint.clone(),
@@ -3199,7 +3211,7 @@ fn settle_token_escrow<'info>(
 
 /// Transfers prize tokens from vault to winner.
 pub fn pay_winner<'info>(
-    token_program: AccountInfo<'info>,
+    token_program: Pubkey,
     mint: AccountInfo<'info>,
     vault: AccountInfo<'info>,
     vault_authority: AccountInfo<'info>,
@@ -3289,8 +3301,6 @@ pub enum ErrorCode {
     PoolAlreadyCreated,
     #[msg("The computation was aborted")]
     AbortedComputation,
-    #[msg("Cluster not set")]
-    ClusterNotSet,
     #[msg("Auction is not open for bidding")]
     AuctionNotOpen,
     #[msg("Auction is not closed yet")]

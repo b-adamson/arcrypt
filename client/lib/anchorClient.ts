@@ -1,4 +1,4 @@
-import * as anchor from "@coral-xyz/anchor";
+import * as anchor from "@anchor-lang/core";
 import { Connection, PublicKey } from "@solana/web3.js";
 import type { Arcrypt } from "./Arcrypt";
 

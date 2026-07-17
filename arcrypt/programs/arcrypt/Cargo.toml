@@ -20,12 +20,12 @@ custom-heap = []
 custom-panic = []
 
 [dependencies]
-anchor-lang = { version = "0.32.1", features = ["init-if-needed"] }
-anchor-spl = { version = "0.32.1" }
-arcium-client = { default-features = false, version = "0.9.7" }
-arcium-macros = "0.9.7"
-arcium-anchor = "0.9.7"
-umbra-codama = { path = "../../umbra-codama" }
+anchor-lang = { version = "1.0.2", features = ["init-if-needed"] }
+anchor-spl = { version = "1.0.2" }
+arcium-client = { default-features = false, version = "0.10.3" }
+arcium-macros = "0.10.3"
+arcium-anchor = "0.10.3"
+umbra-codama = { path = "../../rust-cpi-bundle-v0.1.0/rs-libs/umbra-codama" }
 sha2 = "0.10"
 
 [lints.rust]

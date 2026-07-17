@@ -1,0 +1,25 @@
+[package]
+name = "umbra-codama"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+borsh = "1.6"
+num-derive = "0.4"
+num-traits = "0.2"
+thiserror = "2.0"
+# Pinned to the v3/v4 line to align with `anchor-lang = "1.0.2"`. External
+# Anchor programs that consume umbra-codama (CPI builders + types) need
+# their `solana_account_info::AccountInfo` to unify with anchor's, which
+# only happens when both sides resolve to the same major. The relayer
+# crates that use umbra-codama also live on the same v3/v4 stack now.
+solana-program = "3"
+solana-instruction = "3"
+solana-account-info = "3"
+solana-pubkey = "4"
+solana-program-error = "3"
+solana-cpi = "3"
+
+[lib]
+crate-type = ["lib"]
+path = "mod.rs"

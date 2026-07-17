@@ -73,6 +73,7 @@ export default function BidPageClient({ auctionPk }: { auctionPk: string | null 
   const [escrowExists, setEscrowExists] = useState<boolean | null>(null);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [encryptedMode, setEncryptedMode] = useState(false);
   const walletBase58 = publicKey?.toBase58() ?? "";
   const auctionStatus = auctionData ? enumKey(auctionData.status).toLowerCase() : "";
   const isResolved = auctionStatus === "resolved";
@@ -655,6 +656,101 @@ async function handlePlaceBid() {
   }
 }
 
+async function handleEncryptedBid() {
+  setStatus("Preparing encrypted bid...");
+  if (isSubmitting) return;
+  setIsSubmitting(true);
+
+  try {
+    if (!programClient || !publicKey) {
+      throw new Error("Connect wallet and ensure program client is ready");
+    }
+    if (!auctionPkStr) {
+      throw new Error("Select or create an auction first");
+    }
+
+    const UMBRA_PROGRAM_ID = new PublicKey("DSuKkyqGVGgo4QtPABfxKJKygUDACbUhirnuv63mEpAJ");
+    const ETA_SEED = Buffer.from([88, 246, 238, 102, 30, 119, 174, 223, 76, 239, 136, 176, 202, 120, 177, 11, 48, 67, 190, 35, 5, 219, 76, 155, 193, 2, 61, 126, 253, 142, 11, 153]);
+    const USDC_MINT_PK = new PublicKey(USDC_MINT);
+    const etaPk = PublicKey.findProgramAddressSync(
+      [ETA_SEED, publicKey.toBuffer(), USDC_MINT_PK.toBuffer()],
+      UMBRA_PROGRAM_ID
+    )[0];
+
+    const finalPrice = auctionType === "uniform" ? bidPriceUsdc : bidAmountUsdcFinal;
+
+    setStatus("Building encrypted bid tx...");
+    const res = await fetch("/api/place_encrypted_bid", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        auctionPk: auctionPkStr,
+        bidderPubkey: publicKey.toBase58(),
+        etaAddress: etaPk.toBase58(),
+        bidAmountUsdc: bidAmountUsdcFinal,
+        bidPriceUsdc: finalPrice,
+        nonceHex: bidNonceHex ?? null,
+      }),
+    });
+
+    const srv = await res.json();
+    if (srv?.error) throw new Error(srv.error);
+
+    const tx = Transaction.from(Buffer.from(srv.txBase64, "base64"));
+    setStatus("Signing and sending encrypted bid tx...");
+    const sig = await safeSendTx(programClient, tx);
+
+    setStatus(
+      sig === "already-processed"
+        ? "Encrypted bid already processed (confirmed)"
+        : `Encrypted bid sent: ${sig} | tempBid: ${srv.tempBidPda}`
+    );
+  } catch (err: any) {
+    console.error("encryptedBid failed:", err);
+    setStatus("Encrypted bid failed: " + (err?.message ?? String(err)));
+  } finally {
+    setIsSubmitting(false);
+  }
+}
+
+async function handleManualCrank() {
+  setStatus("Cranking encrypted bid...");
+  try {
+    if (!programClient || !publicKey) {
+      throw new Error("Connect wallet and ensure program client is ready");
+    }
+    if (!auctionPkStr) {
+      throw new Error("Select an auction first");
+    }
+
+    const res = await fetch("/api/test-crank", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        auctionPk: auctionPkStr,
+        bidderPubkey: publicKey.toBase58(),
+        crankerPubkey: publicKey.toBase58(),
+      }),
+    });
+
+    const srv = await res.json();
+    if (srv?.error) throw new Error(srv.error);
+
+    const tx = Transaction.from(Buffer.from(srv.txBase64, "base64"));
+    setStatus("Signing and sending crank tx...");
+    const sig = await safeSendTx(programClient, tx);
+
+    setStatus(
+      sig === "already-processed"
+        ? "Crank already processed"
+        : `Crank tx sent: ${sig}`
+    );
+  } catch (err: any) {
+    console.error("manualCrank failed:", err);
+    setStatus("Crank failed: " + (err?.message ?? String(err)));
+  }
+}
+
  async function callAuctionActions(body: {
     kind: "determineWinner" | "settlement";
     auctionPk: string;
@@ -785,6 +881,19 @@ async function handlePlaceBid() {
     )}
 
     <div className="mt-6">
+      <div className="mb-3 flex items-center gap-3">
+        <button
+          onClick={() => setEncryptedMode((v) => !v)}
+          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${encryptedMode ? "bg-[var(--accent)]" : "bg-[var(--line)]"}`}
+          role="switch"
+          aria-checked={encryptedMode}
+        >
+          <span className={`inline-block h-3 w-3 rounded-full bg-white transition-transform ${encryptedMode ? "translate-x-5" : "translate-x-1"}`} />
+        </button>
+        <span className="text-xs font-medium text-[var(--muted)]">
+          {encryptedMode ? "Encrypted bid (ETA)" : "Normal bid (ATA)"}
+        </span>
+      </div>
     <AuctionBidForm
       refreshKey={balanceRefreshKey}
       auctionData={auctionData}
@@ -798,7 +907,7 @@ async function handlePlaceBid() {
       disabled={isBidDisabled}
       isSubmitting={isSubmitting}
       auctionEnded={auctionEnded}
-      onSubmit={handlePlaceBid}
+      onSubmit={encryptedMode ? handleEncryptedBid : handlePlaceBid}
     />
     </div>
 
@@ -833,6 +942,16 @@ async function handlePlaceBid() {
       </div>
 
       <div className="mt-5 flex flex-wrap gap-3">
+        {encryptedMode && !auctionEnded && connected ? (
+          <button
+            onClick={handleManualCrank}
+            disabled={isSubmitting}
+            className={buttonSecondary}
+          >
+            Manual crank
+          </button>
+        ) : null}
+
         {canReclaimUnsold ? (
           <button
             onClick={() => handleSettleAuction("reclaimUnsold")}

@@ -15,7 +15,7 @@ arcibid = "BPKLg61gd4FChxuFkn2VEEbT9cMED5nsSYRi84j5FRaK"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "https://devnet.helius-rpc.com/?api-key=2264d5db-8075-444b-ac27-a0e614a053d3"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

@@ -8,6 +8,7 @@ import { useSearchParams } from "next/navigation";
 import AuctionCreateForm from "../../components/AuctionCreateForm";
 import AuctionResultCard from "../../components/AuctionResultCard";
 import GovernanceProposalPanel from "@/components/GovernanceProposalPanel";
+import NftCollectionForm from "../../components/NftCollectionForm";
 import { createAnchorProgramInBrowser, createReadOnlyProgram, assertProviderReady } from "../../lib/anchorClient";
 
 import {
@@ -26,7 +27,7 @@ type RawIxView = {
   label: string;
   dataBase64: string;
 };
-type AssetKind = "Fungible" | "Nft" | "MetadataOnly";
+type AssetKind = "Fungible" | "Nft" | "MetadataOnly" | "NftCollection";
 
 function persistAuctionForWallet(walletBase58: string, auctionPk: string) {
   try {
@@ -112,14 +113,15 @@ export default function AuctionClient() {
     if (kind === "Fungible") return ["FirstPrice", "Vickrey", "Uniform"];
     return ["FirstPrice", "Vickrey"];
   }
-  
+
   function normalizeAuctionType(kind: AssetKind, current: AuctionType): AuctionType {
     const allowed = getAllowedAuctionTypes(kind);
     return allowed.includes(current) ? current : allowed[0];
   }
-    
+
   function handleAssetKindChange(nextKind: AssetKind) {
     setAssetKind(nextKind);
+    if (nextKind === "NftCollection") return;
 
     if (nextKind === "Fungible") {
       setAuctionType("Uniform");
@@ -718,43 +720,71 @@ async function handleMakeAuction(
         </div>
       </section>
     ) : (
-      <AuctionCreateForm
-        minBidUsdc={minBidUsdc}
-        saleAmountToken={saleAmountToken}
-        tokenMint={tokenMint}
-        durationSecs={durationSecs}
-        auctionType={auctionType}
-        assetKind={assetKind}
-        metadataName={metadataName}
-        metadataDescription={metadataDescription}
-        metadataImageFile={metadataImageFile}
-        auctionPkStr={auctionPkStr}
-        disabled={!connected}
-        lockTokenMint={false}
-        tokenSymbol={tokenSymbol}
-        onTokenSymbolChange={setTokenSymbol}
-        getAllowedAuctionTypes={getAllowedAuctionTypes}
-        onAssetKindChange={handleAssetKindChange}
-        onMetadataNameChange={setMetadataName}
-        onMetadataDescriptionChange={setMetadataDescription}
-        onMetadataImageChange={setMetadataImageFile}
-        onMinBidUsdcChange={setMinBidUsdc}
-        onSaleAmountTokenChange={setSaleAmountToken}
-        onTokenMintChange={setTokenMint}
-        onDurationSecsChange={setDurationSecs}
-        onAuctionTypeChange={setAuctionType}
-        onSubmit={(
-          metadataUri,
-          tokenOverride,
-          saleAmountOverride
-        ) =>
-          handleMakeAuction(
-            metadataUri,
-            tokenOverride,
-            saleAmountOverride
-          )
-        }
-      />
+      <div className="flex flex-col gap-4">
+        {/* Asset type toggle — includes Collection */}
+        <div className="flex w-full border border-[var(--line)] bg-[var(--background)] overflow-hidden">
+          {(["Fungible", "Nft", "MetadataOnly", "NftCollection"] as AssetKind[]).map((kind, i) => {
+            const labels: Record<AssetKind, string> = {
+              Fungible: "TOKEN",
+              Nft: "NFT",
+              MetadataOnly: "METADATA",
+              NftCollection: "COLLECTION",
+            };
+            return (
+              <button
+                key={kind}
+                type="button"
+                onClick={() => handleAssetKindChange(kind)}
+                className={`flex-1 h-14 text-sm font-semibold transition ${i > 0 ? "border-l border-[var(--line)]" : ""}
+                  ${assetKind === kind
+                    ? "bg-[var(--accent)] text-black"
+                    : "text-white/70 hover:bg-[var(--surface-2)]"}`}
+              >
+                {labels[kind]}
+              </button>
+            );
+          })}
+        </div>
+
+        {assetKind === "NftCollection" ? (
+          <NftCollectionForm
+            onDone={(pdas) => {
+              if (pdas.length > 0) setAuctionPkStr(pdas[0]);
+            }}
+          />
+        ) : (
+          <AuctionCreateForm
+            minBidUsdc={minBidUsdc}
+            saleAmountToken={saleAmountToken}
+            tokenMint={tokenMint}
+            durationSecs={durationSecs}
+            auctionType={auctionType}
+            assetKind={assetKind as "Fungible" | "Nft" | "MetadataOnly"}
+            metadataName={metadataName}
+            metadataDescription={metadataDescription}
+            metadataImageFile={metadataImageFile}
+            auctionPkStr={auctionPkStr}
+            disabled={!connected}
+            lockTokenMint={false}
+            skipAssetKindToggle={true}
+            tokenSymbol={tokenSymbol}
+            onTokenSymbolChange={setTokenSymbol}
+            getAllowedAuctionTypes={getAllowedAuctionTypes}
+            onAssetKindChange={handleAssetKindChange}
+            onMetadataNameChange={setMetadataName}
+            onMetadataDescriptionChange={setMetadataDescription}
+            onMetadataImageChange={setMetadataImageFile}
+            onMinBidUsdcChange={setMinBidUsdc}
+            onSaleAmountTokenChange={setSaleAmountToken}
+            onTokenMintChange={setTokenMint}
+            onDurationSecsChange={setDurationSecs}
+            onAuctionTypeChange={setAuctionType}
+            onSubmit={(metadataUri, tokenOverride, saleAmountOverride) =>
+              handleMakeAuction(metadataUri, tokenOverride, saleAmountOverride)
+            }
+          />
+        )}
+      </div>
     )}
 
     {auctionData ? (
@@ -774,16 +804,10 @@ async function handleMakeAuction(
     <div className="mt-8 mb-10 flex justify-center">
       <button
         type="button"
-        onClick={() =>
-          setMode((m) =>
-            m === "proposal" ? "auction" : "proposal"
-          )
-        }
+        onClick={() => setMode((m) => m === "proposal" ? "auction" : "proposal")}
         className="rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-bold uppercase tracking-[0.18em] text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.06] hover:shadow-[0_8px_24px_rgba(0,230,118,0.10)] active:translate-y-0 active:scale-[0.99]"
       >
-        {mode === "proposal"
-          ? "Hide advanced governance"
-          : "Show advanced governance"}
+        {mode === "proposal" ? "Hide advanced governance" : "Show advanced governance"}
       </button>
     </div>
 

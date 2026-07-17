@@ -1,0 +1,13 @@
+[package]
+name = "umbra-external-macros"
+version = "0.1.0"
+edition = "2021"
+description = "Procedural macros for third-party programs receiving Umbra MPC callbacks"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2", features = ["full", "extra-traits"] }
+quote = "1"
+proc-macro2 = "1"

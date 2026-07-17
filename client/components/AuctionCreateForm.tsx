@@ -106,6 +106,7 @@ type Props = {
   auctionPkStr?: string | null;
   disabled?: boolean;
   lockTokenMint?: boolean;
+  skipAssetKindToggle?: boolean;
   getAllowedAuctionTypes: (kind: AssetKind) => AuctionType[];
   onAssetKindChange: (v: AssetKind) => void;
   onMetadataNameChange: (v: string) => void;
@@ -170,6 +171,7 @@ export default function AuctionCreateForm({
   auctionPkStr,
   disabled,
   lockTokenMint,
+  skipAssetKindToggle,
   getAllowedAuctionTypes,
   onAssetKindChange,
   onMetadataNameChange,
@@ -550,6 +552,7 @@ async function handleSubmit() {
         </div>
 
         <div className="flex flex-col gap-6">
+        {!skipAssetKindToggle && (
         <Field label="Asset type">
   <div className="flex w-full border border-[var(--line)] bg-[var(--background)] overflow-hidden">
     <button
@@ -584,9 +587,9 @@ async function handleSubmit() {
     >
       METADATA
     </button>
-
   </div>
 </Field>
+        )}
 {assetKind === "Nft" && (
   <Field label="NFT source">
     <div className="flex items-center gap-3">

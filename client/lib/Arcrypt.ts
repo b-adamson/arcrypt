@@ -737,7 +737,6 @@ export type Arcrypt = {
       "docs": [
         "Deposits a confidential bid via Umbra and prepares it for later Arcium processing.",
         "Entrypoint of the encrypted_bid mechanism using UMBRA",
-        "Not related to deprecated place_bid pathway",
         "",
         "# Arguments",
         "- `ctx`: Account context for the auction, bidder, Umbra CPI, and temporary bid PDA.",
@@ -957,13 +956,6 @@ export type Arcrypt = {
         {
           "name": "computationData",
           "writable": true
-        },
-        {
-          "name": "umbraCallbackSigner"
-        },
-        {
-          "name": "destinationProgram",
-          "address": "BPKLg61gd4FChxuFkn2VEEbT9cMED5nsSYRi84j5FRaK"
         }
       ],
       "args": [
@@ -3178,7 +3170,9 @@ export type Arcrypt = {
         "# Notes",
         "- `bidder` is stored in the account and does not need to sign.",
         "- `nonce` must be unique per `(auction, bidder)` pair because it is part of the PDA seeds.",
-        "- This instruction only records the encrypted bid metadata; it does not enqueue settlement."
+        "- This instruction is called by UMBRA on the deposit callback. It contained the re-encrypted",
+        "\"encrypted_amount\" which is encrypted against our MXE, used for our own mirror of each bid. This cannot be",
+        "spoofed since it was generated directly by UMBRA when it moved the tokens."
       ],
       "discriminator": [
         79,
@@ -3329,45 +3323,6 @@ export type Arcrypt = {
       ]
     },
     {
-      "name": "clockAccount",
-      "discriminator": [
-        152,
-        171,
-        158,
-        195,
-        75,
-        61,
-        51,
-        8
-      ]
-    },
-    {
-      "name": "cluster",
-      "discriminator": [
-        236,
-        225,
-        118,
-        228,
-        173,
-        106,
-        18,
-        60
-      ]
-    },
-    {
-      "name": "computationDefinitionAccount",
-      "discriminator": [
-        245,
-        176,
-        217,
-        221,
-        253,
-        104,
-        172,
-        200
-      ]
-    },
-    {
       "name": "escrowAccount",
       "discriminator": [
         36,
@@ -3378,32 +3333,6 @@ export type Arcrypt = {
         225,
         125,
         135
-      ]
-    },
-    {
-      "name": "feePool",
-      "discriminator": [
-        172,
-        38,
-        77,
-        146,
-        148,
-        5,
-        51,
-        242
-      ]
-    },
-    {
-      "name": "mxeAccount",
-      "discriminator": [
-        103,
-        26,
-        85,
-        250,
-        179,
-        159,
-        17,
-        117
       ]
     },
     {
@@ -3552,171 +3481,166 @@ export type Arcrypt = {
     },
     {
       "code": 6002,
-      "name": "clusterNotSet",
-      "msg": "Cluster not set"
-    },
-    {
-      "code": 6003,
       "name": "auctionNotOpen",
       "msg": "Auction is not open for bidding"
     },
     {
-      "code": 6004,
+      "code": 6003,
       "name": "auctionNotClosed",
       "msg": "Auction is not closed yet"
     },
     {
-      "code": 6005,
+      "code": 6004,
       "name": "wrongAuctionType",
       "msg": "Wrong auction type for this operation"
     },
     {
-      "code": 6006,
+      "code": 6005,
       "name": "unauthorized",
       "msg": "unauthorized"
     },
     {
-      "code": 6007,
+      "code": 6006,
       "name": "wrongMint",
       "msg": "Token mint does not match the auction's configured mint"
     },
     {
-      "code": 6008,
+      "code": 6007,
       "name": "escrowOwnerMismatch",
       "msg": "Escrow token account owner mismatch"
     },
     {
-      "code": 6009,
+      "code": 6008,
       "name": "escrowNotEmpty",
       "msg": "Escrow account not empty"
     },
     {
-      "code": 6010,
+      "code": 6009,
       "name": "noFundsInEscrow",
       "msg": "No funds in escrow"
     },
     {
-      "code": 6011,
+      "code": 6010,
       "name": "auctionNotEnded",
       "msg": "Auction has not ended yet"
     },
     {
-      "code": 6012,
+      "code": 6011,
       "name": "bidCountOverflow",
       "msg": "Bid count overflow"
     },
     {
-      "code": 6013,
+      "code": 6012,
       "name": "noBids",
       "msg": "No bids placed"
     },
     {
-      "code": 6014,
+      "code": 6013,
       "name": "auctionEnded",
       "msg": "Auction has ended"
     },
     {
-      "code": 6015,
+      "code": 6014,
       "name": "auctionAlreadyResolved",
       "msg": "Auction is already resolved"
     },
     {
-      "code": 6016,
+      "code": 6015,
       "name": "bidBelowMinimum",
       "msg": "Bid is below the auction minimum"
     },
     {
-      "code": 6017,
+      "code": 6016,
       "name": "bidMustNotDecrease",
       "msg": "New bid cannot be lower than the current escrowed amount"
     },
     {
-      "code": 6018,
+      "code": 6017,
       "name": "escrowMismatch",
       "msg": "Escrow does not match this auction"
     },
     {
-      "code": 6019,
+      "code": 6018,
       "name": "escrowInsufficient",
       "msg": "Insufficient escrow for settlement"
     },
     {
-      "code": 6020,
+      "code": 6019,
       "name": "auctionNotResolved",
       "msg": "Auction is not resolved"
     },
     {
-      "code": 6021,
+      "code": 6020,
       "name": "auctionAlreadySettled",
       "msg": "Winner payout has already been completed"
     },
     {
-      "code": 6022,
+      "code": 6021,
       "name": "winnerCannotClaimRefund",
       "msg": "Winner cannot claim a refund"
     },
     {
-      "code": 6023,
+      "code": 6022,
       "name": "lamportOverflow",
       "msg": "Lamport addition overflow"
     },
     {
-      "code": 6024,
+      "code": 6023,
       "name": "invalidSettlementWinner",
       "msg": "The provided winner is not one of the resolved winners"
     },
     {
-      "code": 6025,
+      "code": 6024,
       "name": "invalidMint",
       "msg": "Invalid mint"
     },
     {
-      "code": 6026,
+      "code": 6025,
       "name": "notEnoughBidsForSettlement",
       "msg": "At least three bids are required for this auction type"
     },
     {
-      "code": 6027,
+      "code": 6026,
       "name": "nftAuctionOnlySupportsSingleWinnerModes",
       "msg": "NFT auctions only support single-winner modes"
     },
     {
-      "code": 6028,
+      "code": 6027,
       "name": "insufficientSupplyForMultiWinnerAuction",
       "msg": "Multi-winner auctions require at least 3 units of supply"
     },
     {
-      "code": 6029,
+      "code": 6028,
       "name": "metadataOnlyDoesNotSupportMultiWinnerModes",
       "msg": "Metadata-only auctions do not support multi-winner modes"
     },
     {
-      "code": 6030,
+      "code": 6029,
       "name": "invalidMetadataUri",
       "msg": "Invalid metadata URI"
     },
     {
-      "code": 6031,
+      "code": 6030,
       "name": "wrongAssetKind",
       "msg": "Wrong asset kind for this instruction"
     },
     {
-      "code": 6032,
+      "code": 6031,
       "name": "cannotReclaimWithBids",
       "msg": "This auction already has bids and cannot be reclaimed as unsold"
     },
     {
-      "code": 6033,
+      "code": 6032,
       "name": "invalidSharedVault",
       "msg": "Invalid shared vault"
     },
     {
-      "code": 6034,
+      "code": 6033,
       "name": "tempBidAlreadyConsumed",
       "msg": "Pending encrypted bid already consumed"
     },
     {
-      "code": 6035,
+      "code": 6034,
       "name": "bidTooSmall",
       "msg": "Escrow must be >= price"
     }
@@ -3830,7 +3754,25 @@ export type Arcrypt = {
                     32
                   ]
                 },
-                13
+                9
+              ]
+            }
+          },
+          {
+            "name": "encryptedBidBookNonce",
+            "type": "u128"
+          },
+          {
+            "name": "encryptedBidBook",
+            "type": {
+              "array": [
+                {
+                  "array": [
+                    "u8",
+                    32
+                  ]
+                },
+                3
               ]
             }
           },
@@ -4267,9 +4209,9 @@ export type Arcrypt = {
         "kind": "struct",
         "fields": [
           {
-            "name": "finalizationAuthority",
+            "name": "deactivationSlot",
             "type": {
-              "option": "pubkey"
+              "option": "u64"
             }
           },
           {
@@ -4295,6 +4237,15 @@ export type Arcrypt = {
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "padding",
+            "type": {
+              "array": [
+                "u8",
+                24
+              ]
+            }
           }
         ]
       }
@@ -4436,151 +4387,34 @@ export type Arcrypt = {
         "fields": [
           {
             "name": "field0",
-            "type": {
-              "defined": {
-                "name": "determineWinnerUniformOutputStruct00"
-              }
-            }
+            "type": "u64"
           },
           {
             "name": "field1",
             "type": {
-              "defined": {
-                "name": "determineWinnerUniformOutputStruct01"
-              }
+              "array": [
+                "u64",
+                3
+              ]
             }
           },
           {
             "name": "field2",
             "type": {
-              "defined": {
-                "name": "determineWinnerUniformOutputStruct02"
-              }
+              "array": [
+                "u64",
+                3
+              ]
             }
           },
           {
             "name": "field3",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "determineWinnerUniformOutputStruct00",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "field0",
             "type": {
-              "defined": {
-                "name": "determineWinnerUniformOutputStruct000"
-              }
+              "array": [
+                "u64",
+                3
+              ]
             }
-          },
-          {
-            "name": "field1",
-            "type": "u64"
-          },
-          {
-            "name": "field2",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "determineWinnerUniformOutputStruct000",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "field0",
-            "type": "u128"
-          },
-          {
-            "name": "field1",
-            "type": "u128"
-          }
-        ]
-      }
-    },
-    {
-      "name": "determineWinnerUniformOutputStruct01",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "field0",
-            "type": {
-              "defined": {
-                "name": "determineWinnerUniformOutputStruct010"
-              }
-            }
-          },
-          {
-            "name": "field1",
-            "type": "u64"
-          },
-          {
-            "name": "field2",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "determineWinnerUniformOutputStruct010",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "field0",
-            "type": "u128"
-          },
-          {
-            "name": "field1",
-            "type": "u128"
-          }
-        ]
-      }
-    },
-    {
-      "name": "determineWinnerUniformOutputStruct02",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "field0",
-            "type": {
-              "defined": {
-                "name": "determineWinnerUniformOutputStruct020"
-              }
-            }
-          },
-          {
-            "name": "field1",
-            "type": "u64"
-          },
-          {
-            "name": "field2",
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "determineWinnerUniformOutputStruct020",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "field0",
-            "type": "u128"
-          },
-          {
-            "name": "field1",
-            "type": "u128"
           }
         ]
       }
@@ -4766,11 +4600,41 @@ export type Arcrypt = {
             "name": "field0",
             "type": {
               "defined": {
+                "name": "initAuctionStateOutputStruct0"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "initAuctionStateOutputStruct0",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "field0",
+            "type": {
+              "defined": {
                 "name": "mxeEncryptedStruct",
                 "generics": [
                   {
                     "kind": "const",
-                    "value": "13"
+                    "value": "9"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "field1",
+            "type": {
+              "defined": {
+                "name": "mxeEncryptedStruct",
+                "generics": [
+                  {
+                    "kind": "const",
+                    "value": "3"
                   }
                 ]
               }
@@ -4805,10 +4669,12 @@ export type Arcrypt = {
         "kind": "struct",
         "fields": [
           {
+            "name": "padding",
+            "type": "u8"
+          },
+          {
             "name": "cluster",
-            "type": {
-              "option": "u32"
-            }
+            "type": "u32"
           },
           {
             "name": "keygenOffset",
@@ -5267,11 +5133,41 @@ export type Arcrypt = {
             "name": "field0",
             "type": {
               "defined": {
+                "name": "placeBidOutputStruct0"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "placeBidOutputStruct0",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "field0",
+            "type": {
+              "defined": {
                 "name": "mxeEncryptedStruct",
                 "generics": [
                   {
                     "kind": "const",
-                    "value": "13"
+                    "value": "9"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "field1",
+            "type": {
+              "defined": {
+                "name": "mxeEncryptedStruct",
+                "generics": [
+                  {
+                    "kind": "const",
+                    "value": "3"
                   }
                 ]
               }
@@ -5293,11 +5189,41 @@ export type Arcrypt = {
             "name": "field0",
             "type": {
               "defined": {
+                "name": "placeEncryptedBidOutputStruct0"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "placeEncryptedBidOutputStruct0",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "field0",
+            "type": {
+              "defined": {
                 "name": "mxeEncryptedStruct",
                 "generics": [
                   {
                     "kind": "const",
-                    "value": "13"
+                    "value": "9"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "field1",
+            "type": {
+              "defined": {
+                "name": "mxeEncryptedStruct",
+                "generics": [
+                  {
+                    "kind": "const",
+                    "value": "3"
                   }
                 ]
               }

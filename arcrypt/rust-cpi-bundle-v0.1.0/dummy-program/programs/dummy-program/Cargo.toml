@@ -1,0 +1,34 @@
+# Quick reference example: a third-party Anchor program that integrates with
+# Umbra via `umbra-external-macros` to queue an encrypted-address stealth-pool
+# deposit and receive the observer-CPI callback.
+#
+# This is a TEMPLATE — adjust paths/versions to match your workspace.
+[package]
+name = "dummy-program"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "dummy_program"
+
+[features]
+default = []
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+idl-build = ["anchor-lang/idl-build"]
+
+[dependencies]
+# `init-if-needed` is required because the queue accounts struct uses
+# `init_if_needed` on `vault_state`. Without it anchor's `#[derive(Accounts)]`
+# silently fails to emit the `__client_accounts_*` module that `#[program]`
+# then can't find ("unresolved import `crate`").
+anchor-lang = { version = "1.0.2", features = ["init-if-needed"] }
+
+# Umbra-side: the codama client (CPI builders + types), constants (PDAs,
+# observer-CPI payload), and the proc-macros that inject all the boilerplate.
+umbra-codama          = { path = "../../../rs-libs/umbra-codama" }
+umbra-constants       = { path = "../../../rs-libs/umbra-constants" }
+umbra-external-macros = { path = "../../../rs-libs/umbra-external-macros" }

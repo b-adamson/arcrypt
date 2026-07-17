@@ -1,0 +1,12 @@
+[package]
+name = "umbra-constants"
+version = "0.1.0"
+edition = "2021"
+description = "Shared constants for Umbra protocol components"
+
+[dependencies]
+borsh = "1.6"
+solana-pubkey = { version = "^3", features = ["borsh"] }
+
+[dev-dependencies]
+sha2 = "0.10"

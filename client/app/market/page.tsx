@@ -22,6 +22,17 @@ type AuctionSummary = {
   endTime?: string | number;
   end_time?: string | number;
   paymentAmountRaw?: string;
+  collectionMint?: string;
+  collectionName?: string;
+  collectionImage?: string;
+};
+
+type CollectionSummary = {
+  collectionMint: string;
+  collectionName: string;
+  collectionImage: string;
+  collectionDescription: string;
+  count: number;
 };
 
 type SearchSuggestion = {
@@ -146,6 +157,10 @@ async function buildAuctionSummary(entry: any): Promise<AuctionSummary> {
   let image = "";
   let metadataSymbol = "";
 
+  let collectionMint: string | undefined;
+  let collectionName: string | undefined;
+  let collectionImage: string | undefined;
+
   if (metadataUri) {
     const meta = await fetchJsonWithTimeout(toHttpGateway(metadataUri), METADATA_TIMEOUT_MS);
     if (meta) {
@@ -153,6 +168,9 @@ async function buildAuctionSummary(entry: any): Promise<AuctionSummary> {
       description = String(meta?.description ?? "");
       image = toStringMaybe(meta?.image ?? "");
       metadataSymbol = String(meta?.symbol ?? "");
+      if (meta?.collectionMint) collectionMint = String(meta.collectionMint);
+      if (meta?.collectionName) collectionName = String(meta.collectionName);
+      if (meta?.collectionImage) collectionImage = toHttpGateway(String(meta.collectionImage));
     }
   }
 
@@ -174,6 +192,9 @@ async function buildAuctionSummary(entry: any): Promise<AuctionSummary> {
     metadataSymbol,
     endTime: auction?.endTime ?? auction?.end_time,
     paymentAmountRaw: toStringMaybe(auction?.paymentAmount ?? auction?.payment_amount ?? "0"),
+    collectionMint,
+    collectionName,
+    collectionImage,
   };
 }
 
@@ -332,6 +353,52 @@ function AuctionCard({ item, active }: { item: AuctionSummary; active?: boolean 
   );
 }
 
+function CollectionCard({ collection }: { collection: CollectionSummary }) {
+  return (
+    <Link
+      href={`/collection/${encodeURIComponent(collection.collectionMint)}`}
+      className="group block h-full overflow-hidden border transition hover:-translate-y-0.5 card surface-hover"
+    >
+      <article className="flex h-full flex-col">
+        <div className="relative aspect-[4/3] w-full overflow-hidden border-b border-[var(--line)] bg-[var(--background)]">
+          <div className="absolute left-3 top-3 z-10">
+            <span className="badge text-[10px] uppercase tracking-[0.16em]">Collection</span>
+          </div>
+          <div className="absolute right-3 top-3 z-10">
+            <div className="surface-strong px-3 py-2">
+              <div className="text-[10px] uppercase tracking-[0.22em] text-muted">NFTs</div>
+              <div className="text-2xl font-bold">{collection.count}</div>
+            </div>
+          </div>
+          {collection.collectionImage ? (
+            <img
+              src={collection.collectionImage}
+              alt={collection.collectionName}
+              className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm text-[var(--muted)]">No image</div>
+          )}
+        </div>
+        <div className="flex flex-1 flex-col p-4">
+          <h3 className="mt-1 line-clamp-1 text-lg font-semibold text-[var(--foreground)]">
+            {collection.collectionName}
+          </h3>
+          {collection.collectionDescription ? (
+            <p className="mt-2 line-clamp-2 text-xs leading-5 text-[var(--muted)]">
+              {collection.collectionDescription}
+            </p>
+          ) : null}
+          <div className="mt-4 flex items-center justify-between gap-3 border-t border-[var(--line)] pt-3 text-[11px] text-[var(--muted)]">
+            <span className="truncate font-mono">{collection.collectionMint.slice(0, 12)}…</span>
+            <span className="badge text-[10px] uppercase tracking-[0.16em]">View</span>
+          </div>
+        </div>
+      </article>
+    </Link>
+  );
+}
+
 export default function MarketPage() {
   const [auctions, setAuctions] = useState<AuctionSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -380,6 +447,26 @@ export default function MarketPage() {
       cancelled = true;
     };
   }, []);
+
+  const collectionSummaries = useMemo<CollectionSummary[]>(() => {
+    const map = new Map<string, CollectionSummary>();
+    for (const a of auctions) {
+      if (!a.collectionMint) continue;
+      const existing = map.get(a.collectionMint);
+      if (existing) {
+        existing.count++;
+      } else {
+        map.set(a.collectionMint, {
+          collectionMint: a.collectionMint,
+          collectionName: a.collectionName ?? "Unnamed Collection",
+          collectionImage: a.collectionImage ?? "",
+          collectionDescription: a.description ?? "",
+          count: 1,
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [auctions]);
 
   const sortedAuctions = useMemo(() => {
     const items = [...auctions];
@@ -453,6 +540,9 @@ export default function MarketPage() {
     const q = query.trim().toLowerCase();
 
     return sortedAuctions.filter((item) => {
+      // collection NFTs are shown via CollectionCard, not in the main grid
+      if (item.collectionMint) return false;
+
       if (typeFilter === "nft" && item.assetKind !== "nft") return false;
       if (typeFilter === "token" && !TOKEN_KINDS.has(item.assetKind)) return false;
       if (typeFilter === "metadataonly" && item.assetKind !== "metadataonly") return false;
@@ -611,6 +701,29 @@ export default function MarketPage() {
             </div>
           </div>
         </div>
+
+        {!loading && collectionSummaries.length > 0 ? (
+          <div className="mb-8">
+            <div className="mb-3 flex items-center gap-3">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
+                Collections
+              </span>
+              <span className="badge text-[10px]">{collectionSummaries.length}</span>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              {collectionSummaries.map((c) => (
+                <CollectionCard key={c.collectionMint} collection={c} />
+              ))}
+            </div>
+            {sortedAuctions.some((a) => !a.collectionMint) ? (
+              <div className="mt-8 mb-3">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+                  Individual auctions
+                </span>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         {loading ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
