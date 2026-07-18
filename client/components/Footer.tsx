@@ -7,7 +7,7 @@ const linkStyle = "hover:text-white transition";
 export default function Footer() {
   return (
     <footer className="border-t border-white/10 bg-neutral-950">
-      <div className="max-w-7xl mx-auto px-6 py-10 grid grid-cols-2 md:grid-cols-4 gap-8">
+      <div className="max-w-7xl mx-auto px-6 py-10 grid grid-cols-2 md:grid-cols-5 gap-8">
         <div className={sectionStyle}>
           <span className="text-white font-medium">Resources</span>
           <Link href="/docs" className={linkStyle}>Docs</Link>
@@ -39,7 +39,7 @@ export default function Footer() {
             rel="noopener noreferrer"
             className={linkStyle}
           >
-            X 
+            X
           </a>
         </div>
         <div className={sectionStyle}>
@@ -69,6 +69,17 @@ export default function Footer() {
             UMBRA Docs
           </a>
         </div>
+        <div className={sectionStyle}>
+          <span className="text-white font-medium">Program</span>
+          <a
+            href="https://kickstart.easya.io/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={linkStyle}
+          >
+            EasyA Kickstart
+          </a>
+        </div>
 
         <div className="flex flex-col justify-between">
 
@@ -77,6 +88,7 @@ export default function Footer() {
               src="/logo/GRADIENT_TRANSPARENT.png"
               alt="ARCRYPT logo"
               fill
+              sizes="128px"
               className="object-cover scale-110"
             />
           </Link>
@@ -84,6 +96,14 @@ export default function Footer() {
           <span className="text-xs text-gray-500">
             © {new Date().getFullYear()} ARCRYPT
           </span>
+        </div>
+      </div>
+
+      <div className="border-t border-white/10">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <Link href="/disclaimer" className="text-xs text-gray-500 hover:text-white transition">
+            Risk disclaimer
+          </Link>
         </div>
       </div>
     </footer>

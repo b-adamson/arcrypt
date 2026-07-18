@@ -29,20 +29,18 @@ export default function DocsPage() {
             </h3>
             <p className="whitespace-pre-line text-[var(--muted)]">
               <strong className="text-[var(--foreground)]">
-                ARCRYPT is a private auction platform on Solana designed to maximize value without exposing bids.
+                ARCRYPT is a private auction protocol on Solana built for single-item sales: one asset, one winner, no shared pool.
               </strong>
 
               {"\n\n"}<strong className="text-[var(--foreground)]">
-                Launch or List tokens, NFTs, or DAO treasury assets in fully sealed auctions where no participant can see competing bids.
+                Auction an NFT, a DAO treasury asset, or another single on-chain item in a fully sealed auction where no participant can see competing bids.
               </strong> By eliminating front-running and MEV, ARCRYPT ensures fair competition. <strong className="text-[var(--foreground)]">
                 The highest bidder is incentivised to pay what your asset is truly worth.
               </strong>
 
               {"\n\n"}
-                NFTs launched on the Arcrypt marktplace go directly to the highest bidder. <strong className="text-[var(--foreground)]">
-                Tokens launched on Arcrypt go through a uniform FDV based auction, and the bids generate liquidity for an automatically generated Raydium swap pool once the auction closes.
-              </strong> <strong className="text-[var(--foreground)]">
-                This enables token launches in just a few clicks with 100% resistance to bot manipulation. All USDC bids are entirely invisible - even if people track your wallet.
+                Auctions on ARCRYPT go directly to the highest bidder (or, in a Vickrey auction, the highest bidder pays the second-highest bid). <strong className="text-[var(--foreground)]">
+                All USDC bids are entirely invisible, even if people track your wallet.
               </strong>
 
               {"\n\n"}ARCRYPT leverages state of the art cryptography and MPC technology to keep your money entirely hidden from the chain.{" "}
@@ -54,14 +52,14 @@ export default function DocsPage() {
 
               {"\n\n"}<strong className="text-[var(--foreground)]">
                 ARCRYPT solves this with sealed, private auctions - removing information leakage and ensuring bidders compete based on true value, not strategy or manipulation.
-              </strong> While it can integrate directly with DAOs to auction treasury assets through proposals, you don’t need to be a DAO to use it. Anyone can auction tokens, NFTs, or other on-chain assets they own, and optionally list them on the ARCRYPT marketplace to reach a wider pool of serious bidders without sacrificing privacy.
+              </strong> While it can integrate directly with DAOs to auction treasury assets through proposals, you don’t need to be a DAO to use it. Anyone can auction an NFT or other single on-chain asset they own, and optionally list it on the ARCRYPT marketplace to reach a wider pool of serious bidders without sacrificing privacy.
             </p>
 
             <h3 id="mission" className="mt-6 mb-3 text-xl font-semibold text-[var(--foreground)]">
               The Mission
             </h3>
             <p className="text-[var(--muted)]">
-              We firmly believe privacy is a central human right. Nobody needs to know what you do with your data, and that includes your money. Arcrypt aims to be the first launchpad that entirely eliminates the possibility of bots outbidding humans, gives investors total confidentialty, and providing great price discovery. 
+              We firmly believe privacy is a central human right. Nobody needs to know what you do with your data, and that includes your money. Arcrypt aims to be the first protocol that entirely eliminates the possibility of bots outbidding humans, gives investors total confidentialty, and providing great price discovery.
             </p>
           </section>
 
@@ -162,9 +160,9 @@ export default function DocsPage() {
               Seller flow
             </h3>
             <ul className="mb-4 ml-5 list-disc space-y-2 text-[var(--muted)]">
-              <li>Connect your wallet and select the on-chain address / asset you want to auction (tokens, NFTs).</li>
-              <li>If applicable, you can connect with Realms, MetaDAO or any DAO that accepts arbitrary instructions to propose the auction of a specific number of treasury tokens.</li>
-              <li>Set a floor price and choose an auction type (first-price, Vickrey, or uniform).</li>
+              <li>Connect your wallet and select the on-chain asset you want to auction (an NFT or other single item).</li>
+              <li>If applicable, you can connect with Realms, MetaDAO or any DAO that accepts arbitrary instructions to propose the auction of a specific treasury asset.</li>
+              <li>Set a floor price and choose an auction type (first-price or Vickrey).</li>
               <li>Specify a custom duration (up to 30 days) and attach optional metadata (descriptions, provenance, external links).</li>
               <li>Publish the auction - bids remain encrypted until the reveal step, preserving bidder privacy throughout the process.</li>
             </ul>
@@ -180,26 +178,7 @@ export default function DocsPage() {
 
             <li>
               <strong className="text-[var(--foreground)]">Vickrey (second-price) auction:</strong>{" "}
-              the highest bidder wins but pays the second-highest bid, meaning incentive is bid your true value: nothing less and nothing more. 
-            </li>
-
-            <li>
-              <strong className="text-[var(--foreground)]">Uniform-price auction:</strong>{" "}
-              used for selling tokens.
-              {"\n\n"}
-              Bidders submit:
-              <ul className="ml-5 list-disc">
-                <li><strong>Amount</strong> (how many units they want)</li>
-                <li><strong>Max price per unit</strong></li>
-              </ul>
-              {"\n\n"}
-              Winners are selected by highest price, and:
-              <ul className="ml-5 list-disc">
-                <li>All winners pay the same final clearing price</li>
-                <li>This price is the lowest winning price needed to clear</li>
-              </ul>
-              {"\n\n"}
-              This enables fair price discovery while distributing assets across multiple participants, and <strong>developing a substantial liquidity pool before being launched on the DEX.</strong>
+              the highest bidder wins but pays the second-highest bid, meaning incentive is bid your true value: nothing less and nothing more.
             </li>
           </ul>
 
@@ -209,19 +188,14 @@ export default function DocsPage() {
             </h3>
               <ul className="ml-5 list-disc space-y-2 text-[var(--muted)]">
                 <li>At auction close, bids are revealed and the winner is determined according to the chosen auction type.</li>
-                <li>On-chain settlement transfers the asset(s) to the winner(s) and the winning bids to seed the Raydium pool; all escrowed bidders who didn’t win can claim refunds.</li>
-                <li>
-                  <strong className="text-[var(--foreground)]">
-                    Tokens launched through ARCRYPT are automatically made available for trading on the Raydium DEX immediately after settlement.
-                  </strong>
-                </li>
+                <li>On-chain settlement transfers the asset to the winner and the winning bid to the seller; all escrowed bidders who didn’t win can claim refunds.</li>
               </ul>
           </section>
 
           <section id="dao-proposal" className="mb-16 scroll-mt-32">
             <h2 className="mb-4 text-2xl font-bold text-accent">Create a DAO proposal</h2>
             <p className="text-[var(--muted)]">
-              Connect directly with Realms, MetaDAO or any DAO that accepts arbitrary instructions to call the ARCRYPT program and propose to auction treasury tokens. Just specify the amount and duration and auction rules as normal.
+              Connect directly with Realms, MetaDAO or any DAO that accepts arbitrary instructions to call the ARCRYPT program and propose to auction a treasury asset. Just specify the asset, duration, and auction rules as normal.
             </p>
           </section>
 
@@ -266,13 +240,10 @@ export default function DocsPage() {
   minBidUsdc: string;           // e.g. "1.5"
   durationSecs: number;        // auction length in seconds
 
-  auctionType: "FirstPrice" | "Vickrey" | "Uniform";
-  assetKind: "Fungible" | "Nft" | "MetadataOnly";
+  auctionType: "FirstPrice" | "Vickrey";
+  assetKind: "Nft" | "MetadataOnly";
 
   metadataUri: string;
-
-  tokenMint?: string;          // required for tokens/NFTs
-  saleAmountToken?: string;    // e.g. "100.0"
 };`}
                   />
                   <p className="mt-2 text-sm text-[var(--muted)]">
@@ -291,17 +262,13 @@ export default function DocsPage() {
 
   auctionPk: PublicKey;
 
-  bidAmountSol: string;     // total bid
-  bidPriceSol?: string;     // REQUIRED for uniform auctions
+  bidAmountSol: string;     // your bid for the item
 
   nonceHex?: string;
 };`}
                   />
                   <p className="mt-2 text-sm text-[var(--muted)]">
-  For uniform auctions, you must also provide <code>bidPriceSol</code>, which represents the maximum price per unit you are willing to pay.
-</p>
-                  <p className="mt-2 text-sm text-[var(--muted)]">
-                    Encrypts and submits a bid using Arcium MPC. Supports both single-price bids and uniform auctions with per-unit pricing.
+                    Encrypts and submits a bid using Arcium MPC.
                   </p>
                 </div>
 
@@ -315,7 +282,7 @@ export default function DocsPage() {
   publicKey: PublicKey;
 
   auctionPk: PublicKey;
-  which: "first" | "vickrey" | "uniform";
+  which: "first" | "vickrey";
 };`}
                   />
                   <p className="mt-2 text-sm text-[var(--muted)]">
@@ -392,11 +359,9 @@ async function main() {
     durationSecs: 3600,
 
     auctionType: "FirstPrice",
-    assetKind: "Fungible",
+    assetKind: "Nft",
 
     metadataUri: "https://example.com/meta.json",
-    tokenMint: "TOKEN_MINT",
-    saleAmountToken: "100",
   });
 
   // 2. Place bid
@@ -407,8 +372,7 @@ async function main() {
 
     auctionPk: auction.auctionPda,
 
-    bidAmountSol: "10",     // total size
-    bidPriceSol: "2.5",     // price per unit (only for uniform)
+    bidAmountSol: "10",     // your bid for the item
   });
 
   console.log("Auction TX:", auction.transaction);

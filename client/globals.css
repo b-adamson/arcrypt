@@ -53,6 +53,10 @@ body::after {
   border-radius: 0 !important;
 }
 
+.chrome-dot {
+  border-radius: 9999px !important;
+}
+
 .page-shell {
   min-height: 100svh;
   background: var(--background);
@@ -233,6 +237,53 @@ section::before {
 
 .pulse-accent {
   animation: pulse-accent 0.7s ease-out;
+}
+
+.tilt-card {
+  transform: rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform 400ms ease-out;
+  will-change: transform;
+}
+
+.tilt-card:hover {
+  transition: transform 80ms ease-out;
+}
+
+.tilt-card-glow {
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+  background: radial-gradient(circle at var(--gx) var(--gy), rgba(0, 230, 118, 0.16), transparent 45%);
+  will-change: opacity;
+}
+
+.tilt-card:hover .tilt-card-glow {
+  opacity: 1;
+}
+
+@keyframes spin-cube {
+  from {
+    transform: rotateX(-18deg) rotateY(0deg);
+  }
+  to {
+    transform: rotateX(-18deg) rotateY(360deg);
+  }
+}
+
+@keyframes cipher-drift {
+  0% {
+    transform: translate3d(0, -2rem, 0);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, 110vh, 0);
+    opacity: 0;
+  }
 }
 
 select {
