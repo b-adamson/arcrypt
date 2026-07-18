@@ -30,5 +30,11 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
 , "app/api/createRaydiumPool"  ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "app/bid/BidClient.tsx",
+    "components/AuctionBidForm.tsx",
+    "components/UmbraPanel.tsx",
+    "lib/useUmbraClient.ts"
+  ]
 }

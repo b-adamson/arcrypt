@@ -1,12 +1,5 @@
-
-"use client";
-import UmbraPanel from "../../components/UmbraPanel";
-
+import { redirect } from "next/navigation";
 
 export default function UmbraPage() {
-  return (
-    <main className="p-6">
-      <UmbraPanel />
-    </main>
-  );
+  redirect("/");
 }
