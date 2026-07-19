@@ -21,7 +21,7 @@ import {
 } from "@/lib/utils";
 
 type AuctionType = "FirstPrice" | "Vickrey" | "Uniform";
-type AssetKind = "Fungible" | "Nft" | "MetadataOnly";
+type AssetKind = "Fungible" | "Nft" | "MetadataOnly" | "NftCollection";
 
 type TokenOption = {
   mint: string;
