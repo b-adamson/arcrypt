@@ -138,7 +138,7 @@ export default function CollectionClient({ collectionMint }: { collectionMint: s
         const settled = await Promise.allSettled(
           entries.map(async (entry) => {
             const pk = entry?.publicKey?.toBase58?.() ?? "";
-            const auction = entry?.account ?? {};
+            const auction: any = entry?.account ?? {};
 
             const metadataUri = toStringMaybe(
               auction?.auctionMetadataUri ?? auction?.auction_metadata_uri ?? auction?.metadataUri
