@@ -383,10 +383,6 @@ main().catch(console.error);`}
                 />
               </div>
 
-              <div className="surface p-6">
-                <h3 className="mb-2 text-lg font-semibold text-[var(--foreground)]">Rust SDK</h3>
-                <p className="text-[var(--muted)]">Coming soon.</p>
-              </div>
             </div>
           </section>
 

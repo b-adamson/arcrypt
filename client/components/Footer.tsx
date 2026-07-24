@@ -1,10 +1,16 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 
 const sectionStyle = "flex flex-col gap-2 text-sm text-gray-400";
 const linkStyle = "hover:text-white transition";
 
 export default function Footer() {
+  const pathname = usePathname();
+  if (pathname === "/writeup") return null;
+
   return (
     <footer className="border-t border-white/10 bg-neutral-950">
       <div className="max-w-7xl mx-auto px-6 py-10 grid grid-cols-2 md:grid-cols-5 gap-8">
@@ -26,14 +32,6 @@ export default function Footer() {
           </a>
 
           <a
-            href="https://t.me/+NGbdEEbM-AYyNDZk"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={linkStyle}
-          >
-            Telegram
-          </a>
-            <a
             href="https://x.com/arcrypt_bid"
             target="_blank"
             rel="noopener noreferrer"

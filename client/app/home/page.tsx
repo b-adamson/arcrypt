@@ -41,39 +41,6 @@ function RotatingWord() {
   );
 }
 
-const CIPHER_CHARS = "01ABCDEF{}<>#$%&+=?/\\|~^";
-
-function randomChar() {
-  return CIPHER_CHARS[Math.floor(Math.random() * CIPHER_CHARS.length)];
-}
-
-function DecryptTitle({ text, className, style }: { text: string; className?: string; style?: CSSProperties }) {
-  const [display, setDisplay] = useState(text);
-
-  useEffect(() => {
-    let frame = 0;
-    const totalFrames = 22;
-    const interval = window.setInterval(() => {
-      frame += 1;
-      const revealCount = Math.floor((frame / totalFrames) * text.length);
-      setDisplay(
-        text
-          .split("")
-          .map((ch, i) => (i < revealCount ? ch : randomChar()))
-          .join("")
-      );
-      if (frame >= totalFrames) window.clearInterval(interval);
-    }, 45);
-    return () => window.clearInterval(interval);
-  }, [text]);
-
-  return (
-    <h1 className={className} style={style}>
-      {display}
-    </h1>
-  );
-}
-
 const cipherStrings = [
   "0x4f3a9c...b21e",
   "Ac91...f0Bd",
@@ -812,29 +779,34 @@ const diagramSteps: {
     cpi: true,
   },
   {
-    title: "Cranked into a temp account",
-    body: "An auto-cranker calls placeEncryptedBid, picked up by ARCRYPT's place_encrypted_bid instruction, which stages bid and ETA ahead of Umbra's callback.",
-    boxes: ["crank", "placeEncBid"],
+    title: "Umbra's MXE takes over",
+    body: "Umbra's own deposit instruction hands the encrypted bid to its MXE, which moves the decrypted amount into the vault's derived ETA.",
+    boxes: ["umbraDeposit", "mxeDeposit"],
+  },
+  {
+    title: "Re-encrypted for ARCRYPT",
+    body: "Inside the same MXE, that amount is re-encrypted so only ARCRYPT's MXE can read it: bid = Enc_ARCRYPT(amount).",
+    boxes: ["mxeDeposit", "mxeReencrypt"],
   },
   {
     title: "Umbra CPIs back",
     body: "Umbra's deposit_callback CPIs back into ARCRYPT's own program, calling submit_encrypted_bid and writing temp.bid / temp.ETA.",
-    boxes: ["depositCallback", "submitEncBid"],
+    boxes: ["mxeReencrypt", "depositCallback", "submitEncBid"],
     cpi: true,
   },
   {
-    title: "Decrypt, move funds, re-encrypt",
-    body: "Inside Umbra's MXE: the decrypted amount moves into the vault's derived ETA, and that same amount is re-encrypted so only ARCRYPT's MXE can read it: bid = Enc_ARCRYPT(amount).",
-    boxes: ["mxeDeposit", "mxeReencrypt"],
+    title: "Back to placeEncryptedBid",
+    body: "The confirmed bid is routed back down to the client's placeEncryptedBid call.",
+    boxes: ["submitEncBid", "crank"],
   },
   {
-    title: "Back through place_encrypted_bid",
-    body: "The confirmed bid is routed back through ARCRYPT's place_encrypted_bid instruction on its way to the MXE.",
-    boxes: ["submitEncBid", "placeEncBid"],
+    title: "Cranked into a temp account",
+    body: "The cranked placeEncryptedBid call is picked up by ARCRYPT's place_encrypted_bid instruction.",
+    boxes: ["crank", "placeEncBid"],
   },
   {
     title: "ARCRYPT updates its ledger",
-    body: "ARCRYPT's own MXE decrypts the Umbra-re-encrypted ciphertext and updates its internal bid ledger. The amount was never plaintext outside an MXE, and never visible in either program's on-chain state.",
+    body: "ARCRYPT's own MXE decrypts the ciphertext and updates its internal bid ledger. The amount was never plaintext outside an MXE, and never visible in either program's on-chain state.",
     boxes: ["placeEncBid", "mxeLedger"],
   },
 ];
@@ -877,7 +849,7 @@ const ARROW_DEFS: ArrowDef[] = [
   { from: "start", to: "encryptUmbra", path: "M 150 935 L 150 720" },
   { from: "encryptUmbra", to: "placeBid", path: "M 150 665 L 150 575" },
   { from: "crank", to: "placeEncBid", path: "M 290 820 L 290 400 L 135 355" },
-  { from: "submitEncBid", to: "placeEncBid", path: "M 225 327 L 225 265 L 135 265 L 135 300" },
+  { from: "submitEncBid", to: "crank", path: "M 300 355 L 390 355 L 390 847 L 360 847" },
   { from: "placeEncBid", to: "mxeLedger", path: "M 135 300 L 135 240 L 190 210" },
   {
     from: "placeBid",
@@ -893,7 +865,8 @@ const ARROW_DEFS: ArrowDef[] = [
     cpi: true,
     label: { x: 407, y: 315 },
   },
-  { from: "mxeDeposit", to: "depositCallback", path: "M 665 225 L 560 300" },
+  { from: "umbraDeposit", to: "mxeDeposit", path: "M 677 520 L 680 225" },
+  { from: "mxeDeposit", to: "mxeReencrypt", path: "M 605 190 L 585 195" },
   { from: "mxeReencrypt", to: "depositCallback", path: "M 500 220 L 470 300" },
 ];
 
@@ -1077,10 +1050,11 @@ const rwaRails: { rail: string; sells: string }[] = [
 const builtItems = [
   "Anchor program: auctions, escrow, settlement",
   "Arcis circuits: private bid ranking",
-  "Umbra CPI: sealed, shielded escrow",
 ];
 
 const notBuiltItems = [
+  "Umbra CPI: sealed, shielded escrow",
+  "Devnet redeployment",
   "Mainnet deployment",
   "Public marketplace / discovery UI",
   "Third-party asset adapters",
@@ -1151,13 +1125,14 @@ export default function HomePage() {
 Preview closed &middot; Alpha next &middot; Devnet
           </div>
 
-          <DecryptTitle
-            text="ARCRYPT"
-            className={`mt-8 text-7xl font-extrabold leading-none tracking-tight text-white transition-opacity duration-700 md:text-9xl lg:text-[10rem] ${
-              showTitle ? "opacity-100" : "opacity-0"
+          <h1
+            className={`mt-8 text-7xl font-extrabold leading-none tracking-tight text-white transition-all duration-700 md:text-9xl lg:text-[10rem] ${
+              showTitle ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
             }`}
             style={{ fontFamily: "Arial, Helvetica, sans-serif", textShadow: "0 0 40px rgba(0,230,118,0.25)" }}
-          />
+          >
+            ARCRYPT
+          </h1>
 
           <p
             className={`mt-6 max-w-3xl text-2xl font-semibold leading-tight tracking-tight text-[var(--muted)] transition-all delay-100 duration-700 md:text-4xl ${
@@ -1165,14 +1140,6 @@ Preview closed &middot; Alpha next &middot; Devnet
             }`}
           >
             Sealed-bid auctions on Solana, built to kill <RotatingWord />
-          </p>
-
-          <p
-            className={`mt-6 max-w-2xl text-lg leading-8 text-[var(--muted)] transition-all delay-200 duration-700 md:text-xl ${
-              showTitle ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
-            }`}
-          >
-The first sealed auction protocol for individual assets. Not a fork, not a reskin.
           </p>
 
           <div
@@ -1225,29 +1192,16 @@ The first sealed auction protocol for individual assets. Not a fork, not a reski
           </div>
 
           <Reveal className="mt-16 border-t border-[var(--line)] pt-10">
-            <div className="grid gap-8 sm:grid-cols-2">
-              <div>
-                <div className="text-[10px] uppercase tracking-[0.3em] text-[var(--muted)]">Twitter</div>
-                <a
-                  href="https://x.com/arcrypt_bid"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-1 block text-sm font-semibold text-accent hover:underline"
-                >
-                  @arcrypt_bid
-                </a>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase tracking-[0.3em] text-[var(--muted)]">Telegram</div>
-                <a
-                  href="https://t.me/+NGbdEEbM-AYyNDZk"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-1 block text-sm font-semibold text-accent hover:underline"
-                >
-                  t.me/arcrypt
-                </a>
-              </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.3em] text-[var(--muted)]">Twitter</div>
+              <a
+                href="https://x.com/arcrypt_bid"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 block text-sm font-semibold text-accent hover:underline"
+              >
+                @arcrypt_bid
+              </a>
             </div>
           </Reveal>
         </div>
@@ -1256,10 +1210,8 @@ The first sealed auction protocol for individual assets. Not a fork, not a reski
       {/* WRITEUP */}
       <section className="page-section border-t border-[var(--line)]">
         <div className="flex min-h-[70svh] w-full gap-2">
-          <a
-            href="https://b-adamson.github.io/blockchain.html"
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            href="/writeup"
             className="group relative flex w-3/4 items-end overflow-hidden"
           >
             <div className="absolute inset-0">
@@ -1292,7 +1244,7 @@ The first sealed auction protocol for individual assets. Not a fork, not a reski
                 <span className="transition-transform group-hover:translate-x-1">→</span>
               </div>
             </div>
-          </a>
+          </Link>
 
           <a
             href="https://x.com/ginxnumerouno/status/2060090127418843506"
@@ -1547,38 +1499,11 @@ The first sealed auction protocol for individual assets. Not a fork, not a reski
         </PinWrapper>
       </section>
 
-      {/* CAPABILITIES */}
-      <section className="page-section border-t border-[var(--line)] px-6 py-16 md:py-20">
-        <div className="mx-auto max-w-6xl">
-          <Reveal>
-            <Eyebrow n="06" label="What it does" />
-            <h2 className="mt-4 text-5xl font-black leading-[0.95] tracking-tight text-[var(--foreground)] md:text-7xl">
-              A protocol, not a marketplace
-            </h2>
-            <p className="mt-6 max-w-3xl text-lg leading-8 text-[var(--muted)] md:text-2xl md:leading-10">
-              ARCRYPT is a set of on-chain primitives and an SDK. Every auction lives at its own link,
-              there's no storefront to browse, because there isn't supposed to be one yet.
-            </p>
-          </Reveal>
-
-          <div className="mt-14 grid gap-5 sm:grid-cols-2">
-            {capabilities.map((cap, i) => (
-              <Reveal key={cap.title} delayMs={i * 75}>
-                <div className="card h-full p-6">
-                  <h3 className="text-xl font-bold text-[var(--foreground)]">{cap.title}</h3>
-                  <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{cap.body}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* PRODUCT PREVIEW */}
       <section className="page-section border-t border-[var(--line)] px-6 py-16 md:py-20">
         <div className="mx-auto max-w-6xl">
           <Reveal>
-            <Eyebrow n="07" label="The app" />
+            <Eyebrow n="06" label="The app" />
             <h2 className="mt-4 text-5xl font-black leading-[0.95] tracking-tight text-[var(--foreground)] md:text-7xl">
               Placing a sealed bid
             </h2>
@@ -1659,7 +1584,7 @@ The first sealed auction protocol for individual assets. Not a fork, not a reski
           </Reveal>
         </div>
 
-        <PinWrapper heightVh={135} fillFraction={0.8}>
+        <PinWrapper heightVh={105} fillFraction={0.9}>
           {(progress) => (
             <div className="mx-auto w-full max-w-6xl px-6">
               <div className="border border-[var(--line-strong)] bg-black">

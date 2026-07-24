@@ -9,6 +9,7 @@ import WalletSection from "../components/WalletSection";
 export default function Header() {
   const pathname = usePathname();
   const isHomePage = pathname === "/home";
+  const hideChrome = pathname === "/writeup";
   const [visible, setVisible] = useState(!isHomePage);
 
   useEffect(() => {
@@ -43,6 +44,8 @@ export default function Header() {
       window.removeEventListener("mousemove", handleMouseMove);
     };
   }, [isHomePage]);
+
+  if (hideChrome) return null;
 
   return (
   <header

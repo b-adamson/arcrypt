@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//home/beada/dev/Projects/arcibid/**)",
+      "Read(///wsl.localhost/Ubuntu/home/beada/dev/Projects/arcibid/**)"
+    ],
+    "additionalDirectories": [
+      "\\home\\beada\\dev\\Projects\\arcibid\\client\\components",
+      "\\\\wsl.localhost\\Ubuntu\\home\\beada\\dev\\Projects\\arcibid\\client\\components"
+    ]
+  }
+}
