@@ -1,13 +1,10 @@
 # ARCRYPT
 
-**WAITLIST OPEN NOW. Refer a friend to move up in the list. Join us at [arcrypt.bid](https://arcrypt.bid)**
+**Join us at [arcrypt.bid](https://arcrypt.bid)**
 
 ARCRYPT is an upcoming sealed-bid auction platform on Solana. It lets sellers auction tokens, NFTs, or metadata-only assets without exposing competing bids on-chain, helping prevent front-running, MEV, and other forms of bid leakage. Bid amounts are processed privately through Arcium MPC, while settlement still happens transparently on Solana. For the first time ever we leverage UMBRA to conceal committed bid escrows on chain, as well as hiding the same bid amount transmitted to Arcium MXE. 
 
-Telegram: https://t.me/+NGbdEEbM-AYyNDZk
 Twitter (X): https://x.com/arcrypt_bid
-
-* 05/25 1pm: Legacy escrows temporarily enabled whilst we investigate an issue with refunds. We need to wait for Umbra to complete their codama migration to 0.10 Arcium for the deployed program to use encrypted escrows. PLEASE STANDBY WHILST I FIX BREAKING CHANGES AS WE MIGRATE TO 0.10. BEHAVIOUR MAY BE TEMPORARILY BROKEN.
 
 ## What ARCRYPT does
 
