@@ -2,7 +2,7 @@ import Link from "next/link";
 import Script from "next/script";
 
 export const metadata = {
-  title: "building the first private smart-contract on solana",
+  title: "building the first decentralized sealed auction",
 };
 
 function Section({ children }: { children: React.ReactNode }) {
