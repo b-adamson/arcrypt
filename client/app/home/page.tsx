@@ -1041,7 +1041,7 @@ const applications: { num: string; title: string; body: string; badge: "LIVE" | 
 ];
 
 const rwaRails: { rail: string; sells: string }[] = [
-  { rail: "Homebase", sells: "Single tokenized property, sealed" },
+  { rail: "Jupiter Gacha", sells: "Single mystery-box pull, sealed" },
   { rail: "Collector Crypt", sells: "Single graded card, sealed" },
   { rail: "Credix", sells: "Lenders sealed-bid the rate, lowest wins" },
   { rail: "Bonfida SNS", sells: "Premium .sol domain drops, sealed" },
@@ -1068,10 +1068,22 @@ export default function HomePage() {
   const [showTitle, setShowTitle] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
   const heroRef = useRef<HTMLElement | null>(null);
+  const heroVideoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setShowTitle(true), 150);
     return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    const video = heroVideoRef.current;
+    if (!video) return;
+    video.muted = true;
+    video.setAttribute("muted", "");
+    const playPromise = video.play();
+    if (playPromise && typeof playPromise.catch === "function") {
+      playPromise.catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
@@ -1096,11 +1108,18 @@ export default function HomePage() {
       >
         <div className="absolute inset-0 z-0 overflow-hidden">
           <video
+            ref={heroVideoRef}
             autoPlay
             muted
             loop
             playsInline
-            className="h-full w-full object-cover brightness-[0.55] contrast-125"
+            disablePictureInPicture
+            disableRemotePlayback
+            preload="auto"
+            aria-hidden="true"
+            tabIndex={-1}
+            controlsList="nodownload nofullscreen noremoteplayback"
+            className="pointer-events-none h-full w-full object-cover brightness-[0.55] contrast-125"
           >
             <source src="/backdrop.mp4" type="video/mp4" />
           </video>
@@ -1139,7 +1158,8 @@ Preview closed &middot; Alpha next &middot; Devnet
               showTitle ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
             }`}
           >
-            Sealed-bid auctions on Solana, built to kill <RotatingWord />
+            Sealed-bid auctions on Solana, built to kill
+            <br className="sm:hidden" /> <RotatingWord />
           </p>
 
           <div
