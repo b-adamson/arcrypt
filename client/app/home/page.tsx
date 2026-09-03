@@ -41,51 +41,6 @@ function RotatingWord() {
   );
 }
 
-const cipherStrings = [
-  "0x4f3a9c...b21e",
-  "Ac91...f0Bd",
-  "01001110",
-  "0xE7...44a1",
-  "9dCe...1b7F",
-  "0x2A6f...9c3D",
-  "10110100",
-  "0x88b1...ef02",
-];
-
-function CipherRain() {
-  const [items, setItems] = useState<{ id: number; left: number; delay: number; duration: number; text: string }[]>([]);
-
-  useEffect(() => {
-    setItems(
-      cipherStrings.map((text, i) => ({
-        id: i,
-        left: (i * 97 + 13) % 100,
-        delay: (i * 1.3) % 6,
-        duration: 14 + ((i * 3) % 8),
-        text,
-      }))
-    );
-  }, []);
-
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-30">
-      {items.map((item) => (
-        <span
-          key={item.id}
-          className="absolute font-mono text-xs text-accent"
-          style={{
-            left: `${item.left}%`,
-            top: "-2rem",
-            animation: `cipher-drift ${item.duration}s linear ${item.delay}s infinite`,
-          }}
-        >
-          {item.text}
-        </span>
-      ))}
-    </div>
-  );
-}
-
 function Reveal({
   children,
   className = "",
@@ -278,7 +233,7 @@ function ApplicationsList() {
               </span>
               <span
                 className={`shrink-0 badge text-[10px] uppercase tracking-[0.2em] ${
-                  app.badge === "LIVE" ? "badge-accent" : ""
+                  app.badge === "BUILT" ? "badge-accent" : ""
                 }`}
               >
                 {app.badge}
@@ -494,6 +449,117 @@ function BidPreview() {
           </div>
         </div>
       </div>
+      </div>
+    </div>
+  );
+}
+
+type FlashLot = {
+  id: string;
+  name: string;
+  sub: string;
+  startSecs: number;
+  bids: number;
+  comp: string;
+  reserveMet: boolean;
+};
+
+const flashLotSeeds: FlashLot[] = [
+  { id: "l1", name: "1998 Charizard #4", sub: "PSA 8", startSecs: 632, bids: 11, comp: "$2,150", reserveMet: true },
+  { id: "l2", name: "2024 Prizm #23", sub: "PSA 10", startSecs: 314, bids: 6, comp: "$340", reserveMet: true },
+  { id: "l3", name: "2011 Topps Update #175", sub: "PSA 9", startSecs: 887, bids: 3, comp: "$95", reserveMet: false },
+  { id: "l4", name: "1986 Fleer #57", sub: "BGS 8.5", startSecs: 148, bids: 8, comp: "$610", reserveMet: true },
+];
+
+function formatMMSS(totalSecs: number) {
+  const m = Math.floor(totalSecs / 60);
+  const s = totalSecs % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+function FlashLotCard({ lot, index }: { lot: FlashLot; index: number }) {
+  const [secs, setSecs] = useState(lot.startSecs);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setSecs((s) => (s > 0 ? s - 1 : lot.startSecs));
+    }, 1000);
+    return () => window.clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const closing = secs <= 120;
+
+  return (
+    <div className="border border-[var(--line)] bg-[var(--surface)] p-4">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--muted)]">
+          Lot {String(index + 1).padStart(2, "0")}
+        </span>
+        <span
+          className={`font-mono text-[10px] uppercase tracking-[0.2em] ${
+            lot.reserveMet ? "text-accent" : "text-[var(--muted)]"
+          }`}
+        >
+          {lot.reserveMet ? "Reserve met" : "Reserve not met"}
+        </span>
+      </div>
+
+      <div className="mt-3 flex h-24 items-center justify-center border border-[var(--line)] bg-[var(--background)]">
+        <Cube3D size={40} />
+      </div>
+
+      <div className="mt-3">
+        <div className="truncate text-sm font-bold text-[var(--foreground)]">{lot.name}</div>
+        <div className="mt-0.5 text-xs text-[var(--muted)]">{lot.sub}</div>
+      </div>
+
+      <div className="mt-3 flex items-end justify-between border-t border-[var(--line)] pt-3">
+        <div>
+          <div className="text-[9px] uppercase tracking-[0.2em] text-[var(--muted)]">Sealed bids</div>
+          <div className="mt-0.5 font-mono text-sm text-[var(--foreground)]">{lot.bids}</div>
+        </div>
+        <div>
+          <div className="text-[9px] uppercase tracking-[0.2em] text-[var(--muted)]">Last comp</div>
+          <div className="mt-0.5 font-mono text-sm text-[var(--foreground)]">{lot.comp}</div>
+        </div>
+        <div className="text-right">
+          <div className="text-[9px] uppercase tracking-[0.2em] text-[var(--muted)]">Closes</div>
+          <div className={`mt-0.5 font-mono text-sm tabular-nums ${closing ? "text-accent" : "text-[var(--foreground)]"}`}>
+            {formatMMSS(secs)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FlashAuctionsPreview() {
+  return (
+    <div>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {flashLotSeeds.map((lot, i) => (
+          <FlashLotCard key={lot.id} lot={lot} index={i} />
+        ))}
+      </div>
+
+      <div className="mt-8 grid gap-4 md:grid-cols-2">
+        <div className="border border-[var(--line)] bg-[var(--surface-2)] p-5">
+          <div className="text-[10px] uppercase tracking-[0.25em] text-accent">For sellers</div>
+          <div className="mt-2 text-sm font-bold text-[var(--foreground)]">No sale, no fee</div>
+          <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+            Reserve not met just means it doesn&rsquo;t sell, nobody pays anything. Relist straight into the
+            next window instead of waiting days for another shot.
+          </p>
+        </div>
+        <div className="border border-[var(--line)] bg-[var(--surface-2)] p-5">
+          <div className="text-[10px] uppercase tracking-[0.25em] text-accent">For bidders</div>
+          <div className="mt-2 text-sm font-bold text-[var(--foreground)]">Near-miss credit</div>
+          <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+            Lose within a small margin of the winning bid and the refund fee comes back as credit toward
+            your next lot.
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -834,7 +900,7 @@ const BOX_DEFS: Record<DiagramBoxId, BoxDef> = {
 
   encryptUmbra: { x: 60, y: 665, w: 300, h: 55, lines: ["bid = Enc_UMBRA(amount)", "createPlaceBid(bid, ETA)"] },
   crank: { x: 60, y: 820, w: 300, h: 55, tag: "auto cranker", tagPos: "below", lines: ["placeEncryptedBid(bid, ETA)"] },
-  start: { x: 60, y: 935, w: 300, h: 65, tag: "start", tagPos: "above", lines: ["Automatically register an Umbra", "Encrypted Token Account (ETA)", "and fund it"] },
+  start: { x: 60, y: 915, w: 300, h: 65, tag: "start", tagPos: "above", lines: ["Automatically register an Umbra", "Encrypted Token Account (ETA)", "and fund it"] },
 };
 
 type ArrowDef = {
@@ -846,7 +912,7 @@ type ArrowDef = {
 };
 
 const ARROW_DEFS: ArrowDef[] = [
-  { from: "start", to: "encryptUmbra", path: "M 150 935 L 150 720" },
+  { from: "start", to: "encryptUmbra", path: "M 150 915 L 150 720" },
   { from: "encryptUmbra", to: "placeBid", path: "M 150 665 L 150 575" },
   { from: "crank", to: "placeEncBid", path: "M 290 820 L 290 400 L 135 355" },
   { from: "submitEncBid", to: "crank", path: "M 300 355 L 390 355 L 390 847 L 360 847" },
@@ -863,7 +929,7 @@ const ARROW_DEFS: ArrowDef[] = [
     to: "submitEncBid",
     path: "M 435 327 L 380 327",
     cpi: true,
-    label: { x: 407, y: 315 },
+    label: { x: 422, y: 315 },
   },
   { from: "umbraDeposit", to: "mxeDeposit", path: "M 677 520 L 680 225" },
   { from: "mxeDeposit", to: "mxeReencrypt", path: "M 605 190 L 585 195" },
@@ -1013,7 +1079,7 @@ const capabilities: { title: string; body: string }[] = [
   { title: "DAO treasuries", body: "Sealed liquidations through Realms governance proposals." },
 ];
 
-const applications: { num: string; title: string; body: string; badge: "LIVE" | "NEXT" }[] = [
+const applications: { num: string; title: string; body: string; badge: "BUILT" | "NEXT" }[] = [
   {
     num: "i",
     title: "Real-world assets",
@@ -1024,13 +1090,13 @@ const applications: { num: string; title: string; body: string; badge: "LIVE" | 
     num: "ii",
     title: "1-of-1 digital collectibles",
     body: "Sealed single-item sales: an NFT, a rare in-game item, anything with exactly one or a handful of winners at the end, for a single item or a limited number of prizes. The winners and price are the only things anyone ever sees.",
-    badge: "LIVE",
+    badge: "BUILT",
   },
   {
     num: "iii",
     title: "DAO treasury sales",
     body: "Plug straight into Realms governance: propose a sealed liquidation, vote, settle. No public reserve price to give away before the vote even passes.",
-    badge: "LIVE",
+    badge: "BUILT",
   },
   {
     num: "iv",
@@ -1067,7 +1133,6 @@ const teamMembers: { name: string; role: string }[] = [
 export default function HomePage() {
   const [showTitle, setShowTitle] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
-  const heroRef = useRef<HTMLElement | null>(null);
   const heroVideoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
@@ -1086,26 +1151,10 @@ export default function HomePage() {
     }
   }, []);
 
-  useEffect(() => {
-    const el = heroRef.current;
-    if (!el) return;
-    const handleMove = (e: MouseEvent) => {
-      const rect = el.getBoundingClientRect();
-      el.style.setProperty("--mx", `${((e.clientX - rect.left) / rect.width) * 100}%`);
-      el.style.setProperty("--my", `${((e.clientY - rect.top) / rect.height) * 100}%`);
-    };
-    el.addEventListener("mousemove", handleMove);
-    return () => el.removeEventListener("mousemove", handleMove);
-  }, []);
-
   return (
     <main className="page-shell min-h-[100svh] overflow-x-hidden">
       {/* HERO */}
-      <section
-        ref={heroRef}
-        className="page-section relative isolate flex min-h-[100svh] w-full items-center justify-center overflow-hidden py-20 md:py-28"
-        style={{ ["--mx" as string]: "50%", ["--my" as string]: "50%" }}
-      >
+      <section className="page-section relative isolate flex min-h-[100svh] w-full items-center justify-center overflow-hidden py-20 md:py-28">
         <div className="absolute inset-0 z-0 overflow-hidden">
           <video
             ref={heroVideoRef}
@@ -1124,15 +1173,6 @@ export default function HomePage() {
             <source src="/backdrop.mp4" type="video/mp4" />
           </video>
           <div className="absolute inset-0 bg-black/40" />
-          <div
-            className="absolute inset-0 transition-[background] duration-200"
-            style={{
-              background:
-                "radial-gradient(circle at var(--mx) var(--my), rgba(0,230,118,0.22), transparent 32%)",
-            }}
-          />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(0,230,118,0.12),transparent_45%),radial-gradient(circle_at_bottom,rgba(255,255,255,0.05),transparent_30%)]" />
-          <CipherRain />
         </div>
 
         <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col items-center px-6 text-center">
@@ -1541,6 +1581,29 @@ Preview closed &middot; Alpha next &middot; Devnet
 
           <Reveal className="mt-6">
             <GovernancePreview />
+          </Reveal>
+        </div>
+      </section>
+
+      {/* FLASH AUCTIONS */}
+      <section className="page-section border-t border-[var(--line)] px-6 py-16 md:py-20">
+        <div className="mx-auto max-w-6xl">
+          <Reveal>
+            <div className="flex flex-wrap items-center gap-3">
+              <Eyebrow n="07" label="Flash auctions" />
+              <span className="badge text-[10px] uppercase tracking-[0.2em]">Concept</span>
+            </div>
+            <h2 className="mt-4 text-5xl font-black leading-[0.95] tracking-tight text-[var(--foreground)] md:text-7xl">
+              Same sealed bid, a faster clock
+            </h2>
+            <p className="mt-6 max-w-3xl text-lg leading-8 text-[var(--muted)] md:text-2xl md:leading-10">
+              10&ndash;30 minute sealed-bid windows on lower-value items, run several at once. Still a real
+              sale of a real item at close, just a lot more of them.
+            </p>
+          </Reveal>
+
+          <Reveal className="mt-12">
+            <FlashAuctionsPreview />
           </Reveal>
         </div>
       </section>

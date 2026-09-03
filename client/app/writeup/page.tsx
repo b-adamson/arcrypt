@@ -716,18 +716,6 @@ export default function WriteupPage() {
             </p>
           </div>
         </Section>
-
-        <div className="mt-16 flex justify-center gap-10 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-          <a href="https://www.youtube.com/@badamson" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--foreground)]">
-            youtube
-          </a>
-          <a href="https://pastebin.com/quQwaYtb" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--foreground)]">
-            discord
-          </a>
-          <a href="https://github.com/b-adamson/" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--foreground)]">
-            github
-          </a>
-        </div>
       </div>
     </main>
   );
