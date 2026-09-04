@@ -6,13 +6,21 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import "../globals.css";
 
-import { Inter_Tight } from "next/font/google";
+import { Inter_Tight, Fraunces } from "next/font/google";
 import { usePathname } from "next/navigation";
 
 const interTight = Inter_Tight({
   subsets: ["latin"],
   weight: ["400", "600", "700"],
   display: "swap",
+});
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "900"],
+  style: ["normal", "italic"],
+  display: "swap",
+  variable: "--font-serif",
 });
 
 export default function RootLayout({
@@ -24,7 +32,7 @@ export default function RootLayout({
   const isHomePage = pathname === "/home"; 
 
   return (
-    <html lang="en" className={interTight.className}>
+    <html lang="en" className={`${interTight.className} ${fraunces.variable}`}>
       <body className="bg-[#05050a] text-white antialiased">
         <SolanaWalletProvider>
           <Header />

@@ -5,12 +5,12 @@ import Image from "next/image";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 const rotatingWords = [
-  "front-running",
-  "sandwich bots",
-  "copy-trading",
-  "sniping",
-  "MEV",
-  "leaked ceilings",
+  "see your bid",
+  "front-run you",
+  "copy your price",
+  "snipe the close",
+  "leak your ceiling",
+  "game the auction",
 ] as const;
 
 function RotatingWord() {
@@ -29,14 +29,12 @@ function RotatingWord() {
   }, []);
 
   return (
-    <span className="relative inline-flex h-[1.2em] w-[9ch] items-center justify-center overflow-hidden align-bottom sm:w-[10ch]">
-      <span
-        className={`absolute left-1/2 top-0 -translate-x-1/2 whitespace-nowrap font-black text-accent transition-all duration-300 ${
-          visible ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0"
-        }`}
-      >
-        {rotatingWords[index]}
-      </span>
+    <span
+      className={`inline-block max-w-full whitespace-nowrap font-black text-accent transition-all duration-300 ${
+        visible ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0"
+      }`}
+    >
+      {rotatingWords[index]}
     </span>
   );
 }
@@ -366,17 +364,16 @@ function BidPreview() {
       <div className="mt-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
         <div>
           <div className="relative aspect-square w-full overflow-hidden border border-[var(--line)] bg-black">
-            <span className="badge absolute left-3 top-3 z-10 text-[10px] uppercase tracking-[0.16em]">Vickrey</span>
             <div className="flex h-full items-center justify-center">
               <Cube3D size={88} />
             </div>
           </div>
           <div className="mt-4">
             <div className="text-2xl font-black tracking-tight text-[var(--foreground)]">Genesis Vault #001</div>
-            <div className="mt-1 text-sm text-[var(--muted)]">Sealed until settlement, second-price auction</div>
+            <div className="mt-1 text-sm text-[var(--muted)]">Sealed until the auction closes</div>
             <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-              One-of-one access pass to the alpha program. Winner is revealed on settlement, along with the
-              second-highest bid. Every other bid stays sealed.
+              One-of-one access pass to the alpha program. Highest bid wins when it closes. Every other
+              bid stays sealed and gets refunded.
             </p>
           </div>
 
@@ -419,7 +416,7 @@ function BidPreview() {
               onClick={() => setEncrypted((v) => !v)}
               className="text-xs font-medium text-[var(--muted)] hover:text-[var(--foreground)]"
             >
-              {encrypted ? "Encrypted bid (ETA)" : "Normal bid (ATA)"}
+              {encrypted ? "Bid from private balance" : "Bid from wallet"}
             </button>
           </div>
 
@@ -646,7 +643,7 @@ function GovernancePreview() {
 
 function EditorPanel({ filename, children }: { filename: string; children: ReactNode }) {
   return (
-    <div className="border border-[var(--line-strong)] bg-[#1e1e1e] shadow-[0_0_60px_rgba(0,230,118,0.06)]">
+    <div className="border border-[var(--line-strong)] bg-[#1e1e1e] shadow-[0_0_60px_rgba(204,154,77,0.06)]">
       <div className="flex items-stretch border-b border-black/40 bg-[#252526]">
         <div className="flex items-center gap-2 border-r border-black/40 bg-[#1e1e1e] px-4 py-2.5">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0 text-[#3178c6]">
@@ -672,8 +669,8 @@ function Cube3D({ size = 56 }: { size?: number }) {
     position: "absolute",
     width: size,
     height: size,
-    border: "1px solid rgba(0,230,118,0.55)",
-    background: "rgba(0,230,118,0.08)",
+    border: "1px solid rgba(204,154,77,0.55)",
+    background: "rgba(204,154,77,0.08)",
   };
 
   return (
@@ -1082,26 +1079,26 @@ const capabilities: { title: string; body: string }[] = [
 const applications: { num: string; title: string; body: string; badge: "BUILT" | "NEXT" }[] = [
   {
     num: "i",
+    title: "Art & collectibles",
+    body: "Anything with exactly one buyer at the end: a piece of art, a rare card, a limited-run item. List it, set a floor, and let people bid without seeing each other's offers. The winner and price are the only things anyone ever sees.",
+    badge: "BUILT",
+  },
+  {
+    num: "ii",
+    title: "DAO treasury sales",
+    body: "A DAO votes to sell a treasury item, art, an NFT, equipment, without publishing the reserve price before the vote even passes. Plugs straight into Realms governance.",
+    badge: "BUILT",
+  },
+  {
+    num: "iii",
     title: "Real-world assets",
     body: "A house. A graded trading card. A single .sol domain. The kind of sale where there's only one of the thing, and a fair price only shows up if nobody can see the other bids. The rails to list these already exist on Solana. The sealed sale doesn't, yet.",
     badge: "NEXT",
   },
   {
-    num: "ii",
-    title: "1-of-1 digital collectibles",
-    body: "Sealed single-item sales: an NFT, a rare in-game item, anything with exactly one or a handful of winners at the end, for a single item or a limited number of prizes. The winners and price are the only things anyone ever sees.",
-    badge: "BUILT",
-  },
-  {
-    num: "iii",
-    title: "DAO treasury sales",
-    body: "Plug straight into Realms governance: propose a sealed liquidation, vote, settle. No public reserve price to give away before the vote even passes.",
-    badge: "BUILT",
-  },
-  {
     num: "iv",
     title: "Private B2B tenders",
-    body: "Same circuits, off-chain settlement, for procurement and deals that were never going to be public anyway.",
+    body: "Same idea, off-chain settlement, for procurement and deals that were never going to be public anyway.",
     badge: "NEXT",
   },
 ];
@@ -1185,21 +1182,30 @@ Preview closed &middot; Alpha next &middot; Devnet
           </div>
 
           <h1
-            className={`mt-8 text-7xl font-extrabold leading-none tracking-tight text-white transition-all duration-700 md:text-9xl lg:text-[10rem] ${
+            className={`mt-8 font-serif text-7xl font-black italic leading-none tracking-tight text-white transition-all duration-700 md:text-9xl lg:text-[9rem] ${
               showTitle ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
             }`}
-            style={{ fontFamily: "Arial, Helvetica, sans-serif", textShadow: "0 0 40px rgba(0,230,118,0.25)" }}
+            style={{ textShadow: "0 0 40px rgba(204,154,77,0.25)" }}
           >
-            ARCRYPT
+            Arcrypt
           </h1>
 
           <p
-            className={`mt-6 max-w-3xl text-2xl font-semibold leading-tight tracking-tight text-[var(--muted)] transition-all delay-100 duration-700 md:text-4xl ${
+            className={`mt-6 max-w-2xl text-2xl font-semibold leading-tight tracking-tight text-white transition-all delay-100 duration-700 md:text-4xl ${
               showTitle ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
             }`}
           >
-            Sealed-bid auctions on Solana, built to kill
-            <br className="sm:hidden" /> <RotatingWord />
+            A private auction for one-of-a-kind items
+          </p>
+
+          <p
+            className={`mt-5 max-w-xl text-lg leading-8 text-[var(--muted)] transition-all delay-200 duration-700 md:text-xl ${
+              showTitle ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
+            }`}
+          >
+            List art, a collectible, or any single rare item. Bids stay sealed until the sale closes.
+            <br />
+            Nobody can <RotatingWord />.
           </p>
 
           <div
@@ -1208,14 +1214,14 @@ Preview closed &middot; Alpha next &middot; Devnet
             }`}
           >
             <a
-              href="#how-it-works"
+              href="#what-it-does"
               onClick={(e) => {
                 e.preventDefault();
-                document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" });
+                document.getElementById("what-it-does")?.scrollIntoView({ behavior: "smooth" });
               }}
               className="btn btn-primary text-sm font-semibold uppercase tracking-[0.2em] md:text-base"
             >
-              See how it works
+              See it in action
             </a>
             <Link href="/docs" className="btn text-sm font-semibold uppercase tracking-[0.2em] md:text-base">
               Read the docs
@@ -1228,12 +1234,59 @@ Preview closed &middot; Alpha next &middot; Devnet
         </div>
       </section>
 
+      {/* WHAT IT DOES */}
+      <section id="what-it-does" className="page-section border-t border-[var(--line)] px-6 py-16 md:py-20">
+        <div className="mx-auto max-w-6xl">
+          <Reveal>
+            <Eyebrow n="02" label="What it does" />
+            <h2 className="mt-4 font-serif text-5xl font-black italic leading-[0.95] tracking-tight text-[var(--foreground)] md:text-7xl">
+              Sell one item. Get its real price.
+            </h2>
+            <p className="mt-6 max-w-3xl text-lg leading-8 text-[var(--muted)] md:text-2xl md:leading-10">
+              List anything you only have one of: a painting, a signed card, a rare collectible, a piece
+              of DAO treasury. People bid without seeing each other&rsquo;s offers. When the auction
+              closes, the highest bidder wins and pays, everyone else gets refunded automatically.
+            </p>
+          </Reveal>
+
+          <Reveal className="mt-14">
+            <div className="grid gap-5 sm:grid-cols-3">
+              <div className="card p-6">
+                <div className="font-serif text-3xl italic text-accent">1</div>
+                <h3 className="mt-3 text-lg font-bold text-[var(--foreground)]">List it</h3>
+                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                  Set a minimum price and a deadline. Takes a couple of minutes.
+                </p>
+              </div>
+              <div className="card p-6">
+                <div className="font-serif text-3xl italic text-accent">2</div>
+                <h3 className="mt-3 text-lg font-bold text-[var(--foreground)]">People bid privately</h3>
+                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                  Nobody, not other bidders, not us, sees a bid until the auction ends.
+                </p>
+              </div>
+              <div className="card p-6">
+                <div className="font-serif text-3xl italic text-accent">3</div>
+                <h3 className="mt-3 text-lg font-bold text-[var(--foreground)]">Highest bid wins</h3>
+                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                  The winner pays, you get paid, everyone else is refunded automatically.
+                </p>
+              </div>
+            </div>
+          </Reveal>
+
+          <Reveal className="mt-14">
+            <BidPreview />
+          </Reveal>
+        </div>
+      </section>
+
       {/* TEAM / CONTACT */}
       <section className="page-section border-t border-[var(--line)] px-6 py-16 md:py-20">
         <div className="mx-auto max-w-6xl">
           <Reveal>
-            <Eyebrow n="02" label="Who's behind it" />
-            <h2 className="mt-4 text-5xl font-black leading-[0.95] tracking-tight text-[var(--foreground)] md:text-7xl">
+            <Eyebrow n="03" label="Who's behind it" />
+            <h2 className="mt-4 font-serif text-5xl font-black italic leading-[0.95] tracking-tight text-[var(--foreground)] md:text-7xl">
               Created by an Oxford electrical engineering undergraduate
             </h2>
           </Reveal>
@@ -1290,7 +1343,7 @@ Preview closed &middot; Alpha next &middot; Devnet
                 alt=""
                 width={220}
                 height={220}
-                className="opacity-90 drop-shadow-[0_0_40px_rgba(0,230,118,0.35)] transition duration-700 group-hover:scale-105"
+                className="opacity-90 drop-shadow-[0_0_40px_rgba(204,154,77,0.35)] transition duration-700 group-hover:scale-105"
               />
             </div>
 
@@ -1312,7 +1365,7 @@ Preview closed &middot; Alpha next &middot; Devnet
             rel="noopener noreferrer"
             className="group relative flex w-1/4 items-end overflow-hidden bg-[var(--surface-2)]"
           >
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(0,230,118,0.12),transparent_60%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(204,154,77,0.12),transparent_60%)]" />
 
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-20 transition-opacity duration-500 group-hover:opacity-35">
               <svg width="72" height="72" viewBox="0 0 24 24" fill="currentColor" className="text-[var(--foreground)]">
@@ -1336,8 +1389,8 @@ Preview closed &middot; Alpha next &middot; Devnet
       <section className="page-section border-t border-[var(--line)]">
         <div className="mx-auto max-w-6xl px-6 pt-16 md:pt-20">
           <Reveal>
-            <Eyebrow n="03" label="The problem" />
-            <h2 className="mt-4 text-5xl font-black leading-[0.95] tracking-tight text-[var(--foreground)] md:text-7xl">
+            <Eyebrow n="04" label="The problem" />
+            <h2 className="mt-4 font-serif text-5xl font-black italic leading-[0.95] tracking-tight text-[var(--foreground)] md:text-7xl">
               We solved an open problem in cryptography
             </h2>
           </Reveal>
@@ -1346,12 +1399,81 @@ Preview closed &middot; Alpha next &middot; Devnet
         <ScrollHighlightText text="On a public blockchain, a bid is never private. The instant it lands, bots read it and front-run you. Rivals see your ceiling before you've finished typing it. What should be an auction becomes a leak, one bid at a time." />
       </section>
 
+      {/* APPLICATIONS */}
+      <section className="page-section border-t border-[var(--line)] px-6 py-16 md:py-20">
+        <div className="mx-auto max-w-6xl">
+          <Reveal>
+            <Eyebrow n="05" label="Who it's for" />
+            <h2 className="mt-4 font-serif text-5xl font-black italic leading-[0.95] tracking-tight text-[var(--foreground)] md:text-7xl">
+              One item, one winner
+            </h2>
+            <p className="mt-6 max-w-3xl text-lg leading-8 text-[var(--muted)] md:text-2xl md:leading-10">
+              This isn&rsquo;t for token launches or fundraises, plenty of platforms already do that well.
+              It&rsquo;s for the other kind of sale: you have exactly one thing, and you want its real
+              price without a crowd watching each other&rsquo;s offers.
+            </p>
+          </Reveal>
+
+          <Reveal className="mt-14">
+            <ApplicationsList />
+          </Reveal>
+
+          <Reveal className="mt-14" delayMs={100}>
+            <div className="text-xs uppercase tracking-[0.35em] text-[var(--muted)]">
+              Where this could go next
+            </div>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
+              Real-world, one-of-a-kind assets already trade on Solana. A sealed sale for them doesn&rsquo;t
+              exist yet.
+            </p>
+            <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+              {rwaRails.map((row, i) => (
+                <TiltCard key={row.rail} index={i} total={rwaRails.length} title={row.rail} subtitle={row.sells} />
+              ))}
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* FLASH AUCTIONS */}
+      <section className="page-section border-t border-[var(--line)] px-6 py-16 md:py-20">
+        <div className="mx-auto max-w-6xl">
+          <Reveal>
+            <div className="flex flex-wrap items-center gap-3">
+              <Eyebrow n="06" label="Flash auctions" />
+              <span className="badge text-[10px] uppercase tracking-[0.2em]">Concept</span>
+            </div>
+            <h2 className="mt-4 font-serif text-5xl font-black italic leading-[0.95] tracking-tight text-[var(--foreground)] md:text-7xl">
+              Same sealed bid, a faster clock
+            </h2>
+            <p className="mt-6 max-w-3xl text-lg leading-8 text-[var(--muted)] md:text-2xl md:leading-10">
+              10&ndash;30 minute sealed-bid windows on lower-value items, run several at once. Still a real
+              sale of a real item at close, just a lot more of them.
+            </p>
+          </Reveal>
+
+          <Reveal className="mt-12">
+            <FlashAuctionsPreview />
+          </Reveal>
+        </div>
+      </section>
+
+      {/* FOR DEVELOPERS */}
+      <div className="page-section border-t border-[var(--line)] bg-[var(--surface)] px-6 py-3 text-center">
+        <span className="text-[10px] uppercase tracking-[0.35em] text-[var(--muted)]">
+          Everything below this line is technical &middot; skip to{" "}
+          <a href="#status" className="text-accent hover:underline">status</a>
+          {" "}or{" "}
+          <a href="#source" className="text-accent hover:underline">source</a>
+        </span>
+      </div>
+
       {/* HOW IT WORKS */}
       <section id="how-it-works" className="page-section border-t border-[var(--line)] px-6 py-16 md:py-20">
         <div className="mx-auto max-w-6xl">
           <Reveal>
-            <Eyebrow n="04" label="How it works" />
-            <h2 className="mt-4 text-5xl font-black leading-[0.95] tracking-tight text-[var(--foreground)] md:text-7xl">
+            <Eyebrow n="07" label="How it works" />
+            <h2 className="mt-4 font-serif text-5xl font-black italic leading-[0.95] tracking-tight text-[var(--foreground)] md:text-7xl">
               Encrypted from the first click to the last reveal
             </h2>
             <p className="mt-6 max-w-3xl text-lg leading-8 text-[var(--muted)] md:text-2xl md:leading-10">
@@ -1469,11 +1591,11 @@ Preview closed &middot; Alpha next &middot; Devnet
 
       {/* CODE SHOWCASE */}
       <section className="page-section relative overflow-hidden border-t border-[var(--line)]">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(0,230,118,0.10),transparent_50%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(204,154,77,0.10),transparent_50%)]" />
 
         <div className="relative mx-auto max-w-5xl px-6 pt-16 md:pt-20">
-          <Eyebrow n="05" label="The SDK" />
-          <h2 className="mt-4 max-w-3xl text-4xl font-black leading-[0.95] tracking-tight text-[var(--foreground)] md:text-6xl">
+          <Eyebrow n="08" label="The SDK" />
+          <h2 className="mt-4 max-w-3xl font-serif text-4xl font-black italic leading-[0.95] tracking-tight text-[var(--foreground)] md:text-6xl">
             A super simple SDK
           </h2>
         </div>
@@ -1557,100 +1679,29 @@ Preview closed &middot; Alpha next &middot; Devnet
             </div>
           )}
         </PinWrapper>
-      </section>
 
-      {/* PRODUCT PREVIEW */}
-      <section className="page-section border-t border-[var(--line)] px-6 py-16 md:py-20">
-        <div className="mx-auto max-w-6xl">
+        <div className="relative mx-auto max-w-6xl px-6 pb-16 pt-8 md:pb-20">
           <Reveal>
-            <Eyebrow n="06" label="The app" />
-            <h2 className="mt-4 text-5xl font-black leading-[0.95] tracking-tight text-[var(--foreground)] md:text-7xl">
-              Placing a sealed bid
-            </h2>
-          </Reveal>
-
-          <Reveal className="mt-12">
-            <BidPreview />
-          </Reveal>
-
-          <Reveal className="mt-16">
-            <h3 className="text-3xl font-black tracking-tight text-[var(--foreground)] md:text-4xl">
+            <h3 className="text-2xl font-black tracking-tight text-[var(--foreground)] md:text-3xl">
               DAO treasury proposals
             </h3>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">
+              Same SDK, wrapped as a Realms governance proposal for DAOs selling a treasury item.
+            </p>
           </Reveal>
-
           <Reveal className="mt-6">
             <GovernancePreview />
           </Reveal>
         </div>
       </section>
 
-      {/* FLASH AUCTIONS */}
-      <section className="page-section border-t border-[var(--line)] px-6 py-16 md:py-20">
-        <div className="mx-auto max-w-6xl">
-          <Reveal>
-            <div className="flex flex-wrap items-center gap-3">
-              <Eyebrow n="07" label="Flash auctions" />
-              <span className="badge text-[10px] uppercase tracking-[0.2em]">Concept</span>
-            </div>
-            <h2 className="mt-4 text-5xl font-black leading-[0.95] tracking-tight text-[var(--foreground)] md:text-7xl">
-              Same sealed bid, a faster clock
-            </h2>
-            <p className="mt-6 max-w-3xl text-lg leading-8 text-[var(--muted)] md:text-2xl md:leading-10">
-              10&ndash;30 minute sealed-bid windows on lower-value items, run several at once. Still a real
-              sale of a real item at close, just a lot more of them.
-            </p>
-          </Reveal>
-
-          <Reveal className="mt-12">
-            <FlashAuctionsPreview />
-          </Reveal>
-        </div>
-      </section>
-
-      {/* APPLICATIONS */}
-      <section className="page-section border-t border-[var(--line)] px-6 py-16 md:py-20">
-        <div className="mx-auto max-w-6xl">
-          <Reveal>
-            <Eyebrow n="08" label="Applications" />
-            <h2 className="mt-4 text-5xl font-black leading-[0.95] tracking-tight text-[var(--foreground)] md:text-7xl">
-              Not tokens. Items.
-            </h2>
-            <p className="mt-6 max-w-3xl text-lg leading-8 text-[var(--muted)] md:text-2xl md:leading-10">
-              Platforms like crafts.dev already do fungible token raises well, a pool of buyers, a
-              pool of tokens, everyone gets a slice. That model breaks down the moment there's only
-              one of something. ARCRYPT is a different mechanism entirely: one asset, one winner, no
-              order book, no shared pool, built specifically for single-item sales.
-            </p>
-          </Reveal>
-
-          <Reveal className="mt-14">
-            <ApplicationsList />
-          </Reveal>
-
-          <Reveal className="mt-14" delayMs={100}>
-            <div className="text-xs uppercase tracking-[0.35em] text-[var(--muted)]">
-              Where real-world assets could plug in
-            </div>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-              Each rail needs its own asset adapter, but the settlement rails already exist on Solana.
-              Every card below is one item, one sale, one winner.
-            </p>
-            <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-              {rwaRails.map((row, i) => (
-                <TiltCard key={row.rail} index={i} total={rwaRails.length} title={row.rail} subtitle={row.sells} />
-              ))}
-            </div>
-          </Reveal>
-        </div>
-      </section>
 
       {/* STATUS */}
-      <section className="page-section border-t border-[var(--line)]">
+      <section id="status" className="page-section border-t border-[var(--line)]">
         <div className="mx-auto max-w-6xl px-6 pt-16 md:pt-20">
           <Reveal>
             <Eyebrow n="09" label="Status" />
-            <h2 className="mt-4 text-5xl font-black leading-[0.95] tracking-tight text-[var(--foreground)] md:text-7xl">
+            <h2 className="mt-4 font-serif text-5xl font-black italic leading-[0.95] tracking-tight text-[var(--foreground)] md:text-7xl">
               The preview is over. Alpha is next.
             </h2>
             <p className="mt-6 max-w-3xl text-lg leading-8 text-[var(--muted)] md:text-2xl md:leading-10">
@@ -1703,7 +1754,7 @@ Preview closed &middot; Alpha next &middot; Devnet
       </section>
 
       {/* SOURCE AVAILABLE */}
-      <section className="page-section border-t border-[var(--line)] px-6 py-16 md:py-20">
+      <section id="source" className="page-section border-t border-[var(--line)] px-6 py-16 md:py-20">
         <div className="mx-auto max-w-6xl">
           <Reveal>
             <Eyebrow n="10" label="Source available" />

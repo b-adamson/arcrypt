@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  --background: #000000;
-  --surface: #050505;
-  --surface-2: #0a0a0a;
-  --surface-3: #111111;
-  --foreground: #f5f7fb;
-  --muted: #a7adb8;
-  --line: rgba(245, 247, 251, 0.10);
-  --line-strong: rgba(245, 247, 251, 0.18);
-  --accent: #00e676;
+  --background: #0a0908;
+  --surface: #100e0b;
+  --surface-2: #17140f;
+  --surface-3: #201c15;
+  --foreground: #f6f2ea;
+  --muted: #a79a87;
+  --line: rgba(246, 242, 234, 0.10);
+  --line-strong: rgba(246, 242, 234, 0.18);
+  --accent: #cc9a4d;
 }
 
 @theme inline {
@@ -17,6 +17,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-serif);
 }
 
 html,
@@ -252,7 +253,7 @@ section::before {
 .tilt-card-glow {
   opacity: 0;
   transition: opacity 200ms ease-out;
-  background: radial-gradient(circle at var(--gx) var(--gy), rgba(0, 230, 118, 0.16), transparent 45%);
+  background: radial-gradient(circle at var(--gx) var(--gy), rgba(204, 154, 77, 0.16), transparent 45%);
   will-change: opacity;
 }
 
